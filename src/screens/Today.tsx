@@ -1,5 +1,7 @@
 import { useEffect, type ReactNode } from 'react'
-import { AlertTriangle, BookOpen, Check, ChevronRight, Flame, Hammer, ListChecks, Moon, Ruler, Snowflake, Sun, Waves, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, BookOpen, Check, ChevronRight, Hammer, ListChecks, Ruler, Snowflake, Waves, type LucideIcon } from 'lucide-react'
+import { Px, questSprite } from '../pixel/Pixel'
+import type { SpriteName } from '../pixel/sprites'
 import {
   ARC_END,
   ARC_START,
@@ -59,7 +61,7 @@ export function Today() {
 
 interface Step {
   key: string
-  icon: LucideIcon
+  icon: SpriteName
   title: string
   text: string
   cta: string
@@ -129,7 +131,7 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
   if (activeSlip)
     steps.push({
       key: 'comeback',
-      icon: Flame,
+      icon: 'flame',
       title: 'Камбэк ещё возможен',
       text: warmup ? '2-минутная замена: +5 XP Воли и +2 ❄.' : '2-минутная замена вернёт +5 HP.',
       cta: 'Сделать камбэк',
@@ -140,7 +142,7 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
   if (yPending)
     steps.push({
       key: 'yconf',
-      icon: Moon,
+      icon: 'owl',
       title: 'Исповедь за вчера',
       text: yesterday < ARC_START ? 'Закрой вчерашний день разминки: XP и ❄ ещё можно забрать до 16:00.' : 'Можно до 16:00. Без неё день закроется с −10 HP.',
       cta: 'Закрыть вчера',
@@ -149,7 +151,7 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
   if (!log?.checkin && now.getHours() < 20)
     steps.push({
       key: 'checkin',
-      icon: Sun,
+      icon: 'sun',
       title: 'Утренний чек-ин',
       text: `Подъём, сон, энергия — 10 секунд.${wt !== undefined ? ` Цель подъёма ${formatHM(wt)}.` : ''}`,
       cta: 'Отметить подъём',
@@ -158,7 +160,7 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
   if (confOpen)
     steps.push({
       key: 'conf',
-      icon: Moon,
+      icon: 'owl',
       title: 'Вечерняя исповедь',
       text: '30 секунд честности закрывают день. +5 XP, +1 ❄.',
       cta: 'Закрыть день',
@@ -173,7 +175,7 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
     const next = openMains.find((p) => fitsNow(p.id))
     const q = next && data.quests.find((x) => x.id === next.id)
     const s = q && nextQuestStep(data, q, today)
-    if (s) steps.push({ key: `q-${q!.id}`, icon: Check, ...s, title: `Дальше: ${s.title}`, tone: 'calm' })
+    if (s) steps.push({ key: `q-${q!.id}`, icon: questSprite(q!), ...s, title: `Дальше: ${s.title}`, tone: 'calm' })
   }
   const hero = steps[0]
   const rest = steps.slice(1, 3)
@@ -208,7 +210,7 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
             <section className={`now-card ${hero.tone ?? ''}`} aria-label="Что сделать сейчас">
               <div className="now-head">
                 <span className="now-icon">
-                  <hero.icon size={20} aria-hidden />
+                  <Px name={hero.icon} size={30} />
                 </span>
                 <h2 className="grow">{hero.title}</h2>
                 {hero.timer && <span className="timer">{hero.timer}</span>}
@@ -222,7 +224,7 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
             <section className="now-card calm" aria-label="Статус дня">
               <div className="now-head">
                 <span className="now-icon">
-                  <Moon size={20} aria-hidden />
+                  <Px name={locked ? 'moon' : 'snowman'} size={30} />
                 </span>
                 <h2 className="grow">{locked ? (game.days[today]?.perfect ? 'Идеальный день закрыт' : 'День закрыт') : laterQuest ? 'Пока всё' : 'Главное сделано'}</h2>
               </div>
@@ -237,7 +239,7 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
             <div className="also">
               {rest.map((s) => (
                 <button key={s.key} className="also-row" onClick={s.run}>
-                  <s.icon size={20} aria-hidden />
+                  <Px name={s.icon} size={26} />
                   <span className="grow">
                     {s.title}
                     <small>{s.text}</small>
@@ -251,7 +253,7 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
           <Garland bulbs={bulbs} label={warmup ? 'Гирлянда разминки' : 'Гирлянда дня'} />
 
           <Hint id="quests">
-            Нажми кружок — квест выполнен. Нажми на название — мини-версия на 2 минуты или пропуск. Ошибся — внизу будет «Отменить».
+            Нажми квадрат справа — квест выполнен. Нажми на название — мини-версия на 2 минуты или пропуск. Ошибся — внизу будет «Отменить».
           </Hint>
 
           <section>

@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react'
-import { ChartLine, Ellipsis, Hammer, ShoppingBag, Snowflake, Sunrise, UserRound, Users, type LucideIcon } from 'lucide-react'
 import { gameDayOf, replayStartOf, unacknowledgedMissed } from './engine'
 import { useStore } from './store/store'
 import { useGame, useNow, useRoute } from './store/hooks'
@@ -21,32 +20,41 @@ import { NudgeBanner } from './components/NudgeBanner'
 import { useSocial } from './cloud/state'
 import { bootCloud } from './cloud/boot'
 import { MissedDays } from './flows/MissedDays'
+import { RewardPop } from './components/RewardPop'
+import { Px } from './pixel/Pixel'
+import type { SpriteName } from './pixel/sprites'
+import { AvatarScreen } from './screens/Avatar'
+import { Destiny } from './screens/Destiny'
+import { PlanDay } from './screens/PlanDay'
 import { SlipFlow, ComebackFlow } from './flows/Slip'
 import { CravingFlow } from './flows/Craving'
 import { CheckinSheet } from './flows/Checkin'
 import { ConfessionSheet } from './flows/Confession'
 
-const NAV: { path: string; label: string; icon: LucideIcon; tab: boolean }[] = [
-  { path: '/today', label: 'Сегодня', icon: Sunrise, tab: true },
-  { path: '/deal', label: 'Дело', icon: Hammer, tab: true },
-  { path: '/party', label: 'Пати', icon: Users, tab: true },
-  { path: '/hero', label: 'Персонаж', icon: UserRound, tab: true },
-  // 5 tabs max on the phone: charts open from the trend tiles on «Сегодня» and from «Ещё»,
-  // the shop from the ❄ counter, «Персонаж» and «Ещё»
-  { path: '/charts', label: 'Графики', icon: ChartLine, tab: false },
-  { path: '/shop', label: 'Магазин', icon: ShoppingBag, tab: false },
-  { path: '/more', label: 'Ещё', icon: Ellipsis, tab: true },
+const NAV: { path: string; label: string; icon: SpriteName; tab: boolean }[] = [
+  { path: '/today', label: 'Сегодня', icon: 'quests', tab: true },
+  { path: '/deal', label: 'Дело', icon: 'hammer', tab: true },
+  { path: '/party', label: 'Пати', icon: 'campfire', tab: true },
+  { path: '/hero', label: 'Персонаж', icon: 'hero', tab: true },
+  // 5 tabs max on the phone: the rest opens from «Сегодня» (Судьба, План, ❄ → Магазин) and from «Ещё»
+  { path: '/destiny', label: 'Судьба дня', icon: 'dice', tab: false },
+  { path: '/plan', label: 'План дня', icon: 'dial', tab: false },
+  { path: '/shop', label: 'Магазин', icon: 'shard', tab: false },
+  { path: '/charts', label: 'Графики', icon: 'star', tab: false },
+  { path: '/more', label: 'Ещё', icon: 'chest', tab: true },
 ]
+/** sub-screens that light up a tab */
+const TAB_OF: Record<string, string> = { '/avatar': '/hero', '/charts': '/more' }
 
-/** light by default, follows the system, manual override in «Ещё» */
+/** «Полярная ночь» by default, «Снежный крем» by choice or by the system in «auto» */
 function useTheme(pref: 'auto' | 'light' | 'dark') {
   useEffect(() => {
     const root = document.documentElement
     if (pref === 'auto') delete root.dataset.theme
     else root.dataset.theme = pref
     const apply = () => {
-      const dark = pref === 'dark' || (pref === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)
-      document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', dark ? '#0a1513' : '#f3f6f3'))
+      const light = pref === 'light' || (pref === 'auto' && window.matchMedia('(prefers-color-scheme: light)').matches)
+      document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', light ? '#f0e8dd' : '#0f1d17'))
     }
     apply()
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
@@ -141,34 +149,44 @@ export default function App() {
     case 'party':
       screen = <PartyScreen />
       break
+    case 'avatar':
+      screen = <AvatarScreen />
+      break
+    case 'destiny':
+      screen = <Destiny />
+      break
+    case 'plan':
+      screen = <PlanDay />
+      break
     default:
       screen = <Today />
   }
 
   const current = `/${top}`
+  const currentTab = TAB_OF[current] ?? current
   return (
     <div className="app">
       <nav className="sidebar" aria-label="Разделы">
         <div className="brand">
-          <Snowflake size={20} color="var(--gold-bright)" aria-hidden /> Winter Arc
+          <Px name="wolf" size={32} /> Winter Arc
         </div>
         {NAV.map((n) => (
-          <a key={n.path} href={`#${n.path}`} className="side-link" aria-current={current === n.path ? 'page' : undefined}>
-            <n.icon aria-hidden />
+          <a key={n.path} href={`#${n.path}`} className="side-link" aria-current={currentTab === n.path ? 'page' : undefined}>
+            <Px name={n.icon} size={26} />
             {n.label}
             {n.path === '/party' && nudgeCount > 0 && <span className="badge" aria-label={`${nudgeCount} новых`}>{nudgeCount}</span>}
           </a>
         ))}
         <div className="grow" />
-        <div className="muted tiny" style={{ padding: '0 12px' }}>
-          {data.profile.avatar} {data.profile.nick}
-        </div>
+        <a href="#/hero" className="muted tiny" style={{ padding: '0 12px', textDecoration: 'none', fontWeight: 800 }}>
+          {data.profile.nick}
+        </a>
       </nav>
       <main className="page">{screen}</main>
       <nav className="tabbar" aria-label="Разделы">
         {NAV.filter((n) => n.tab).map((n) => (
-          <a key={n.path} href={`#${n.path}`} className="tab" aria-current={current === n.path ? 'page' : undefined} onClick={() => current === n.path && window.scrollTo({ top: 0, behavior: 'smooth' })}>
-            <n.icon aria-hidden />
+          <a key={n.path} href={`#${n.path}`} className="tab" aria-current={currentTab === n.path ? 'page' : undefined} onClick={() => current === n.path && window.scrollTo({ top: 0, behavior: 'smooth' })}>
+            <Px name={n.icon} size={26} />
             {n.label}
             {n.path === '/party' && nudgeCount > 0 && <span className="badge" aria-label={`${nudgeCount} новых`}>{nudgeCount}</span>}
           </a>
@@ -179,6 +197,7 @@ export default function App() {
       <Overlays />
       <ConfirmSheet />
       <Floaters />
+      <RewardPop />
       <Party />
       <Toast />
     </div>

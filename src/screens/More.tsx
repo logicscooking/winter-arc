@@ -1,5 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react'
-import { ArrowLeft, BookOpen, Bug, ChartLine, Download, Hand, ListChecks, Ruler, ScrollText, Activity, ChevronRight, ShoppingBag, Monitor, Sun, Moon } from 'lucide-react'
+import { ArrowLeft, BookOpen, Bug, ChartLine, Download, Hand, ListChecks, Ruler, ScrollText, Activity, ChevronRight, Monitor } from 'lucide-react'
+import { Px } from '../pixel/Pixel'
+import type { SpriteName } from '../pixel/sprites'
 import { AccountEntry, AccountPage } from './Account'
 import {
   CHAPTERS,
@@ -25,9 +27,16 @@ import { useUi } from '../store/ui'
 import { MeasurementsForm } from '../components/MeasurementsForm'
 import { Field } from '../components/ui'
 
+/** game screens first, with their pixel icons */
+const GAME: { title: string; hint: string; icon: SpriteName; href: string }[] = [
+  { title: 'Магазин', hint: 'Дофамин, свои награды, снаряжение за ❄', icon: 'shard', href: '#/shop' },
+  { title: 'Судьба дня', hint: 'Рамка выберет квест и запустит таймер', icon: 'dice', href: '#/destiny' },
+  { title: 'План дня', hint: 'Кольцо суток: квесты по часам', icon: 'dial', href: '#/plan' },
+  { title: 'Образ', hint: 'Шапки, шарфы, пуховики, очки', icon: 'hero', href: '#/avatar' },
+]
+
 const PAGES: { id: string; title: string; hint: string; icon: typeof ListChecks; href?: string }[] = [
   { id: 'charts', title: 'Графики', hint: 'Подъём, сон, рилсы, страницы, HP', icon: ChartLine, href: '#/charts' },
-  { id: 'shop', title: 'Магазин наград', hint: 'Потратить осколки ❄', icon: ShoppingBag, href: '#/shop' },
   { id: 'quests', title: 'Квесты', hint: 'Редактор, роли по главам, мини-версии', icon: ListChecks },
   { id: 'measurements', title: 'Замеры', hint: 'Старт и финал', icon: Ruler },
   { id: 'triggers', title: 'Триггеры', hint: 'Когда и почему срываешься', icon: Activity },
@@ -76,6 +85,18 @@ export function More({ sub }: { sub?: string }) {
   return (
     <div className="stack-lg">
       <h1>Ещё</h1>
+      <div className="stack" style={{ gap: 8 }}>
+        {GAME.map((p) => (
+          <a key={p.href} className="list-btn" href={p.href}>
+            <Px name={p.icon} size={30} />
+            <span className="grow">
+              {p.title}
+              <small>{p.hint}</small>
+            </span>
+            <ChevronRight size={18} color="var(--mist)" aria-hidden />
+          </a>
+        ))}
+      </div>
       <AccountEntry />
       <Appearance />
       <div className="stack" style={{ gap: 8 }}>
@@ -96,10 +117,10 @@ export function More({ sub }: { sub?: string }) {
 
 // ---------- appearance ----------
 
-const THEMES: { id: ThemePref; label: string; icon: typeof Sun }[] = [
-  { id: 'light', label: 'Светлая', icon: Sun },
-  { id: 'dark', label: 'Ночь', icon: Moon },
-  { id: 'auto', label: 'Авто', icon: Monitor },
+const THEMES: { id: ThemePref; label: string; icon: SpriteName | null }[] = [
+  { id: 'dark', label: 'Ночь', icon: 'moon' },
+  { id: 'light', label: 'Снег', icon: 'snowman' },
+  { id: 'auto', label: 'Авто', icon: null },
 ]
 
 function Appearance() {
@@ -113,7 +134,7 @@ function Appearance() {
       <div className="theme-pick" role="radiogroup" aria-label="Тема">
         {THEMES.map((t) => (
           <button key={t.id} className="chip" role="radio" aria-checked={theme === t.id} aria-pressed={theme === t.id} onClick={() => setSettings({ theme: t.id })} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '0 8px' }}>
-            <t.icon size={16} aria-hidden /> {t.label}
+            {t.icon ? <Px name={t.icon} size={20} /> : <Monitor size={16} aria-hidden />} {t.label}
           </button>
         ))}
       </div>

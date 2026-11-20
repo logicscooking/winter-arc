@@ -76,6 +76,29 @@ export interface DayLog {
   /** snapshot of active quests, written once the day is closed */
   plan?: PlannedQuest[]
   dealTaskId?: string
+  /** v0.3 «Судьба дня»: the quest/task picked by the spin and its focus timer */
+  destiny?: Destiny
+  /** v0.3 «План дня»: time blocks on the 24h ring */
+  blocks?: TimeBlock[]
+}
+
+export interface Destiny {
+  ref: 'quest' | 'task'
+  id: string
+  /** focus timer start, ms */
+  startedAt: number
+  minutes: number
+}
+
+export interface TimeBlock {
+  id: string
+  /** minutes from 00:00 of the calendar day, 0..1439 */
+  start: number
+  /** minutes, 5..720 */
+  dur: number
+  title: string
+  stat?: StatId
+  ref?: { kind: 'quest' | 'task'; id: string }
 }
 
 export type TaskScope = 'deal' | 'daily'
@@ -119,7 +142,7 @@ export interface Craving {
   swap: string
 }
 
-export type ShopKind = 'chocolate' | 'cola' | 'reels' | 'custom'
+export type ShopKind = 'chocolate' | 'cola' | 'reels' | 'custom' | 'avatar'
 
 export interface Purchase {
   id: string
@@ -135,6 +158,8 @@ export interface Reward {
   id: string
   title: string
   price: number
+  /** pixel icon name (v0.3), optional */
+  icon?: string
 }
 
 export interface PauseLog {
@@ -180,6 +205,23 @@ export interface Profile {
   avatar: string
   usualWake: string // HH:MM
   onboardDay: DayKey
+  /** v0.3 pixel avatar: item id per slot + colors */
+  outfit?: Outfit
+}
+
+export type OutfitSlot = 'hat' | 'scarf' | 'coat' | 'mitts' | 'glasses' | 'extra'
+
+export interface Outfit {
+  hat?: string
+  scarf?: string
+  coat?: string
+  mitts?: string
+  glasses?: string
+  extra?: string
+  /** swatch id per slot */
+  colors?: Partial<Record<OutfitSlot, string>>
+  hair?: string
+  skin?: string
 }
 
 export type ThemePref = 'auto' | 'light' | 'dark'

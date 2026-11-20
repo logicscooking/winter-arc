@@ -11,8 +11,7 @@ import {
   XP,
   activeQuestsFor,
   isCompleted,
-  questShards,
-  questXp,
+  questReward,
   resolveCtx,
   resolveMark,
 } from './quests'
@@ -52,6 +51,10 @@ export interface DayResult {
   xp: number
   shards: number
   bossDamage: number
+  /** quests that rolled CRITICAL ×1.5 */
+  crits: string[]
+  /** «Судьба дня» finished before the timer ran out */
+  destinyWon: boolean
 }
 
 export interface BossState {
@@ -187,7 +190,7 @@ export function computeState(data: AppData, now: Date): GameState {
     else events.set(e.day, [e])
   }
 
-  const dayInfo = new Map<DayKey, { plan: PlannedQuest[]; marks: Record<string, MarkStatus | undefined>; xp: number; shards: number; boss: number }>()
+  const dayInfo = new Map<DayKey, { plan: PlannedQuest[]; marks: Record<string, MarkStatus | undefined>; xp: number; shards: number; boss: number; crits: string[]; destinyWon: boolean }>()
 
   // quest completions
   for (let d = start; d <= today; d = addDays(d, 1)) {
@@ -195,23 +198,40 @@ export function computeState(data: AppData, now: Date): GameState {
     const marks = marksFor(data, d, plan)
     const log = data.days[d]
     const flat: Record<string, MarkStatus | undefined> = {}
+    const crits: string[] = []
+    let destinyWon = false
+    const dz = log?.destiny
+    const inDestiny = (t: number | undefined) => !!dz && t !== undefined && t >= dz.startedAt && t <= dz.startedAt + dz.minutes * 60_000
     for (const p of plan) {
       const m = marks[p.id]
       flat[p.id] = m.status
       if (!isCompleted(m.status)) continue
       const q = data.quests.find((x) => x.id === p.id)
-      const xp = questXp(p.role, p.base, m.status)
+      const r = questReward(d, p, m.status)
+      if (r.crit) crits.push(p.id)
       const dealTask = q?.kind === 'deal' ? data.tasks.find((t) => t.id === log?.dealTaskId) : undefined
+      const at = m.at ?? dealTask?.doneAt ?? log?.confession?.at ?? dayStart(d).getTime()
       push({
         day: d,
-        at: m.at ?? dealTask?.doneAt ?? log?.confession?.at ?? dayStart(d).getTime(),
-        xp,
+        at,
+        xp: r.xp,
         stat: p.stat,
-        shards: questShards(p.role, m.status),
-        boss: p.role === 'main' || q?.kind === 'deal' ? xp : 0,
+        shards: r.shards,
+        boss: p.role === 'main' || q?.kind === 'deal' ? r.baseXp : 0,
       })
+      if (dz?.ref === 'quest' && dz.id === p.id && !m.auto && inDestiny(m.at)) {
+        destinyWon = true
+        push({ day: d, at: m.at!, shards: SHARDS.destiny })
+      }
     }
-    dayInfo.set(d, { plan, marks: flat, xp: 0, shards: 0, boss: 0 })
+    if (dz?.ref === 'task') {
+      const t = data.tasks.find((x) => x.id === dz.id)
+      if (t?.doneDay === d && inDestiny(t.doneAt)) {
+        destinyWon = true
+        push({ day: d, at: t.doneAt!, shards: SHARDS.destiny })
+      }
+    }
+    dayInfo.set(d, { plan, marks: flat, xp: 0, shards: 0, boss: 0, crits, destinyWon })
     if (log?.confession) push({ day: d, at: log.confession.at, xp: XP.confession, stat: 'will', shards: SHARDS.confession })
   }
 
@@ -295,6 +315,8 @@ export function computeState(data: AppData, now: Date): GameState {
       xp: info.xp,
       shards: info.shards,
       bossDamage: info.boss,
+      crits: info.crits,
+      destinyWon: info.destinyWon,
     }
 
     if (closed && warmup) {

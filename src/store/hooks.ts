@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { create } from 'zustand'
 import { computeState, gameDayOf, shiftNow } from '../engine'
-import type { GameState } from '../engine'
+import type { GameState, StatId } from '../engine'
 import { useStore } from './store'
 
 // ---------- clock (with debug offset) ----------
@@ -63,11 +63,28 @@ export interface Celebration {
   kind: 'perfect' | 'boss'
 }
 
+/** Bottom card after a completion: stat progress, XP, ❄, CRITICAL */
+export interface RewardPop {
+  id: number
+  title: string
+  stat: StatId
+  /** stat XP before this completion */
+  fromXp: number
+  xp: number
+  shards: number
+  crit: boolean
+  /** «Судьба дня» bonus */
+  destiny?: number
+}
+
 interface FxStore {
   items: Floater[]
   push: (f: Omit<Floater, 'id'>) => void
   party?: Celebration
   celebrate: (c: Omit<Celebration, 'id'>) => void
+  pop?: RewardPop
+  showPop: (p: Omit<RewardPop, 'id'>) => void
+  hidePop: () => void
 }
 
 let fxId = 0
@@ -84,6 +101,13 @@ export const useFx = create<FxStore>((set, get) => ({
     haptic([20, 50, 20, 50, 40])
     setTimeout(() => get().party?.id === id && set({ party: undefined }), 3200)
   },
+  showPop: (p) => {
+    const id = ++fxId
+    set({ pop: { ...p, id } })
+    if (p.crit) haptic([15, 40, 25])
+    setTimeout(() => get().pop?.id === id && set({ pop: undefined }), p.crit ? 4200 : 3400)
+  },
+  hidePop: () => set({ pop: undefined }),
 }))
 
 export function haptic(pattern: number | number[] = 12) {

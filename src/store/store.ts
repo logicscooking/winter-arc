@@ -33,6 +33,9 @@ import type {
   Task,
   TaskScope,
   Ack,
+  Destiny,
+  Outfit,
+  TimeBlock,
 } from '../engine'
 
 type Fn = (d: AppData) => void
@@ -52,7 +55,7 @@ interface Store {
   addCraving: (result: 'won' | 'lost', swap: string, now: Date) => void
   buy: (item: { itemId: string; title: string; price: number; kind: ShopKind }, now: Date) => string
   undoPurchase: (id: string) => void
-  addReward: (title: string, price: number) => void
+  addReward: (title: string, price: number, icon?: string) => void
   removeReward: (id: string) => void
   logPause: (app: string, result: 'resisted' | 'entered', minutes: number | undefined, now: Date) => void
   addTask: (scope: TaskScope, parentId: string | null, title: string, now: Date, stat?: StatId) => string
@@ -69,6 +72,9 @@ interface Store {
   setMeasurements: (which: 'baseline' | 'final', m: Measurements) => void
   saveReview: (week: number, r: Omit<Review, 'at'>) => void
   setAck: (patch: Partial<Ack>) => void
+  setOutfit: (patch: Partial<Outfit>) => void
+  setDestiny: (day: DayKey, d: Destiny | null) => void
+  setBlocks: (day: DayKey, blocks: TimeBlock[]) => void
   setSettings: (patch: Partial<Settings>) => void
   importData: (raw: unknown) => void
   resetAll: () => void
@@ -177,7 +183,7 @@ export const useStore = create<Store>()(
           return id
         },
         undoPurchase: (id) => update((d) => void (d.purchases = d.purchases.filter((p) => p.id !== id))),
-        addReward: (title, price) => update((d) => void d.rewards.push({ id: uid(), title, price })),
+        addReward: (title, price, icon) => update((d) => void d.rewards.push(icon ? { id: uid(), title, price, icon } : { id: uid(), title, price })),
         removeReward: (id) => update((d) => void (d.rewards = d.rewards.filter((r) => r.id !== id))),
         logPause: (app, result, minutes, now) =>
           update((d) => {
@@ -262,6 +268,24 @@ export const useStore = create<Store>()(
         setMeasurements: (which, m) => update((d) => void (d[which] = { ...m })),
         saveReview: (week, r) => update((d) => void (d.reviews[week] = { ...r, at: Date.now() })),
         setAck: (patch) => update((d) => void Object.assign(d.ack, patch)),
+        setOutfit: (patch) =>
+          update((d) => {
+            if (!d.profile) return
+            const cur = d.profile.outfit ?? {}
+            d.profile.outfit = { ...cur, ...patch, colors: { ...(cur.colors ?? {}), ...(patch.colors ?? {}) } }
+          }),
+        setDestiny: (day, z) =>
+          update((d) => {
+            const log = dayLog(d, day)
+            if (z) log.destiny = z
+            else delete log.destiny
+          }),
+        setBlocks: (day, blocks) =>
+          update((d) => {
+            const log = dayLog(d, day)
+            if (blocks.length) log.blocks = blocks
+            else delete log.blocks
+          }),
         setSettings: (patch) => update((d) => void Object.assign(d.settings, patch)),
         importData: (raw) => set({ data: normalizeData(raw) }),
         resetAll: () => set({ data: createInitialData() }),

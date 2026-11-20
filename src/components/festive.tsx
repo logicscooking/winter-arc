@@ -24,7 +24,7 @@ export function Snow() {
     () =>
       Array.from({ length: 22 }, (_, i) => ({
         x: `${Math.round(rnd(i + 1) * 100)}%`,
-        s: `${(2 + rnd(i + 7) * 3.5).toFixed(1)}px`,
+        s: `${Math.round(2 + rnd(i + 7) * 3)}px`,
         d: `${(14 + rnd(i + 13) * 16).toFixed(1)}s`,
         delay: `${(-rnd(i + 29) * 30).toFixed(1)}s`,
         drift: `${Math.round((rnd(i + 41) - 0.5) * 60)}px`,
@@ -41,7 +41,7 @@ export function Snow() {
   )
 }
 
-const PARTY_COLORS = ['var(--gold-bright)', '#d23a52', '#2f9a6c', '#4f8fd0', 'var(--snow)']
+const PARTY_COLORS = ['var(--gold-bright)', '#ff5a6a', '#43d57a', '#6cc6f2', '#ffffff']
 
 /** One authored moment: a burst of garland light and snow, plus a card. Perfect day / boss defeated. */
 export function Party() {
@@ -134,14 +134,17 @@ export function Garland({ bulbs, label }: { bulbs: Bulb[]; label?: string }) {
           return (
             <g key={b.id}>
               <rect className="cap" x={x - 3} y={y} width={6} height={5} rx={1.2} />
-              <ellipse
+              <rect
                 className={`bulb ${b.main ? 'main' : ''} ${b.on ? `on c${i % 4}` : ''}`}
-                cx={x}
-                cy={y + 5 + r * 1.15}
-                rx={r * 0.82}
-                ry={r * 1.15}
+                x={x - r * 0.8}
+                y={y + 5}
+                width={r * 1.6}
+                height={r * 2.2}
+                rx={2}
+                shapeRendering="crispEdges"
                 style={{ '--tw': `${(i % 5) * 0.35}s` } as React.CSSProperties}
               />
+              {b.on && <rect className="shine" x={x - r * 0.5} y={y + 8} width={3} height={4} shapeRendering="crispEdges" />}
             </g>
           )
         })}
@@ -166,7 +169,7 @@ export function MiniGarland({ bulbs }: { bulbs: Bulb[] }) {
     <svg className="mini-garland" viewBox={`0 0 ${w} ${h}`} width={w} height={h} role="img" aria-label={`Сделано ${lit} из ${n}`}>
       <path className="wire" d={d} />
       {bulbs.map((b, i) => (
-        <ellipse key={b.id} className={`bulb ${b.main ? 'main' : ''} ${b.on ? `on c${i % 4}` : ''}`} cx={xs[i]} cy={b.main ? 13 : 12.5} rx={b.main ? 4.2 : 3.4} ry={b.main ? 5.6 : 4.6} />
+        <rect key={b.id} className={`bulb ${b.main ? 'main' : ''} ${b.on ? `on c${i % 4}` : ''}`} x={xs[i] - (b.main ? 4 : 3.4)} y={7} width={b.main ? 8 : 6.8} height={b.main ? 11 : 9.4} rx={1.5} shapeRendering="crispEdges" />
       ))}
     </svg>
   )

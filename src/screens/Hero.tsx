@@ -1,15 +1,19 @@
-import { ChevronRight, ShoppingBag, Snowflake, Trophy, Users } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { ARC_START, ARC_WEEKS, CHAPTERS, STATS, bossOf, chapterOf, chapterRank, levelOf, rankTitle } from '../engine'
+import type { StatId } from '../engine'
 import { useStore } from '../store/store'
 import { useGame } from '../store/hooks'
-import { Bar, StatIcon } from '../components/ui'
+import { Bar, HpBar } from '../components/ui'
 import { Spark } from '../components/Spark'
 import { MiniTrends } from './Today'
 import { hpValues, window7, xpValues } from '../store/trends'
+import { BossSprite, PixelAvatar, Px, STAT_SPRITE } from '../pixel/Pixel'
+import { useWornOutfit } from '../pixel/useHero'
 
 export function Hero() {
   const profile = useStore((s) => s.data.profile)!
   const game = useGame()
+  const outfit = useWornOutfit()
   const lvl = levelOf(game.xp)
   const ch = chapterOf(game.today)
   const rank = chapterRank(game, ch)
@@ -19,35 +23,92 @@ export function Hero() {
   const hp7 = hpValues(game, days, game.today)
   const xpWeek = xp7.reduce<number>((s, v) => s + (v ?? 0), 0)
   const warmup = game.today < ARC_START
+
+  // podium: the three strongest stats; ties keep the canonical order
+  const ranked = [...STATS].sort((a, b) => game.xpByStat[b.id] - game.xpByStat[a.id])
+  const top = ranked.slice(0, 3)
+  const podium: { s: (typeof STATS)[number]; place: 1 | 2 | 3 }[] = [
+    { s: top[1], place: 2 },
+    { s: top[0], place: 1 },
+    { s: top[2], place: 3 },
+  ]
+  const anyXp = top.some((s) => game.xpByStat[s.id] > 0)
+
   return (
     <div className="stack-lg">
-      <header className="row" style={{ gap: 14 }}>
-        <div className="avatar" style={{ width: 64, height: 64, fontSize: '2.1rem', borderRadius: 20 }}>
-          {profile.avatar}
-        </div>
-        <div className="grow">
-          <h1>{profile.nick}</h1>
-          <p className="muted small">
-            Уровень {lvl.level}, {game.xp} XP всего
-          </p>
-        </div>
-      </header>
-
       <div className="cols">
         <div className="stack-lg">
-          <section className="panel stack">
-            <div className="row between">
-              <h2>Общий уровень</h2>
-              <span className="num xp-v" style={{ fontSize: '1.6rem' }}>
-                {lvl.level}
-              </span>
+          <section className="hero-card" aria-label="Персонаж">
+            <a className="hero-ava" href="#/avatar" aria-label="Изменить образ">
+              <PixelAvatar outfit={outfit} size={132} title={`Аватар ${profile.nick}`} />
+            </a>
+            <div>
+              <div className="hero-name">{profile.nick}</div>
+              <div className="row" style={{ justifyContent: 'center', gap: 8, marginTop: 6 }}>
+                <span className="lvl-badge">УРОВЕНЬ {lvl.level}</span>
+                <span className="small muted">{rankTitle(rank)}</span>
+              </div>
             </div>
-            <Bar value={lvl.progress} label="Опыт уровня" />
-            <p className="tiny muted">
-              До уровня {lvl.level + 1}: {lvl.toNext} XP. XP не сгорает никогда.
-            </p>
+            <div className="hero-meters">
+              <div className="meter">
+                <Px name="heart" size={22} />
+                <HpBar hp={game.hp} />
+                <span className="num hp-v">{game.hp}/100</span>
+              </div>
+              <div className="meter">
+                <Px name="star" size={22} />
+                <Bar value={lvl.progress} label="Опыт уровня" />
+                <span className="num">
+                  {lvl.into}/{lvl.span}
+                </span>
+              </div>
+              <p className="tiny muted" style={{ textAlign: 'center' }}>
+                {game.xp} XP всего · до уровня {lvl.level + 1}: {lvl.toNext} XP. XP не сгорает никогда.
+              </p>
+            </div>
+            <a className="btn block" href="#/avatar">
+              <Px name="hero" size={22} /> Образ и снаряжение
+            </a>
           </section>
 
+          <section className="podium-wrap" aria-label="Топ статов">
+            <h2 style={{ textAlign: 'center' }}>Топ статов</h2>
+            {!anyXp && <p className="small muted center" style={{ marginTop: 4 }}>Выполни первый квест — и статы выйдут на пьедестал.</p>}
+            <div className="podium">
+              {podium.map(({ s, place }) => {
+                const xp = game.xpByStat[s.id]
+                const l = levelOf(xp)
+                return (
+                  <div key={s.id} className={`pod p${place}`}>
+                    <Px name={STAT_SPRITE[s.id]} size={place === 1 ? 44 : 36} />
+                    <span className="pod-name">
+                      <span className="pod-medal">{place}</span> {s.name}
+                    </span>
+                    <div className="pod-block" aria-label={`${s.name}: уровень ${l.level}`}>
+                      {l.level}
+                    </div>
+                    <Bar value={l.progress} label={`${s.name}: опыт уровня`} />
+                    <div className="pod-meta">
+                      <span>ур {l.level}</span>
+                      <span>{xp} XP</span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+
+          <section className="stack">
+            <h2>Все статы</h2>
+            <div className="stat-list">
+              {STATS.map((s) => (
+                <StatRow key={s.id} id={s.id} name={s.name} xp={game.xpByStat[s.id]} />
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <div className="stack-lg">
           <div className="mini-trends">
             <a className="mini-trend" href="#/charts">
               <span className="k">
@@ -72,33 +133,6 @@ export function Hero() {
           </div>
           <MiniTrends />
 
-          <section className="stack">
-            <h2>Статы</h2>
-            {STATS.map((s) => {
-              const xp = game.xpByStat[s.id]
-              const l = levelOf(xp)
-              return (
-                <div key={s.id} className="panel tight stat-row">
-                  <div className="stat-icon">
-                    <StatIcon stat={s.id} size={20} />
-                  </div>
-                  <div className="stack" style={{ gap: 6 }}>
-                    <div className="row between">
-                      <span style={{ fontWeight: 700 }}>{s.name}</span>
-                      <span className="tiny muted num">{xp} XP</span>
-                    </div>
-                    <Bar value={l.progress} label={`${s.name}: опыт уровня`} />
-                  </div>
-                  <span className="num" style={{ fontSize: '1.2rem', minWidth: 28, textAlign: 'right' }}>
-                    {l.level}
-                  </span>
-                </div>
-              )
-            })}
-          </section>
-        </div>
-
-        <div className="stack-lg">
           <section className="panel stack">
             <span className="small muted">{ch === 0 ? 'Ранг пролога' : `Ранг главы ${CHAPTERS[ch].roman}`}</span>
             <div className="row between">
@@ -111,8 +145,11 @@ export function Hero() {
           <section className="grid-2">
             <div className="panel stack" style={{ gap: 4 }}>
               <span className="small muted">Серия честности</span>
-              <span className="num" style={{ fontSize: '1.6rem' }}>
-                {game.honestyStreak}
+              <span className="row" style={{ gap: 6 }}>
+                <Px name="owl" size={26} />
+                <span className="num" style={{ fontSize: '1.6rem' }}>
+                  {game.honestyStreak}
+                </span>
               </span>
               <span className="tiny muted">лучшая {game.bestHonesty}</span>
             </div>
@@ -120,7 +157,7 @@ export function Hero() {
               <span className="small muted">Заморозки</span>
               <div className="row" style={{ gap: 4 }}>
                 {[0, 1].map((i) => (
-                  <Snowflake key={i} size={26} color={i < game.freezes ? 'var(--frost)' : 'var(--line)'} aria-hidden />
+                  <Px key={i} name="snowflake" size={28} style={i < game.freezes ? undefined : { opacity: 0.25, filter: 'grayscale(1)' }} />
                 ))}
                 <span className="sr">{game.freezes} из 2</span>
               </div>
@@ -129,10 +166,10 @@ export function Hero() {
           </section>
 
           <a className="list-btn" href="#/shop">
-            <ShoppingBag aria-hidden />
+            <Px name="shard" size={28} />
             <span className="grow">
               Магазин наград
-              <small>{game.shards} ❄ — шоколад, кола, рилсы и свои награды</small>
+              <small>{game.shards} ❄ — дофамин, свои награды и снаряжение</small>
             </span>
             <ChevronRight size={18} color="var(--mist)" aria-hidden />
           </a>
@@ -148,8 +185,8 @@ export function Hero() {
               {Array.from({ length: ARC_WEEKS }, (_, i) => i + 1).map((w) => {
                 const b = game.bosses[w]
                 return (
-                  <div key={w} className={`trophy ${b?.won ? 'won' : ''}`} title={bossOf(w)}>
-                    <Trophy size={18} aria-hidden style={{ opacity: b?.won ? 1 : 0.3 }} />
+                  <div key={w} className={`trophy ${b?.won ? 'won' : ''}`} title={`${bossOf(w)}${b?.won ? ' — повержен' : ''}`}>
+                    <BossSprite name={bossOf(w)} size={28} />
                     <span className="num">{w}</span>
                   </div>
                 )
@@ -158,7 +195,7 @@ export function Hero() {
           </section>
 
           <a className="list-btn" href="#/party">
-            <Users aria-hidden />
+            <Px name="campfire" size={28} />
             <span className="grow">
               Пати
               <small>Друзья, лента, «пнуть». Дневник и замеры остаются только у тебя</small>
@@ -167,6 +204,29 @@ export function Hero() {
           </a>
         </div>
       </div>
+    </div>
+  )
+}
+
+function StatRow({ id, name, xp }: { id: StatId; name: string; xp: number }) {
+  const l = levelOf(xp)
+  return (
+    <div className="panel tight stat-row">
+      <div className="stat-icon">
+        <Px name={STAT_SPRITE[id]} size={30} />
+      </div>
+      <div className="stack" style={{ gap: 6 }}>
+        <div className="row between">
+          <span style={{ fontWeight: 800 }}>{name}</span>
+          <span className="tiny muted num">
+            {l.into}/{l.span}
+          </span>
+        </div>
+        <Bar value={l.progress} label={`${name}: опыт уровня`} />
+      </div>
+      <span className="num" style={{ fontSize: '1.3rem', minWidth: 30, textAlign: 'right' }}>
+        {l.level}
+      </span>
     </div>
   )
 }

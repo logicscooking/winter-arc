@@ -239,8 +239,10 @@ describe('XP, осколки, ранг', () => {
     const data = makeData()
     perfectDays(data, '2026-11-29', 2)
     const st = computeState(data, nowAt('2026-11-30', 22))
-    expect(chapterRank(st, 0)).toBe(45)
-    expect(chapterRank(st, 1)).toBe(105)
+    // CRITICAL rolls are deterministic per day + quest: add their bonus on top of the base XP
+    const critBonus = (day: string) => st.days[day].crits.reduce((s, id) => s + (st.days[day].plan.find((p) => p.id === id)?.role === 'main' ? 10 : 5), 0)
+    expect(chapterRank(st, 0)).toBe(45 + critBonus('2026-11-29'))
+    expect(chapterRank(st, 1)).toBe(105 + critBonus('2026-11-30'))
   })
 })
 

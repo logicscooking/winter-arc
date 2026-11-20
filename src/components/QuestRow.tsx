@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { Check, ChevronDown, Minus, X } from 'lucide-react'
-import { formatHM, questShards, questStreak, questXp, statusFromValue } from '../engine'
+import { Check, Minus, X } from 'lucide-react'
+import { SHARDS, formatHM, questReward, questStreak, questXp, statusFromValue } from '../engine'
 import type { DayKey, GameState, MarkStatus, PlannedQuest, Quest } from '../engine'
 import { useStore } from '../store/store'
-import { go, nowWithOffset, reward } from '../store/hooks'
+import { go, nowWithOffset, reward, useFx } from '../store/hooks'
 import { useUi } from '../store/ui'
-import { StatIcon } from './ui'
+import { Px, STAT_SPRITE, questSprite } from '../pixel/Pixel'
 
 interface Props {
   plan: PlannedQuest
@@ -44,9 +44,19 @@ export function QuestRow({ plan, quest, status, auto, day, game, locked, wakeTar
     say(text, () => restoreMark(day, quest.id, snapshot))
   }
 
+  /** XP floaters + the reward card (stat progress, ❄, CRITICAL, «Судьба») */
+  const celebrate = (el: Element, s: MarkStatus, at: number) => {
+    const r = questReward(day, plan, s)
+    const z = useStore.getState().data.days[day]?.destiny
+    const destiny = z?.ref === 'quest' && z.id === quest.id && at >= z.startedAt && at <= z.startedAt + z.minutes * 60_000 ? SHARDS.destiny : 0
+    reward(el, { xp: r.xp })
+    useFx.getState().showPop({ title: quest.title, stat: plan.stat, fromXp: game.xpByStat[plan.stat], xp: r.xp, shards: r.shards, crit: r.crit, destiny })
+  }
+
   const complete = (el: Element, s: MarkStatus) => {
-    withUndo(s === 'mini' ? `Мини-версия: ${quest.title}` : `Готово: ${quest.title}`, () => setMark(day, quest.id, s, nowWithOffset()))
-    reward(el, { xp: questXp(plan.role, plan.base, s), shards: questShards(plan.role, s) })
+    const now = nowWithOffset()
+    withUndo(s === 'mini' ? `Мини-версия: ${quest.title}` : `Готово: ${quest.title}`, () => setMark(day, quest.id, s, now))
+    celebrate(el, s, now.getTime())
     setMenu(false)
   }
 
@@ -83,9 +93,10 @@ export function QuestRow({ plan, quest, status, auto, day, game, locked, wakeTar
     const v = Number(draft)
     if (!Number.isFinite(v) || v < 0) return
     const prevStatus = status
-    withUndo(v > 0 ? `Записано: ${v} ${quest.unit ?? ''}`.trim() : 'Значение стёрто', () => setValue(day, quest.id, v, nowWithOffset()))
+    const now = nowWithOffset()
+    withUndo(v > 0 ? `Записано: ${v} ${quest.unit ?? ''}`.trim() : 'Значение стёрто', () => setValue(day, quest.id, v, now))
     const s = statusFromValue(quest, v)
-    if (s && s !== prevStatus) reward(el, { xp: questXp(plan.role, plan.base, s), shards: questShards(plan.role, s) })
+    if (s && s !== prevStatus) celebrate(el, s, now.getTime())
     setEntry(false)
   }
 
@@ -99,6 +110,31 @@ export function QuestRow({ plan, quest, status, auto, day, game, locked, wakeTar
 
   return (
     <div className={cls}>
+      <span className="q-icon">
+        <Px name={questSprite(quest)} size={32} />
+      </span>
+      <button className="quest-body" onClick={() => !locked && setMenu(!menu)} disabled={locked} aria-expanded={menu} aria-label={`${quest.title}: варианты — мини-версия, пропуск`} style={{ cursor: locked ? 'default' : 'pointer' }}>
+        <div className="quest-title">{quest.title}</div>
+        <div className="quest-sub">
+          <span className="xp-chip" title="XP за выполнение">
+            <Px name={STAT_SPRITE[quest.stat]} size={14} />+{doneXp}
+          </span>
+          {plan.role === 'main' && (
+            <span className="ice-chip" title="Осколки за выполнение">
+              <Px name="shard" size={14} />+{SHARDS.main}
+            </span>
+          )}
+          {streak.last7 > 0 && (
+            <span className="streak-chip" title={`Серия: ${streak.current}, лучшая ${streak.best}`} aria-label={`${streak.last7} из последних 7 дней`}>
+              <Px name="flame" size={14} />
+              {streak.last7}/7
+            </span>
+          )}
+          {plan.base && <span className="tag base">база ×0.5</span>}
+          {auto && status && <span className="tag auto">авто</span>}
+          {hint && <span>{hint}</span>}
+        </div>
+      </button>
       <button
         className="check"
         onClick={(e) => onCheck(e.currentTarget)}
@@ -107,33 +143,11 @@ export function QuestRow({ plan, quest, status, auto, day, game, locked, wakeTar
         disabled={locked && !status}
       >
         <span>
-          {status === 'done' && <Check size={18} strokeWidth={3} />}
-          {status === 'mini' && <Minus size={18} strokeWidth={3} />}
-          {status === 'skip' && <X size={16} strokeWidth={3} />}
+          {status === 'done' && <Check size={22} strokeWidth={3.5} />}
+          {status === 'mini' && <Minus size={22} strokeWidth={3.5} />}
+          {status === 'skip' && <X size={20} strokeWidth={3.5} />}
         </span>
       </button>
-      <button className="quest-body" onClick={() => !locked && setMenu(!menu)} disabled={locked} aria-expanded={menu} style={{ cursor: locked ? 'default' : 'pointer' }}>
-        <div className="quest-title">{quest.title}</div>
-        <div className="quest-sub">
-          <StatIcon stat={quest.stat} size={13} />
-          {plan.base && <span className="tag base">база ×0.5</span>}
-          {auto && status && <span className="tag auto">авто</span>}
-          {hint ? <span>{hint}</span> : <span>+{doneXp} XP</span>}
-        </div>
-      </button>
-      <div className="row" style={{ gap: 0 }}>
-        {streak.last7 > 0 && (
-          <span className="streak" title={`Серия: ${streak.current}, лучшая ${streak.best}`} aria-label={`${streak.last7} из последних 7 дней`}>
-            {streak.last7}
-            <span className="muted">/7</span>
-          </span>
-        )}
-        {!locked && (
-          <button className="icon-btn" onClick={() => setMenu(!menu)} aria-label={menu ? 'Скрыть варианты' : 'Варианты: мини-версия, пропуск'} aria-expanded={menu}>
-            <ChevronDown size={18} style={{ transform: menu ? 'rotate(180deg)' : undefined, transition: 'transform 0.25s' }} />
-          </button>
-        )}
-      </div>
       {entry && (
         <form
           className="quest-extra"

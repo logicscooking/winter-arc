@@ -22,7 +22,44 @@ export const SHARDS = {
   comeback: 2,
   craving: 2,
   boss: 15,
+  /** «Судьба дня» done before the focus timer ran out */
+  destiny: 3,
 } as const
+
+/**
+ * CRITICAL: ~15% of full completions give ×1.5 XP. The roll is a hash of day + quest,
+ * so replaying the log (or syncing to another device) always gives the same result.
+ * Mini versions never crit; boss damage uses the base XP.
+ */
+export const CRIT = { chance: 0.15, mult: 1.5 } as const
+
+/** FNV-1a 32-bit */
+export function hash32(s: string): number {
+  let h = 0x811c9dc5
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i)
+    h = Math.imul(h, 0x01000193)
+  }
+  return h >>> 0
+}
+
+export function isCrit(day: DayKey, questId: string): boolean {
+  return hash32(`crit|${day}|${questId}`) % 10000 < CRIT.chance * 10000
+}
+
+export interface QuestReward {
+  xp: number
+  baseXp: number
+  crit: boolean
+  shards: number
+}
+
+/** Everything a completion gives, crit included */
+export function questReward(day: DayKey, p: Pick<PlannedQuest, 'id' | 'role' | 'base'>, status: MarkStatus | undefined): QuestReward {
+  const baseXp = questXp(p.role, p.base, status)
+  const crit = status === 'done' && baseXp > 0 && isCrit(day, p.id)
+  return { xp: crit ? Math.round(baseXp * CRIT.mult) : baseXp, baseXp, crit, shards: questShards(p.role, status) }
+}
 
 export const HP = {
   start: 100,
