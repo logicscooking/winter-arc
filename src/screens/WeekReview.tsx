@@ -6,6 +6,8 @@ import { useGame } from '../store/hooks'
 import { useUi } from '../store/ui'
 import { Chart } from '../components/Chart'
 import { Field } from '../components/ui'
+import { WeeklyCheck } from '../components/WeeklyCheck'
+import { cloudConfigured } from '../cloud/client'
 
 export function WeekReview({ week }: { week: number }) {
   const game = useGame()
@@ -77,6 +79,8 @@ export function WeekReview({ week }: { week: number }) {
         <Chart title="XP по дням" days={days} series={[{ name: 'XP', color: 'var(--c-xp)', kind: 'bar' }]} values={[days.map((d) => (game.days[d] ? game.xpByDay[d] ?? 0 : null))]} yMin={0} />
         <Chart title="HP по дням" days={days} series={[{ name: 'HP', color: 'var(--c-hp)', kind: 'line' }]} values={[days.map((d) => game.hpByDay[d] ?? null)]} yMin={0} yMax={100} />
       </div>
+
+      {cloudConfigured && <WeeklyCheck week={week} />}
 
       <section className="stack">
         <h2>Три вопроса</h2>

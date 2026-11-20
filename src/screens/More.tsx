@@ -1,5 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react'
-import { ArrowLeft, BookOpen, Bug, Download, Hand, ListChecks, Ruler, ScrollText, Users, Activity, ChevronRight, ShoppingBag, Monitor, Sun, Moon } from 'lucide-react'
+import { ArrowLeft, BookOpen, Bug, ChartLine, Download, Hand, ListChecks, Ruler, ScrollText, Activity, ChevronRight, ShoppingBag, Monitor, Sun, Moon } from 'lucide-react'
+import { AccountEntry, AccountPage } from './Account'
 import {
   CHAPTERS,
   FINAL_MEASURE_FROM,
@@ -25,6 +26,7 @@ import { MeasurementsForm } from '../components/MeasurementsForm'
 import { Field } from '../components/ui'
 
 const PAGES: { id: string; title: string; hint: string; icon: typeof ListChecks; href?: string }[] = [
+  { id: 'charts', title: 'Графики', hint: 'Подъём, сон, рилсы, страницы, HP', icon: ChartLine, href: '#/charts' },
   { id: 'shop', title: 'Магазин наград', hint: 'Потратить осколки ❄', icon: ShoppingBag, href: '#/shop' },
   { id: 'quests', title: 'Квесты', hint: 'Редактор, роли по главам, мини-версии', icon: ListChecks },
   { id: 'measurements', title: 'Замеры', hint: 'Старт и финал', icon: Ruler },
@@ -68,10 +70,13 @@ export function More({ sub }: { sub?: string }) {
       return <Backup />
     case 'debug':
       return <Debug />
+    case 'account':
+      return <AccountPage />
   }
   return (
     <div className="stack-lg">
       <h1>Ещё</h1>
+      <AccountEntry />
       <Appearance />
       <div className="stack" style={{ gap: 8 }}>
         {PAGES.map((p) => (
@@ -84,13 +89,6 @@ export function More({ sub }: { sub?: string }) {
             <ChevronRight size={18} color="var(--mist)" aria-hidden />
           </a>
         ))}
-        <div className="list-btn" style={{ opacity: 0.6 }}>
-          <Users aria-hidden />
-          <span className="grow">
-            Пати — в v0.2
-            <small>Друзья, серии, «пнуть»</small>
-          </span>
-        </div>
       </div>
     </div>
   )
@@ -561,7 +559,7 @@ function Backup() {
 
   return (
     <Sub title="Бэкап">
-      <p className="muted">Все данные живут только на этом устройстве. Раз в неделю сохраняй файл — например, в «Файлы» или облако.</p>
+      <p className="muted">Данные живут на этом устройстве{' '}(а с аккаунтом — ещё и в твоей личной облачной копии). Раз в неделю сохраняй файл — например, в «Файлы» или облако.</p>
       <button className="btn primary block" onClick={exportJson}>
         <Download size={18} /> Скачать бэкап JSON
       </button>

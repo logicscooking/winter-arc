@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { ChartLine, Ellipsis, Hammer, ShoppingBag, Snowflake, Sunrise, UserRound, type LucideIcon } from 'lucide-react'
+import { ChartLine, Ellipsis, Hammer, ShoppingBag, Snowflake, Sunrise, UserRound, Users, type LucideIcon } from 'lucide-react'
 import { gameDayOf, replayStartOf, unacknowledgedMissed } from './engine'
 import { useStore } from './store/store'
 import { useGame, useNow, useRoute } from './store/hooks'
@@ -16,6 +16,10 @@ import { Onboarding } from './screens/Onboarding'
 import { Pause } from './screens/Pause'
 import { WeekReview } from './screens/WeekReview'
 import { Finale } from './screens/Finale'
+import { Party as PartyScreen } from './screens/Party'
+import { NudgeBanner } from './components/NudgeBanner'
+import { useSocial } from './cloud/state'
+import { bootCloud } from './cloud/boot'
 import { MissedDays } from './flows/MissedDays'
 import { SlipFlow, ComebackFlow } from './flows/Slip'
 import { CravingFlow } from './flows/Craving'
@@ -25,9 +29,11 @@ import { ConfessionSheet } from './flows/Confession'
 const NAV: { path: string; label: string; icon: LucideIcon; tab: boolean }[] = [
   { path: '/today', label: 'Сегодня', icon: Sunrise, tab: true },
   { path: '/deal', label: 'Дело', icon: Hammer, tab: true },
-  { path: '/charts', label: 'Графики', icon: ChartLine, tab: true },
+  { path: '/party', label: 'Пати', icon: Users, tab: true },
   { path: '/hero', label: 'Персонаж', icon: UserRound, tab: true },
-  // on the phone the shop opens from the ❄ counter, «Персонаж» and «Ещё»: 5 tabs max
+  // 5 tabs max on the phone: charts open from the trend tiles on «Сегодня» and from «Ещё»,
+  // the shop from the ❄ counter, «Персонаж» and «Ещё»
+  { path: '/charts', label: 'Графики', icon: ChartLine, tab: false },
   { path: '/shop', label: 'Магазин', icon: ShoppingBag, tab: false },
   { path: '/more', label: 'Ещё', icon: Ellipsis, tab: true },
 ]
@@ -67,7 +73,9 @@ function Overlays() {
 }
 
 export default function App() {
+  useEffect(() => bootCloud(), [])
   const route = useRoute()
+  const nudgeCount = useSocial((s) => s.nudges.length)
   const data = useStore((s) => s.data)
   const finalize = useStore((s) => s.finalize)
   const now = useNow()
@@ -130,6 +138,9 @@ export default function App() {
     case 'finale':
       screen = <Finale />
       break
+    case 'party':
+      screen = <PartyScreen />
+      break
     default:
       screen = <Today />
   }
@@ -145,6 +156,7 @@ export default function App() {
           <a key={n.path} href={`#${n.path}`} className="side-link" aria-current={current === n.path ? 'page' : undefined}>
             <n.icon aria-hidden />
             {n.label}
+            {n.path === '/party' && nudgeCount > 0 && <span className="badge" aria-label={`${nudgeCount} новых`}>{nudgeCount}</span>}
           </a>
         ))}
         <div className="grow" />
@@ -158,9 +170,11 @@ export default function App() {
           <a key={n.path} href={`#${n.path}`} className="tab" aria-current={current === n.path ? 'page' : undefined} onClick={() => current === n.path && window.scrollTo({ top: 0, behavior: 'smooth' })}>
             <n.icon aria-hidden />
             {n.label}
+            {n.path === '/party' && nudgeCount > 0 && <span className="badge" aria-label={`${nudgeCount} новых`}>{nudgeCount}</span>}
           </a>
         ))}
       </nav>
+      <NudgeBanner hidden={top === 'party'} />
       <Snow />
       <Overlays />
       <ConfirmSheet />

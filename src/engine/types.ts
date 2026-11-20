@@ -191,6 +191,8 @@ export interface Settings {
   /** added in v0.1.1, optional so older backups stay valid */
   theme?: ThemePref
   snow?: boolean
+  /** v0.2: what goes to the party feed (missing = on) */
+  share?: Partial<Record<'slips' | 'perfect' | 'boss' | 'level' | 'book', boolean>>
 }
 
 export interface Ack {

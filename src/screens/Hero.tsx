@@ -157,13 +157,14 @@ export function Hero() {
             </div>
           </section>
 
-          <section className="panel row" style={{ opacity: 0.75 }}>
-            <Users color="var(--mist)" aria-hidden />
-            <div className="grow">
-              <h3>Пати — в v0.2</h3>
-              <p className="small muted">Друзья по инвайту, серии и «пнуть». Дневник и замеры останутся только у тебя.</p>
-            </div>
-          </section>
+          <a className="list-btn" href="#/party">
+            <Users aria-hidden />
+            <span className="grow">
+              Пати
+              <small>Друзья, лента, «пнуть». Дневник и замеры остаются только у тебя</small>
+            </span>
+            <ChevronRight size={18} color="var(--mist)" aria-hidden />
+          </a>
         </div>
       </div>
     </div>

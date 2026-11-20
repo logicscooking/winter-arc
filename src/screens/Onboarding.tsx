@@ -6,6 +6,10 @@ import { useStore } from '../store/store'
 import { nowWithOffset } from '../store/hooks'
 import { Field } from '../components/ui'
 import { MeasurementsForm } from '../components/MeasurementsForm'
+import { AuthForm } from '../components/AuthForm'
+import { Sheet } from '../components/ui'
+import { cloudConfigured } from '../cloud/client'
+import { useSocial } from '../cloud/state'
 
 const AVATARS = ['🐺', '🦊', '🐻‍❄️', '🦉', '🐧', '🦌', '🐉', '🦅', '🗻', '🔥', '❄️', '🌑']
 
@@ -43,6 +47,9 @@ export function Onboarding() {
   const [avatar, setAvatar] = useState(AVATARS[0])
   const [wake, setWake] = useState('08:30')
   const [m, setM] = useState<Measurements>({})
+  const [login, setLogin] = useState(false)
+  const account = useSocial((s) => s.account)
+  const syncStatus = useSocial((s) => s.sync.status)
   const today = gameDayOf(nowWithOffset())
   const planStart = today > ARC_START ? today : ARC_START
 
@@ -155,6 +162,17 @@ export function Onboarding() {
         )}
 
         <div className="grow" />
+        {step === 0 && cloudConfigured && (
+          account ? (
+            <p className="small muted center">
+              {syncStatus === 'syncing' ? 'Загружаю данные с другого устройства…' : `Вошёл как @${account.nick}. Данных в облаке нет — начни арку здесь, и они синхронизируются.`}
+            </p>
+          ) : (
+            <button className="btn ghost block" onClick={() => setLogin(true)}>
+              Уже играю на другом устройстве — войти
+            </button>
+          )
+        )}
         <button className="btn primary block" onClick={next}>
           {step === total - 1 ? (today < ARC_START ? 'Начать разминку' : 'Начать арку') : 'Дальше'}
         </button>
@@ -164,6 +182,11 @@ export function Onboarding() {
           </button>
         )}
       </div>
+      {login && (
+        <Sheet title="Вход" onClose={() => setLogin(false)}>
+          <AuthForm initial="login" onDone={() => setLogin(false)} />
+        </Sheet>
+      )}
     </div>
   )
 }

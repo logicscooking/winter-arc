@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ARC_START, COMEBACK_WINDOW_MS, HP, SHARDS, WHAT_LABEL, WHY_LABEL, XP, gameDayOf } from '../engine'
+import { ARC_START, COMEBACK_WINDOW_MS, HP, PRESET_SWAPS, SHARDS, WHAT_LABEL, WHY_LABEL, XP, gameDayOf } from '../engine'
 import type { SlipWhat, SlipWhy } from '../engine'
 import { useStore } from '../store/store'
 import { nowWithOffset, reward } from '../store/hooks'
@@ -9,7 +9,7 @@ import { Chips, Field, Ring, Sheet, formatMMSS } from '../components/ui'
 const WHATS = (Object.keys(WHAT_LABEL) as SlipWhat[]).map((id) => ({ id, label: WHAT_LABEL[id] }))
 const WHYS = (Object.keys(WHY_LABEL) as SlipWhy[]).map((id) => ({ id, label: WHY_LABEL[id] }))
 
-export const SWAPS = ['10 отжиманий', '2 страницы', 'Стакан воды', 'Выйти на свет']
+export const SWAPS = PRESET_SWAPS
 
 export function SlipFlow() {
   const close = useUi((s) => s.close)
