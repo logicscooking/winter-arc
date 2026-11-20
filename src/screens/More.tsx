@@ -27,11 +27,12 @@ import { useUi } from '../store/ui'
 import { MeasurementsForm } from '../components/MeasurementsForm'
 import { Field } from '../components/ui'
 import { AiSettings } from '../components/ai'
+import { setTopGarlandPref, useTopGarlandPref } from '../components/festive'
 
 /** game screens first, with their pixel icons */
 const GAME: { title: string; hint: string; icon: SpriteName; href: string }[] = [
   { title: 'Магазин', hint: 'Дофамин, свои награды, снаряжение за ❄', icon: 'shard', href: '#/shop' },
-  { title: 'Судьба дня', hint: 'Рамка выберет квест и запустит таймер', icon: 'dice', href: '#/destiny' },
+  { title: 'Судьба дня', hint: 'Шар Плинко выберет дело и запустит таймер', icon: 'plinko', href: '#/destiny' },
   { title: 'План дня', hint: 'Кольцо суток: квесты по часам', icon: 'dial', href: '#/plan' },
   { title: 'Образ', hint: 'Шапки, шарфы, пуховики, очки', icon: 'hero', href: '#/avatar' },
 ]
@@ -156,6 +157,7 @@ function Appearance() {
   const setSettings = useStore((s) => s.setSettings)
   const theme = settings.theme ?? 'auto'
   const snow = settings.snow ?? true
+  const garland = useTopGarlandPref()
   return (
     <section className="panel stack" aria-label="Оформление">
       <h3>Оформление</h3>
@@ -177,6 +179,15 @@ function Appearance() {
           </span>
         </span>
         <button className="switch" role="switch" aria-checked={snow} aria-label="Падающий снег" onClick={() => setSettings({ snow: !snow })} />
+      </div>
+      <div className="switch-row">
+        <span>
+          <span style={{ fontWeight: 700 }}>Гирлянда сверху</span>
+          <span className="tiny muted" style={{ display: 'block' }}>
+            Тихо мерцает под шапкой на всех экранах. Только на этом устройстве
+          </span>
+        </span>
+        <button className="switch" role="switch" aria-checked={garland} aria-label="Гирлянда сверху" onClick={() => setTopGarlandPref(!garland)} />
       </div>
       <div className="switch-row">
         <span>

@@ -11,6 +11,8 @@ import { marksFor, planFor } from './replay'
 import type { GameState } from './replay'
 import { activeSkills, skillView } from './skills'
 import { publicDuels } from './duels'
+import { publicMoney } from './money'
+import type { MoneyTotals } from './money'
 import type { DuelPub } from './duels'
 import { ARC_START, chapterOf, gameDayOf, weekDays } from './time'
 import type { AppData, DayKey, Outfit, SlipWhat } from './types'
@@ -70,6 +72,8 @@ export interface PublicStats {
   skills?: { t: string; r: string }[]
   /** v0.5 duels: ids, window and own closed-quests score per day. Friends validate it with safeDuels */
   duels?: DuelPub[]
+  /** v0.7 «Заработано»: only with the opt-in, only totals. Friends validate it with safeMoney */
+  money?: MoneyTotals
   at: number
 }
 
@@ -119,6 +123,10 @@ export function buildPublicStats(data: AppData, game: GameState, now: Date): Pub
     ...(() => {
       const duels = publicDuels(data, game, now.getTime())
       return duels.length ? { duels } : {}
+    })(),
+    ...(() => {
+      const money = publicMoney(data, today)
+      return money ? { money } : {}
     })(),
     at: now.getTime(),
   }

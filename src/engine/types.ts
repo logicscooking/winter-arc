@@ -84,6 +84,8 @@ export interface DayLog {
   dealNodeId?: string
   /** v0.6 «Судьба дня» Плинко: throws of the day by throw number ("0", "1") */
   plinko?: Record<string, PlinkoDrop>
+  /** v0.7 Плинко: the day's 16 slot tasks (PLINKO_POOL ids, slot 0 = left edge), laid out once at random */
+  plinkoBoard?: string[]
 }
 
 export interface Destiny {
@@ -94,7 +96,7 @@ export interface Destiny {
   minutes: number
 }
 
-/** v0.6: one Plinko throw. The slot comes from the deterministic path (engine/plinko.ts). */
+/** One Plinko throw. v0.7 (`v: 2`): the slot came out of the physics and is stored as is. */
 export interface PlinkoDrop {
   /** throw number of the day, 0-based */
   n: number
@@ -110,6 +112,8 @@ export interface PlinkoDrop {
   risk?: PlinkoRisk
   /** «Позже» pressed: the streak resets */
   laterAt?: number
+  /** 2 = v0.7 16-slot physics board; missing = v0.6 risk board */
+  v?: 2
 }
 
 export type PlinkoRisk = 'low' | 'mid' | 'high'
@@ -274,6 +278,8 @@ export interface Settings {
   sound?: boolean
   /** v0.5: AI request counter of this device (kept local, never synced) */
   aiUse?: { day: DayKey; n: number; last: number }
+  /** v0.7 «Заработано»: publish week / arc totals to the party (missing = off) */
+  moneyShare?: boolean
 }
 
 export interface Ack {
@@ -471,6 +477,23 @@ export interface DuelResult {
   at: number
 }
 
+// ---------- v0.7 «Заработано» ----------
+
+/** One earned amount. The note and the source stay private: only week / arc totals may leave the device. */
+export interface Income {
+  id: string
+  /** game day the money is for (default today) */
+  day: DayKey
+  at: number
+  /** whole rubles, > 0 */
+  amount: number
+  /** a «Дело» project (task id) … */
+  projectId?: string
+  /** … or own text */
+  source?: string
+  note?: string
+}
+
 export interface AppData {
   schemaVersion: 1
   profile?: Profile
@@ -502,4 +525,6 @@ export interface AppData {
   chests?: ChestOpen[]
   /** v0.5 */
   duels?: Duel[]
+  /** v0.7 */
+  incomes?: Income[]
 }

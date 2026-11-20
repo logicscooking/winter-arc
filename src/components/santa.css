@@ -1,0 +1,159 @@
+/* Дед Мороз on the top edge of the Plinko frame */
+
+.pk-wrap { position: relative; padding-top: 40px; }
+
+.santa-lane {
+  position: absolute;
+  /* the straight part of the top edge, clear of the rounded corners */
+  left: 22px;
+  right: 22px;
+  top: 0;
+  height: 42px;
+  z-index: 3;
+  overflow-x: clip;
+  overflow-y: visible;
+  pointer-events: none;
+}
+
+.santa {
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 32px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  will-change: transform;
+}
+.santa::after {
+  /* bigger tap target */
+  content: '';
+  position: absolute;
+  inset: -8px -8px -4px;
+}
+.santa:focus-visible { outline: 2px solid #8fd3ff; outline-offset: 2px; border-radius: 6px; }
+.santa-body { display: block; width: 32px; height: 40px; transform-origin: 50% 100%; }
+.santa-body svg { display: block; filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.35)); }
+.santa[data-dir='l'] .santa-body svg { transform: scaleX(-1); }
+
+/* frames */
+.santa svg g { display: none; }
+.santa[data-frame='stand'] .f-stand,
+.santa[data-frame='sleep'] .f-sleep,
+.santa[data-frame='yawn'] .f-yawn,
+.santa[data-frame='wave'] .f-wave,
+.santa[data-frame='wow'] .f-wow { display: inline; }
+.santa.walking[data-step='1'] .f-stand { display: none; }
+.santa.walking[data-step='1'] .f-step { display: inline; }
+.santa.walking[data-step='1'] .santa-body { transform: translateY(-1px); }
+
+/* moods */
+.santa.m-hop .santa-body { animation: santa-hop 520ms cubic-bezier(0.3, 0.7, 0.4, 1.4); }
+.santa.m-flip .santa-body { animation: santa-flip 760ms cubic-bezier(0.4, 0.1, 0.3, 1); transform-origin: 50% 60%; }
+.santa.m-wow .santa-body { animation: santa-wow 300ms ease-out; }
+.santa.m-wave .santa-body { animation: santa-wave 500ms ease-in-out 3; }
+.santa.m-sleep .santa-body { animation: santa-breathe 2.4s ease-in-out infinite; }
+.santa.m-yawn .santa-body { animation: santa-yawn 1.4s ease-in-out; }
+@keyframes santa-hop {
+  0% { transform: scale(1.1, 0.88); }
+  35% { transform: translateY(-16px) scale(0.94, 1.08); }
+  70% { transform: translateY(0) scale(1.08, 0.92); }
+  100% { transform: none; }
+}
+@keyframes santa-flip {
+  0% { transform: scale(1.1, 0.85); }
+  20% { transform: translateY(-14px) rotate(0); }
+  70% { transform: translateY(-22px) rotate(-360deg); }
+  100% { transform: translateY(0) rotate(-360deg); }
+}
+@keyframes santa-wow {
+  0% { transform: scale(1); }
+  50% { transform: translateY(-5px) scale(1.06); }
+  100% { transform: none; }
+}
+@keyframes santa-wave {
+  0%, 100% { transform: rotate(0); }
+  50% { transform: rotate(-5deg); }
+}
+@keyframes santa-breathe {
+  0%, 100% { transform: scale(1, 1); }
+  50% { transform: scale(1.03, 0.96); }
+}
+@keyframes santa-yawn {
+  0% { transform: none; }
+  40% { transform: scale(0.97, 1.06); }
+  100% { transform: scale(1, 0.97); }
+}
+
+/* Zzz */
+.santa-zzz { position: absolute; left: 22px; top: -14px; width: 30px; height: 30px; pointer-events: none; }
+.santa-zzz i {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  font: 900 10px/1 var(--display, system-ui);
+  font-style: normal;
+  color: #cfe9ff;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  animation: santa-z 2.4s ease-out infinite;
+}
+.santa-zzz i:nth-child(2) { animation-delay: 0.8s; font-size: 12px; }
+.santa-zzz i:nth-child(3) { animation-delay: 1.6s; font-size: 14px; }
+@keyframes santa-z {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.6); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translate(14px, -22px) scale(1.1); }
+}
+
+/* speech bubble */
+.santa-bubble {
+  position: absolute;
+  bottom: 46px;
+  width: max-content;
+  max-width: min(200px, calc(100% - 8px));
+  padding: 7px 10px;
+  border-radius: 12px;
+  background: #fffaf0;
+  color: #2a1a10;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.25;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.25), 0 0 0 2px #10170f;
+  pointer-events: none;
+  animation: santa-bubble 220ms cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+  transform-origin: 50% 100%;
+}
+@keyframes santa-bubble {
+  from { opacity: 0; transform: translateY(6px) scale(0.8); }
+  to { opacity: 1; transform: none; }
+}
+
+/* gift / snowball falling onto the board */
+.santa-drop {
+  position: absolute;
+  top: 24px;
+  width: 16px;
+  height: 16px;
+  margin-left: -8px;
+  pointer-events: none;
+  animation: santa-drop 1.3s cubic-bezier(0.5, 0, 0.8, 0.6) both;
+}
+.santa-drop.snow { border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff, #cfe9ff 60%, #8fc6ea); box-shadow: 0 0 6px rgba(200, 235, 255, 0.8); width: 11px; height: 11px; margin-left: -5px; }
+@keyframes santa-drop {
+  0% { transform: translateY(0) rotate(0); opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateY(170px) rotate(220deg); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .santa .santa-body, .santa-zzz i, .santa-bubble, .santa-drop { animation: none !important; }
+  .santa-zzz i { opacity: 1; }
+  .santa-zzz i:nth-child(2) { transform: translate(6px, -8px); }
+  .santa-zzz i:nth-child(3) { transform: translate(12px, -16px); }
+}

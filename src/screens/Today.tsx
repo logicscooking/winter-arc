@@ -34,6 +34,7 @@ import { Spark } from '../components/Spark'
 import { PAGES_GOAL, WAKE_GOAL, pagesValues, wakeValues, window7 } from '../store/trends'
 import { BAR_LADDERS, BAR_STEP_BONUS, barStep, barSuggestion } from '../engine'
 import { FlowChip, ThemeCard } from '../components/skills'
+import { MoneySheet } from '../components/Money'
 
 export function Today() {
   const data = useStore((s) => s.data)
@@ -194,6 +195,7 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
 
   const [filter, setFilter] = useState<'all' | 'main' | 'side'>('all')
   const [dial, setDial] = useState(false)
+  const [money, setMoney] = useState(false)
   const addDaily = () => {
     setDial(false)
     const el = document.getElementById('add-daily')?.querySelector<HTMLInputElement>('input')
@@ -365,12 +367,16 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
             <button className="fab-item" role="menuitem" onClick={() => (setDial(false), open({ kind: 'craving' }))}>
               <Waves size={20} aria-hidden /> Тяга
             </button>
+            <button className="fab-item" role="menuitem" onClick={() => (setDial(false), setMoney(true))}>
+              <Px name="coin" size={22} /> Заработал
+            </button>
             <button className="fab-item hp" role="menuitem" onClick={() => (setDial(false), open({ kind: 'slip' }))}>
               <Px name="flame" size={22} /> Слился
             </button>
           </div>
         )}
-        <button className={`fab round${dial ? ' on' : ''}`} onClick={() => setDial(!dial)} aria-expanded={dial} aria-label={dial ? 'Закрыть меню' : 'Добавить: задача, тяга, срыв'}>
+        {money && <MoneySheet onClose={() => setMoney(false)} />}
+        <button className={`fab round${dial ? ' on' : ''}`} onClick={() => setDial(!dial)} aria-expanded={dial} aria-label={dial ? 'Закрыть меню' : 'Добавить: задача, тяга, доход, срыв'}>
           {dial ? <X size={28} strokeWidth={3} /> : <Plus size={30} strokeWidth={3} />}
         </button>
       </div>

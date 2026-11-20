@@ -1,6 +1,6 @@
 import { DEFAULT_QUESTS, REELS_LIMIT } from './quests'
 import { sanitizeBlock } from './plan'
-import { sanitizeDrop } from './plinko'
+import { isBoard, sanitizeDrop } from './plinko'
 import type { AppData, DayLog, PlinkoDrop, TimeBlock } from './types'
 
 export const SCHEMA_VERSION = 1
@@ -34,10 +34,11 @@ export function createInitialData(): AppData {
     extras: [],
     chests: [],
     duels: [],
+    incomes: [],
   }
 }
 
-export const V04_COLLECTIONS = ['skills', 'traits', 'nodes', 'practices', 'goals', 'flows', 'bars', 'themes', 'extras', 'chests', 'duels'] as const
+export const V04_COLLECTIONS = ['skills', 'traits', 'nodes', 'practices', 'goals', 'flows', 'bars', 'themes', 'extras', 'chests', 'duels', 'incomes'] as const
 
 /** Accepts an exported backup (or persisted state) and fills any missing fields. */
 export function normalizeData(raw: unknown): AppData {
@@ -66,7 +67,7 @@ export function normalizeData(raw: unknown): AppData {
 function migrateV03(d: AppData): AppData {
   let days = d.days
   for (const [day, log] of Object.entries(d.days ?? {})) {
-    if (!log || (log.blocks === undefined && log.destiny === undefined && log.plinko === undefined)) continue
+    if (!log || (log.blocks === undefined && log.destiny === undefined && log.plinko === undefined && log.plinkoBoard === undefined)) continue
     const next: DayLog = { ...log }
     if (log.blocks !== undefined) {
       const clean = Array.isArray(log.blocks) ? log.blocks.map(sanitizeBlock).filter((b): b is TimeBlock => !!b) : []
@@ -84,6 +85,7 @@ function migrateV03(d: AppData): AppData {
       if (Object.keys(drops).length) next.plinko = drops
       else delete next.plinko
     }
+    if (log.plinkoBoard !== undefined && !isBoard(log.plinkoBoard)) delete next.plinkoBoard
     if (days === d.days) days = { ...d.days }
     days[day] = next
   }

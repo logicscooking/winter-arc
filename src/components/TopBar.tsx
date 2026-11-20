@@ -91,7 +91,7 @@ export function RouteTopBar({ top, sub, query }: { top: string; sub?: string; qu
     case 'destiny':
       return <TopBar title="Судьба дня" left={<BackBtn href="#/today" />} right={shop} />
     case 'plan':
-      return <TopBar title="План дня" left={<BackBtn href="#/today" />} right={<BarBtn icon="dice" label="Судьба дня" href="#/destiny" />} />
+      return <TopBar title="План дня" left={<BackBtn href="#/today" />} right={<BarBtn icon="plinko" label="Судьба дня: Плинко" href="#/destiny" />} />
     case 'finale':
       return <TopBar title="Финал арки" left={<BackBtn href="#/today" />} />
     case 'skill':
@@ -104,7 +104,7 @@ export function RouteTopBar({ top, sub, query }: { top: string; sub?: string; qu
           left={shop}
           right={
             <>
-              <BarBtn icon="dice" label="Судьба дня" href="#/destiny" />
+              <BarBtn icon="plinko" label="Судьба дня: Плинко" href="#/destiny" />
               <BarBtn icon="menu" label="План дня" href="#/plan" />
             </>
           }

@@ -190,6 +190,7 @@ export function fromAtoms(atoms: Atoms, local: AppData): AppData {
   o.practices = (lists.practices as { at: number; id: string }[]).sort(byAt)
   o.extras = (lists.extras as { at: number; id: string }[]).sort(byAt)
   o.chests = (lists.chests as { at: number; id: string }[]).sort(byAt)
+  o.incomes = (lists.incomes as { at: number; id: string }[]).sort(byAt)
   o.duels = (lists.duels as { createdAt: number; id: string }[]).sort((a, b) => a.createdAt - b.createdAt || byIdOnly(a, b))
   o.flows = (lists.flows as { startedAt: number; id: string }[]).sort((a, b) => a.startedAt - b.startedAt || byIdOnly(a, b))
   o.bars = (lists.bars as { id: string }[]).sort(byIdOnly)

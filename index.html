@@ -9,11 +9,20 @@
     <meta name="description" content="Winter Arc — 98 дней зимы: режим, тело, разум и своё дело." />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <!-- black-translucent: iOS draws the clock over the page, so the themed top bar shows through and follows every theme
+         (with "default" iOS paints its own strip from theme-color at launch and never repaints it on a theme switch) -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Winter Arc" />
     <link rel="icon" type="image/svg+xml" href="icons/favicon.svg" />
     <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png" />
     <title>Winter Arc</title>
+    <script>
+      // apply the saved theme before the first paint, so launch never flashes the default night-green
+      try {
+        var t = JSON.parse(localStorage.getItem('winter-arc-v1') || '{}').state.data.settings.theme
+        if (t && t !== 'auto') document.documentElement.dataset.theme = t
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

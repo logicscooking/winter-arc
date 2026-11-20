@@ -17,6 +17,7 @@ import { RANKS } from '../engine'
 import type { Rank } from '../engine'
 import { BossSprite, PixelAvatar, Px } from '../pixel/Pixel'
 import { DuelArea, useDuelReconcile } from '../components/Duels'
+import { MoneyBoard } from '../components/Money'
 
 export function Party() {
   const account = useSocial((s) => s.account)
@@ -306,6 +307,7 @@ function PartyHome({ initialCode }: { initialCode?: string }) {
             ))}
             {members.length === 0 && <div className="empty">Загружаю участников…</div>}
           </div>
+          <MoneyBoard members={members} meId={me.id} />
           <CodeCard party={party} isOwner={party.owner === me.id} />
         </section>
         <section className="stack">

@@ -1,21 +1,34 @@
 /**
- * «Судьба дня» v0.6: Плинко. A ball falls through a triangle of pegs and lands in a slot; the slot
- * picks a small useful task. No stakes, no money: the ball only chooses what to do, and the reward
- * comes only after «Сделал». The loop is «бросил → сделал полезное → получил ещё шар».
+ * «Судьба дня»: Плинко. A ball falls through a triangle of pegs and lands in one of 16 slots; every
+ * slot shows its own small useful task. No stakes, no money: the ball only chooses what to do, and
+ * the reward comes only after «Сделал».
  *
- * The path (L/R per row) is a hash of day + throw number + seed + risk, like CRITICAL, so the same
- * throw lands in the same slot on any device and the replay can trust it. Slots are tiered
- * symmetrically from the centre (easy) to the edges (hard, casino multiplier up to ×10 on XP).
+ * v0.7: the fall is real physics (engine/plinkoSim.ts) from crypto-random initial conditions, so the
+ * slot is decided by the simulation, not by a hash. The slot, the task id and the time go to the drop
+ * log (`v: 2`) and the replay trusts that record. The 16 tasks are laid out on the board at random
+ * once per day (DayLog.plinkoBoard), by the tier of each position: centre easy, edges hard.
+ *
+ * v0.6 drops (risk boards of 7/9/11 slots, no `v`) keep their stored slot and are scored as before.
  */
-import { hash32 } from './quests'
+import { cryptoRand, type Rand } from './plinkoSim'
 import type { AppData, DayKey, DayLog, PlinkoDrop, PlinkoRisk, StatId } from './types'
 
 export type PlinkoTier = 1 | 2 | 3 | 4 | 5
 
-/** free balls per game day */
-export const PLINKO_FREE = 2
-/** balls per day with every bonus */
+/** balls per game day, fixed */
+export const PLINKO_BALLS = 5
+/** highest throw count ever stored (v0.6 allowed up to 6 a day): older drops stay valid */
 export const PLINKO_MAX = 6
+/** slots on the v0.7 board */
+export const BOARD_SLOTS = 16
+/** tier by distance from the centre: 8 levels, centre pair = 0, edge pair = 7 */
+export const BOARD_LEVELS: PlinkoTier[] = [1, 1, 2, 2, 3, 3, 4, 5]
+/** 0 (centre) … 7 (edge) */
+export const levelOfSlot = (k: number) => (k < BOARD_SLOTS / 2 ? BOARD_SLOTS / 2 - 1 - k : k - BOARD_SLOTS / 2)
+export const boardTier = (k: number): PlinkoTier => BOARD_LEVELS[Math.max(0, Math.min(7, levelOfSlot(k)))]
+export const BOARD_TIERS: PlinkoTier[] = Array.from({ length: BOARD_SLOTS }, (_, k) => boardTier(k))
+/** the two edge slots: «ДЖЕКПОТ» */
+export const isJackpotSlot = (k: number) => k === 0 || k === BOARD_SLOTS - 1
 /** XP of a ×1 slot; the slot multiplier scales it */
 export const PLINKO_BASE_XP = 3
 /** «серия»: each task closed in time adds ×0.2 to the next throw, up to ×2 */
@@ -31,7 +44,7 @@ export const PLINKO_TIERS: Record<PlinkoTier, { mult: number; xp: number; shards
 }
 
 /**
- * Risk, as on a casino Plinko: rows and slot tiers.
+ * v0.6 risk boards, kept only to score old drops: rows and slot tiers.
  * Низкий: 6 rows, three easy slots in the middle → almost always tier 1.
  * Средний: 8 rows, tier 1 in the centre → tier 5 on the edges.
  * Высокий: 10 rows, no easy slot, hard tiers spread inwards → fatter XP on average.
@@ -39,17 +52,27 @@ export const PLINKO_TIERS: Record<PlinkoTier, { mult: number; xp: number; shards
 export const PLINKO_RISKS: Record<PlinkoRisk, { label: string; rows: number; tiers: PlinkoTier[] }> = {
   low: { label: 'Низкий', rows: 6, tiers: [3, 2, 1, 1, 1, 2, 3] },
   mid: { label: 'Средний', rows: 8, tiers: [5, 4, 3, 2, 1, 2, 3, 4, 5] },
-  high: { label: 'Высокий', rows: 10, tiers: [5, 5, 4, 4, 3, 2, 3, 4, 4, 5, 5] },
+  high: {
+    label: 'Высокий',
+    rows: 10,
+    tiers: [5, 5, 4, 4, 3, 2, 3, 4, 4, 5, 5],
+  },
 }
-export const PLINKO_RISK_IDS: PlinkoRisk[] = ['low', 'mid', 'high']
-
 export const riskOf = (r: unknown): PlinkoRisk => (r === 'low' || r === 'high' ? r : 'mid')
 export const slotsOf = (risk: PlinkoRisk = 'mid') => PLINKO_RISKS[risk].rows + 1
+
+/** tier of a slot on a v0.6 risk board */
+export function tierOfSlot(slot: number, risk: PlinkoRisk = 'mid'): PlinkoTier {
+  const tiers = PLINKO_RISKS[risk].tiers
+  return tiers[Math.max(0, Math.min(tiers.length - 1, slot))]
+}
 
 export interface PlinkoTask {
   id: string
   tier: PlinkoTier
   title: string
+  /** 1–2 words for the narrow slot label */
+  short: string
   /** one line: how exactly */
   hint: string
   stat: StatId
@@ -69,62 +92,516 @@ const PRE21: [number, number] = [17, 21]
 
 export const PLINKO_POOL: PlinkoTask[] = [
   // ---- tier 1: under 5 minutes ----
-  { id: 'water', tier: 1, title: 'Стакан воды', hint: 'Налей и выпей прямо сейчас, до дна', stat: 'body', icon: 'water' },
-  { id: 'breath', tier: 1, title: '10 глубоких вдохов', hint: 'Вдох на 4 счёта, выдох на 6. Глаза закрыты', stat: 'energy', icon: 'heart' },
-  { id: 'air', tier: 1, title: 'Проветрить комнату', hint: 'Окно настежь на 5 минут, сам постой рядом', stat: 'energy', icon: 'snowflake' },
-  { id: 'bed', tier: 1, title: 'Заправить кровать', hint: 'Одеяло ровно, подушка на месте. Первая победа дня', stat: 'deal', icon: 'star', hours: MORNING },
-  { id: 'stretch2', tier: 1, title: '2 минуты растяжки', hint: 'Шея, плечи, наклоны. Без телефона в руке', stat: 'body', icon: 'run' },
-  { id: 'thanks3', tier: 1, title: '3 «спасибо» за день', hint: 'Запиши три вещи, за которые сегодня благодарен', stat: 'mind', icon: 'pen' },
-  { id: 'desk5', tier: 1, title: 'Убрать 5 вещей со стола', hint: 'Пять лишних предметов на свои места', stat: 'deal', icon: 'hammer' },
-  { id: 'notif', tier: 1, title: 'Выключить одно уведомление', hint: 'Найди самое назойливое приложение и заглуши его', stat: 'will', icon: 'phone' },
-  { id: 'posture', tier: 1, title: 'Минута осанки', hint: 'Спина у стены, плечи вниз, подбородок назад. 60 секунд', stat: 'body', icon: 'shield' },
-  { id: 'far', tier: 1, title: 'Взгляд вдаль', hint: '2 минуты смотри в окно на самую дальнюю точку, без экрана', stat: 'will', icon: 'sun', hours: DAY },
+  {
+    id: 'water',
+    tier: 1,
+    title: 'Стакан воды',
+    short: 'Вода',
+    hint: 'Налей и выпей прямо сейчас, до дна',
+    stat: 'body',
+    icon: 'water',
+  },
+  {
+    id: 'breath',
+    tier: 1,
+    title: '10 глубоких вдохов',
+    short: '10 вдохов',
+    hint: 'Вдох на 4 счёта, выдох на 6. Глаза закрыты',
+    stat: 'energy',
+    icon: 'heart',
+  },
+  {
+    id: 'air',
+    tier: 1,
+    title: 'Проветрить комнату',
+    short: 'Проветрить',
+    hint: 'Окно настежь на 5 минут, сам постой рядом',
+    stat: 'energy',
+    icon: 'snowflake',
+  },
+  {
+    id: 'bed',
+    tier: 1,
+    title: 'Заправить кровать',
+    short: 'Кровать',
+    hint: 'Одеяло ровно, подушка на месте. Первая победа дня',
+    stat: 'deal',
+    icon: 'star',
+    hours: MORNING,
+  },
+  {
+    id: 'stretch2',
+    tier: 1,
+    title: '2 минуты растяжки',
+    short: 'Растяжка',
+    hint: 'Шея, плечи, наклоны. Без телефона в руке',
+    stat: 'body',
+    icon: 'run',
+  },
+  {
+    id: 'thanks3',
+    tier: 1,
+    title: '3 «спасибо» за день',
+    short: '3 спасибо',
+    hint: 'Запиши три вещи, за которые сегодня благодарен',
+    stat: 'mind',
+    icon: 'pen',
+  },
+  {
+    id: 'desk5',
+    tier: 1,
+    title: 'Убрать 5 вещей со стола',
+    short: 'Стол',
+    hint: 'Пять лишних предметов на свои места',
+    stat: 'deal',
+    icon: 'hammer',
+  },
+  {
+    id: 'notif',
+    tier: 1,
+    title: 'Выключить одно уведомление',
+    short: 'Без пушей',
+    hint: 'Найди самое назойливое приложение и заглуши его',
+    stat: 'will',
+    icon: 'phone',
+  },
+  {
+    id: 'posture',
+    tier: 1,
+    title: 'Минута осанки',
+    short: 'Осанка',
+    hint: 'Спина у стены, плечи вниз, подбородок назад. 60 секунд',
+    stat: 'body',
+    icon: 'shield',
+  },
+  {
+    id: 'far',
+    tier: 1,
+    title: 'Взгляд вдаль',
+    short: 'Вдаль',
+    hint: '2 минуты смотри в окно на самую дальнюю точку, без экрана',
+    stat: 'will',
+    icon: 'sun',
+    hours: DAY,
+  },
 
   // ---- tier 2: 5–15 minutes ----
-  { id: 'squats20', tier: 2, title: '20 приседаний', hint: 'Медленно, пятки на полу, спина прямая', stat: 'body', icon: 'dumbbell' },
-  { id: 'read10', tier: 2, title: '10 страниц книги', hint: 'Бумажная или читалка, не телефон', stat: 'mind', icon: 'book' },
-  { id: 'walk10', tier: 2, title: '10 минут прогулки', hint: 'До ближайшего угла и обратно, можно вокруг дома', stat: 'body', icon: 'boot', hours: DAY },
-  { id: 'friend', tier: 2, title: 'Написать другу', hint: 'Просто так: как дела, вспомнил тебя', stat: 'mind', icon: 'speech' },
-  { id: 'shelf', tier: 2, title: 'Разобрать одну полку', hint: 'Или один ящик. Лишнее в пакет на выброс', stat: 'deal', icon: 'hammer' },
-  { id: 'dishes', tier: 2, title: 'Помыть всю посуду', hint: 'Раковина пустая, сушилка полная', stat: 'deal', icon: 'water' },
-  { id: 'words5', tier: 2, title: '5 новых слов', hint: 'На языке, который учишь. Выпиши и проговори вслух', stat: 'mind', icon: 'brain' },
-  { id: 'tea', tier: 2, title: 'Чай без телефона', hint: '10 минут: чашка, окно, свои мысли. Без кофеина после 16', stat: 'will', icon: 'coffee' },
-  { id: 'light10', tier: 2, title: '10 минут дневного света', hint: 'На улице или у самого окна, лицом к небу', stat: 'energy', icon: 'sun', hours: [4, 16] },
-  { id: 'plan3', tier: 2, title: '3 дела на завтра', hint: 'Запиши три главных дела, первое — самое важное', stat: 'deal', icon: 'pen', hours: EVE },
+  {
+    id: 'squats20',
+    tier: 2,
+    title: '20 приседаний',
+    short: 'Присед ×20',
+    hint: 'Медленно, пятки на полу, спина прямая',
+    stat: 'body',
+    icon: 'dumbbell',
+  },
+  {
+    id: 'read10',
+    tier: 2,
+    title: '10 страниц книги',
+    short: '10 страниц',
+    hint: 'Бумажная или читалка, не телефон',
+    stat: 'mind',
+    icon: 'book',
+  },
+  {
+    id: 'walk10',
+    tier: 2,
+    title: '10 минут прогулки',
+    short: 'Прогулка',
+    hint: 'До ближайшего угла и обратно, можно вокруг дома',
+    stat: 'body',
+    icon: 'boot',
+    hours: DAY,
+  },
+  {
+    id: 'friend',
+    tier: 2,
+    title: 'Написать другу',
+    short: 'Другу',
+    hint: 'Просто так: как дела, вспомнил тебя',
+    stat: 'mind',
+    icon: 'speech',
+  },
+  {
+    id: 'shelf',
+    tier: 2,
+    title: 'Разобрать одну полку',
+    short: 'Полка',
+    hint: 'Или один ящик. Лишнее в пакет на выброс',
+    stat: 'deal',
+    icon: 'hammer',
+  },
+  {
+    id: 'dishes',
+    tier: 2,
+    title: 'Помыть всю посуду',
+    short: 'Посуда',
+    hint: 'Раковина пустая, сушилка полная',
+    stat: 'deal',
+    icon: 'water',
+  },
+  {
+    id: 'words5',
+    tier: 2,
+    title: '5 новых слов',
+    short: '5 слов',
+    hint: 'На языке, который учишь. Выпиши и проговори вслух',
+    stat: 'mind',
+    icon: 'brain',
+  },
+  {
+    id: 'tea',
+    tier: 2,
+    title: 'Чай без телефона',
+    short: 'Чай',
+    hint: '10 минут: чашка, окно, свои мысли. Без кофеина после 16',
+    stat: 'will',
+    icon: 'coffee',
+  },
+  {
+    id: 'light10',
+    tier: 2,
+    title: '10 минут дневного света',
+    short: 'Свет',
+    hint: 'На улице или у самого окна, лицом к небу',
+    stat: 'energy',
+    icon: 'sun',
+    hours: [4, 16],
+  },
+  {
+    id: 'plan3',
+    tier: 2,
+    title: '3 дела на завтра',
+    short: 'План',
+    hint: 'Запиши три главных дела, первое — самое важное',
+    stat: 'deal',
+    icon: 'pen',
+    hours: EVE,
+  },
 
   // ---- tier 3: 15–30 minutes ----
-  { id: 'push20', tier: 3, title: '20 отжиманий', hint: 'Можно с колен и подходами по 5–10', stat: 'body', icon: 'dumbbell' },
-  { id: 'meditate10', tier: 3, title: '10 минут медитации', hint: 'Телефон в другой комнате. Таймер на кухне, внимание на дыхании', stat: 'will', icon: 'snowflake' },
-  { id: 'clean15', tier: 3, title: '15 минут уборки', hint: 'Таймер и одна зона: пол, кухня или ванная', stat: 'deal', icon: 'hammer', hours: [4, 22] },
-  { id: 'plank', tier: 3, title: 'Планка 2 × 1 мин', hint: 'Две минуты в планке с отдыхом 30 секунд', stat: 'body', icon: 'shield' },
-  { id: 'journal', tier: 3, title: 'Страница дневника', hint: 'Что сегодня было, что понял, что завтра сделаю иначе', stat: 'mind', icon: 'pen', hours: EVE },
-  { id: 'call', tier: 3, title: 'Позвонить родным', hint: 'Не писать, а позвонить. Хотя бы 10 минут разговора', stat: 'mind', icon: 'speech', hours: [9, 22] },
-  { id: 'nosocial1h', tier: 3, title: 'Час без соцсетей', hint: 'Ни рилсов, ни ленты, ни мессенджеров ради скролла', stat: 'will', icon: 'phone' },
-  { id: 'stairs', tier: 3, title: 'Лестница 10 минут', hint: 'Вверх-вниз по подъезду или быстрым шагом на улице', stat: 'body', icon: 'run', hours: DAY },
-  { id: 'declutter', tier: 3, title: 'Цифровая чистка', hint: 'Удали 30 старых фото или 5 приложений, которыми не пользуешься', stat: 'will', icon: 'phone' },
-  { id: 'debt', tier: 3, title: 'Одно отложенное дело', hint: 'Письмо, звонок или оплата, которые висят неделю. Сделай сейчас', stat: 'deal', icon: 'clock', hours: [9, 20] },
+  {
+    id: 'push20',
+    tier: 3,
+    title: '20 отжиманий',
+    short: 'Отжим ×20',
+    hint: 'Можно с колен и подходами по 5–10',
+    stat: 'body',
+    icon: 'dumbbell',
+  },
+  {
+    id: 'meditate10',
+    tier: 3,
+    title: '10 минут медитации',
+    short: 'Медитация',
+    hint: 'Телефон в другой комнате. Таймер на кухне, внимание на дыхании',
+    stat: 'will',
+    icon: 'snowflake',
+  },
+  {
+    id: 'clean15',
+    tier: 3,
+    title: '15 минут уборки',
+    short: 'Уборка',
+    hint: 'Таймер и одна зона: пол, кухня или ванная',
+    stat: 'deal',
+    icon: 'hammer',
+    hours: [4, 22],
+  },
+  {
+    id: 'plank',
+    tier: 3,
+    title: 'Планка 2 × 1 мин',
+    short: 'Планка',
+    hint: 'Две минуты в планке с отдыхом 30 секунд',
+    stat: 'body',
+    icon: 'shield',
+  },
+  {
+    id: 'journal',
+    tier: 3,
+    title: 'Страница дневника',
+    short: 'Дневник',
+    hint: 'Что сегодня было, что понял, что завтра сделаю иначе',
+    stat: 'mind',
+    icon: 'pen',
+    hours: EVE,
+  },
+  {
+    id: 'call',
+    tier: 3,
+    title: 'Позвонить родным',
+    short: 'Родным',
+    hint: 'Не писать, а позвонить. Хотя бы 10 минут разговора',
+    stat: 'mind',
+    icon: 'speech',
+    hours: [9, 22],
+  },
+  {
+    id: 'nosocial1h',
+    tier: 3,
+    title: 'Час без соцсетей',
+    short: 'Без соцсетей',
+    hint: 'Ни рилсов, ни ленты, ни мессенджеров ради скролла',
+    stat: 'will',
+    icon: 'phone',
+  },
+  {
+    id: 'stairs',
+    tier: 3,
+    title: 'Лестница 10 минут',
+    short: 'Лестница',
+    hint: 'Вверх-вниз по подъезду или быстрым шагом на улице',
+    stat: 'body',
+    icon: 'run',
+    hours: DAY,
+  },
+  {
+    id: 'declutter',
+    tier: 3,
+    title: 'Цифровая чистка',
+    short: 'Чистка',
+    hint: 'Удали 30 старых фото или 5 приложений, которыми не пользуешься',
+    stat: 'will',
+    icon: 'phone',
+  },
+  {
+    id: 'abs',
+    tier: 3,
+    title: 'Пресс 3 × 15',
+    short: 'Пресс',
+    hint: 'Скручивания: три подхода по 15, минута отдыха',
+    stat: 'body',
+    icon: 'dumbbell',
+    hours: [4, 23],
+  },
+  {
+    id: 'debt',
+    tier: 3,
+    title: 'Одно отложенное дело',
+    short: 'Должок',
+    hint: 'Письмо, звонок или оплата, которые висят неделю. Сделай сейчас',
+    stat: 'deal',
+    icon: 'clock',
+    hours: [9, 20],
+  },
 
   // ---- tier 4: 30–60 minutes ----
-  { id: 'walk30', tier: 4, title: '30 минут прогулки', hint: 'Без наушников: только улица, шаги и мысли', stat: 'body', icon: 'boot', hours: DAY },
-  { id: 'cold', tier: 4, title: 'Холодный душ 1 мин', hint: 'В конце обычного душа. Дыши ровно, не задерживай', stat: 'energy', icon: 'water', hours: [5, 20] },
-  { id: 'skill30', tier: 4, title: '30 минут навыка', hint: 'То, что качаешь: курс, практика, конспект. Таймер и без вкладок', stat: 'mind', icon: 'brain', hours: [4, 23] },
-  { id: 'cook', tier: 4, title: 'Домашняя еда', hint: 'Приготовь нормальный ужин или обед вместо доставки', stat: 'body', icon: 'campfire', hours: [10, 21] },
-  { id: 'read30', tier: 4, title: '30 страниц книги', hint: 'В тишине, телефон экраном вниз в другой комнате', stat: 'mind', icon: 'book' },
-  { id: 'zone', tier: 4, title: 'Генеральная одной зоны', hint: 'Кухня, ванная или шкаф. До состояния «как въехал»', stat: 'deal', icon: 'hammer', hours: DAY },
-  { id: 'yoga20', tier: 4, title: '20 минут растяжки', hint: 'Видео-разминка или своя: всё тело, медленно', stat: 'body', icon: 'run' },
-  { id: 'thankyou', tier: 4, title: 'Длинное «спасибо»', hint: 'Напиши человеку, которому давно хотел сказать, что он для тебя сделал', stat: 'mind', icon: 'speech' },
-  { id: 'early', tier: 4, title: 'Отбой до 23:00', hint: 'Телефон на зарядке вне кровати, свет выключен до 23:00', stat: 'energy', icon: 'moon', hours: [18, 23] },
+  {
+    id: 'walk30',
+    tier: 4,
+    title: '30 минут прогулки',
+    short: 'Прогулка 30',
+    hint: 'Без наушников: только улица, шаги и мысли',
+    stat: 'body',
+    icon: 'boot',
+    hours: DAY,
+  },
+  {
+    id: 'cold',
+    tier: 4,
+    title: 'Холодный душ 1 мин',
+    short: 'Холодный душ',
+    hint: 'В конце обычного душа. Дыши ровно, не задерживай',
+    stat: 'energy',
+    icon: 'water',
+    hours: [5, 20],
+  },
+  {
+    id: 'skill30',
+    tier: 4,
+    title: '30 минут навыка',
+    short: 'Навык',
+    hint: 'То, что качаешь: курс, практика, конспект. Таймер и без вкладок',
+    stat: 'mind',
+    icon: 'brain',
+    hours: [4, 23],
+  },
+  {
+    id: 'cook',
+    tier: 4,
+    title: 'Домашняя еда',
+    short: 'Готовка',
+    hint: 'Приготовь нормальный ужин или обед вместо доставки',
+    stat: 'body',
+    icon: 'campfire',
+    hours: [10, 21],
+  },
+  {
+    id: 'read30',
+    tier: 4,
+    title: '30 страниц книги',
+    short: '30 страниц',
+    hint: 'В тишине, телефон экраном вниз в другой комнате',
+    stat: 'mind',
+    icon: 'book',
+  },
+  {
+    id: 'zone',
+    tier: 4,
+    title: 'Генеральная одной зоны',
+    short: 'Генеральная',
+    hint: 'Кухня, ванная или шкаф. До состояния «как въехал»',
+    stat: 'deal',
+    icon: 'hammer',
+    hours: DAY,
+  },
+  {
+    id: 'yoga20',
+    tier: 4,
+    title: '20 минут растяжки',
+    short: 'Растяжка 20',
+    hint: 'Видео-разминка или своя: всё тело, медленно',
+    stat: 'body',
+    icon: 'run',
+  },
+  {
+    id: 'thankyou',
+    tier: 4,
+    title: 'Длинное «спасибо»',
+    short: 'Спасибо',
+    hint: 'Напиши человеку, которому давно хотел сказать, что он для тебя сделал',
+    stat: 'mind',
+    icon: 'speech',
+  },
+  {
+    id: 'poem',
+    tier: 4,
+    title: 'Выучить стих',
+    short: 'Стих',
+    hint: 'Восемь строк наизусть. Расскажи вслух без подглядывания',
+    stat: 'mind',
+    icon: 'book',
+  },
+  {
+    id: 'phonebed',
+    tier: 4,
+    title: 'Телефон спит отдельно',
+    short: 'Телефон вон',
+    hint: 'На ночь зарядка в другой комнате, будильник — обычный',
+    stat: 'energy',
+    icon: 'phone',
+    hours: EVE,
+  },
+  {
+    id: 'early',
+    tier: 4,
+    title: 'Отбой до 23:00',
+    short: 'Отбой 23:00',
+    hint: 'Телефон на зарядке вне кровати, свет выключен до 23:00',
+    stat: 'energy',
+    icon: 'moon',
+    hours: [18, 23],
+  },
 
   // ---- tier 5: about an hour and more ----
-  { id: 'focus60', tier: 5, title: '60 минут фокуса', hint: 'Над Делом дня. Телефон в другой комнате, одна вкладка', stat: 'deal', icon: 'clock', hours: DAY },
-  { id: 'workout30', tier: 5, title: 'Тренировка 30 минут', hint: 'Приседания, отжимания, выпады, планка — по кругу без пауз', stat: 'body', icon: 'dumbbell', hours: [5, 21] },
-  { id: 'squats100', tier: 5, title: '100 приседаний', hint: 'Пять подходов по 20 в течение двух часов', stat: 'body', icon: 'dumbbell', hours: DAY },
-  { id: 'noscreen', tier: 5, title: 'Вечер без экрана', hint: 'После 21:00 никаких экранов до сна: книга, разговор, душ', stat: 'will', icon: 'moon', hours: PRE21 },
-  { id: 'walk60', tier: 5, title: 'Час пешком', hint: 'Новый маршрут, без наушников. Тысяч шесть шагов', stat: 'body', icon: 'boot', hours: [6, 20] },
-  { id: 'detox3h', tier: 5, title: '3 часа без дофамина', hint: 'Ни рилсов, ни сладкого, ни игр. Только живые дела', stat: 'will', icon: 'shield', hours: DAY },
-  { id: 'read50', tier: 5, title: '50 страниц книги', hint: 'Глава за главой, с закладкой и без телефона рядом', stat: 'mind', icon: 'book' },
-  { id: 'mealprep', tier: 5, title: 'Еда на два дня', hint: 'Приготовь и разложи по контейнерам обеды на завтра и послезавтра', stat: 'body', icon: 'campfire', hours: [9, 21] },
-  { id: 'weekplan', tier: 5, title: 'Разбор недели', hint: 'Все заметки и напоминалки в один список, план на 7 дней, лишнее вычеркнуть', stat: 'deal', icon: 'pen' },
+  {
+    id: 'focus60',
+    tier: 5,
+    title: '60 минут фокуса',
+    short: 'Фокус 60',
+    hint: 'Над Делом дня. Телефон в другой комнате, одна вкладка',
+    stat: 'deal',
+    icon: 'clock',
+    hours: DAY,
+  },
+  {
+    id: 'workout30',
+    tier: 5,
+    title: 'Тренировка 30 минут',
+    short: 'Тренировка',
+    hint: 'Приседания, отжимания, выпады, планка — по кругу без пауз',
+    stat: 'body',
+    icon: 'dumbbell',
+    hours: [5, 21],
+  },
+  {
+    id: 'squats100',
+    tier: 5,
+    title: '100 приседаний',
+    short: 'Присед ×100',
+    hint: 'Пять подходов по 20 в течение двух часов',
+    stat: 'body',
+    icon: 'dumbbell',
+    hours: DAY,
+  },
+  {
+    id: 'noscreen',
+    tier: 5,
+    title: 'Вечер без экрана',
+    short: 'Без экрана',
+    hint: 'После 21:00 никаких экранов до сна: книга, разговор, душ',
+    stat: 'will',
+    icon: 'moon',
+    hours: PRE21,
+  },
+  {
+    id: 'walk60',
+    tier: 5,
+    title: 'Час пешком',
+    short: 'Час пешком',
+    hint: 'Новый маршрут, без наушников. Тысяч шесть шагов',
+    stat: 'body',
+    icon: 'boot',
+    hours: [6, 20],
+  },
+  {
+    id: 'detox3h',
+    tier: 5,
+    title: '3 часа без дофамина',
+    short: 'Детокс 3 ч',
+    hint: 'Ни рилсов, ни сладкого, ни игр. Только живые дела',
+    stat: 'will',
+    icon: 'shield',
+    hours: DAY,
+  },
+  {
+    id: 'read50',
+    tier: 5,
+    title: '50 страниц книги',
+    short: '50 страниц',
+    hint: 'Глава за главой, с закладкой и без телефона рядом',
+    stat: 'mind',
+    icon: 'book',
+  },
+  {
+    id: 'mealprep',
+    tier: 5,
+    title: 'Еда на два дня',
+    short: 'Заготовки',
+    hint: 'Приготовь и разложи по контейнерам обеды на завтра и послезавтра',
+    stat: 'body',
+    icon: 'campfire',
+    hours: [9, 21],
+  },
+  {
+    id: 'letter',
+    tier: 5,
+    title: 'Письмо себе через год',
+    short: 'Письмо себе',
+    hint: 'Честно: где ты сейчас, чего хочешь, что бросишь. Сохрани и поставь напоминание',
+    stat: 'mind',
+    icon: 'pen',
+  },
+  {
+    id: 'budget',
+    tier: 5,
+    title: 'Разбор трат',
+    short: 'Траты',
+    hint: 'Все траты за месяц в одну таблицу, три статьи урезать уже с завтра',
+    stat: 'deal',
+    icon: 'coin',
+  },
+  {
+    id: 'weekplan',
+    tier: 5,
+    title: 'Разбор недели',
+    short: 'План недели',
+    hint: 'Все заметки и напоминалки в один список, план на 7 дней, лишнее вычеркнуть',
+    stat: 'deal',
+    icon: 'pen',
+  },
 ]
 
 export const plinkoTaskById = (id: string) => PLINKO_POOL.find((t) => t.id === id)
@@ -137,62 +614,92 @@ export function plinkoPool(tier: PlinkoTier, hour: number): PlinkoTask[] {
   return PLINKO_POOL.filter((t) => t.tier === tier && (!t.hours || (h >= t.hours[0] && h < t.hours[1])))
 }
 
-/** murmur3 finalizer: FNV-1a alone has weak low bits */
-function mix(h: number): number {
-  h ^= h >>> 16
-  h = Math.imul(h, 0x85ebca6b)
-  h ^= h >>> 13
-  h = Math.imul(h, 0xc2b2ae35)
-  h ^= h >>> 16
-  return h >>> 0
-}
-
-const roll = (s: string) => mix(hash32(s))
-
-export type PlinkoDir = 'L' | 'R'
-
-/** Seed of the player: the onboarding day travels with the profile */
-export function plinkoSeed(data: Pick<AppData, 'profile'>): string {
-  return data.profile?.onboardDay ?? ''
-}
-
-/** Deterministic path: one L/R bounce per peg row. The medium risk keeps the v0.6.0 key. */
-export function plinkoPath(day: DayKey, n: number, seed: string, risk: PlinkoRisk = 'mid'): PlinkoDir[] {
-  const salt = risk === 'mid' ? '' : `|${risk}`
-  return Array.from({ length: PLINKO_RISKS[risk].rows }, (_, r) => (roll(`plinko|${day}|${n}|${seed}${salt}|${r}`) & 1 ? 'R' : 'L'))
-}
-
-export const slotOfPath = (path: PlinkoDir[]) => path.filter((d) => d === 'R').length
-
-export function tierOfSlot(slot: number, risk: PlinkoRisk = 'mid'): PlinkoTier {
-  const tiers = PLINKO_RISKS[risk].tiers
-  return tiers[Math.max(0, Math.min(tiers.length - 1, slot))]
-}
-
-export const isEdgeSlot = (slot: number, risk: PlinkoRisk = 'mid') => slot === 0 || slot === slotsOf(risk) - 1
+export type DropRef = Pick<PlinkoDrop, 'slot' | 'risk' | 'v'>
 
 export const dropRisk = (d: Pick<PlinkoDrop, 'risk'>) => riskOf(d.risk)
-export const dropTier = (d: Pick<PlinkoDrop, 'slot' | 'risk'>) => tierOfSlot(d.slot, dropRisk(d))
+/** v0.7 drops: 16-slot board; v0.6 drops: their risk board */
+export const dropTier = (d: DropRef): PlinkoTier => (d.v === 2 ? boardTier(d.slot) : tierOfSlot(d.slot, dropRisk(d)))
+export const dropJackpot = (d: DropRef) => (d.v === 2 ? isJackpotSlot(d.slot) : d.slot === 0 || d.slot === slotsOf(dropRisk(d)) - 1)
 
-export interface PlinkoRoll {
-  path: PlinkoDir[]
-  slot: number
-  tier: PlinkoTier
-  task: PlinkoTask
+// ---------- the day's board: 16 different tasks ----------
+
+/** Fisher–Yates with crypto (or a seeded rand in tests) */
+function shuffle<T>(list: T[], rand: Rand): T[] {
+  const a = list.slice()
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
 }
 
-/** The whole outcome of throw `n` of `day`, made at local time `at` (the hour filters the pool) */
-export function rollPlinko(day: DayKey, n: number, seed: string, at: Date, risk: PlinkoRisk = 'mid'): PlinkoRoll {
-  const path = plinkoPath(day, n, seed, risk)
-  const slot = slotOfPath(path)
-  const tier = tierOfSlot(slot, risk)
-  let list = plinkoPool(tier, at.getHours())
-  if (!list.length) list = PLINKO_POOL.filter((t) => t.tier === tier && !t.hours)
-  const task = list[roll(`plinko-task|${day}|${n}|${seed}`) % list.length]
-  return { path, slot, tier, task }
+/** tasks of a tier that fit the hour; if the hour leaves too few, the ones without a time window */
+function candidates(tier: PlinkoTier, hour: number, taken: Set<string>): PlinkoTask[] {
+  const fit = plinkoPool(tier, hour).filter((t) => !taken.has(t.id))
+  if (fit.length) return fit
+  return PLINKO_POOL.filter((t) => t.tier === tier && !t.hours && !taken.has(t.id))
 }
 
-export function dropDeadline(drop: Pick<PlinkoDrop, 'at' | 'slot' | 'risk'>): number {
+export const isBoard = (ids: unknown): ids is string[] => Array.isArray(ids) && ids.length === BOARD_SLOTS && ids.every((x) => typeof x === 'string') && new Set(ids).size === BOARD_SLOTS
+
+/**
+ * A fresh random layout for local hour `hour`: every slot gets a task of its tier, all 16 different.
+ * `avoid` (today's dropped tasks) is skipped while there is anything else.
+ */
+export function layoutBoard(hour: number, rand: Rand = cryptoRand, avoid: Iterable<string> = []): string[] {
+  const out: string[] = new Array(BOARD_SLOTS)
+  const taken = new Set<string>(avoid)
+  const onBoard = new Set<string>()
+  for (const tier of [5, 4, 3, 2, 1] as PlinkoTier[]) {
+    const slots = shuffle(
+      BOARD_TIERS.map((t, k) => (t === tier ? k : -1)).filter((k) => k >= 0),
+      rand,
+    )
+    for (const k of slots) {
+      let list = candidates(tier, hour, new Set([...taken, ...onBoard]))
+      if (!list.length) list = candidates(tier, hour, onBoard)
+      if (!list.length) list = PLINKO_POOL.filter((t) => t.tier === tier && !onBoard.has(t.id))
+      const pick = list[Math.floor(rand() * list.length)]
+      out[k] = pick.id
+      onBoard.add(pick.id)
+    }
+  }
+  return out
+}
+
+/**
+ * Keeps the stored layout and replaces only the slots that went stale: a task already dropped today
+ * (`used`), one whose time window is over, or an unknown id. Returns null when nothing changes.
+ */
+export function refreshBoard(ids: unknown, hour: number, used: Iterable<string> = [], rand: Rand = cryptoRand): string[] | null {
+  const usedSet = new Set(used)
+  if (!isBoard(ids)) return layoutBoard(hour, rand, usedSet)
+  const out = ids.slice()
+  let changed = false
+  const h = gameHour(hour)
+  for (let k = 0; k < BOARD_SLOTS; k++) {
+    const t = plinkoTaskById(out[k])
+    const tier = BOARD_TIERS[k]
+    const stale = !t || t.tier !== tier || usedSet.has(t.id) || (t.hours && !(h >= t.hours[0] && h < t.hours[1]))
+    if (!stale) continue
+    const list = candidates(tier, hour, new Set([...out, ...usedSet]))
+    if (!list.length) continue
+    out[k] = list[Math.floor(rand() * list.length)].id
+    changed = true
+  }
+  return changed ? out : null
+}
+
+/** The task in slot `slot` of the stored board, or a random fitting one if the board is missing */
+export function taskForSlot(ids: unknown, slot: number, hour: number, rand: Rand = cryptoRand): PlinkoTask {
+  const tier = boardTier(slot)
+  const t = isBoard(ids) ? plinkoTaskById(ids[slot]) : undefined
+  if (t && t.tier === tier) return t
+  const list = candidates(tier, hour, new Set())
+  return list[Math.floor(rand() * list.length)] ?? PLINKO_POOL.find((x) => x.tier === tier)!
+}
+
+export function dropDeadline(drop: Pick<PlinkoDrop, 'at' | 'slot' | 'risk' | 'v'>): number {
   return drop.at + PLINKO_TIERS[dropTier(drop)].minutes * 60_000
 }
 
@@ -202,7 +709,7 @@ export function doneInTime(d: PlinkoDrop): boolean {
 }
 
 /** Full reward (× the streak) before the timer runs out, half after it */
-export function plinkoReward(drop: Pick<PlinkoDrop, 'at' | 'slot' | 'risk'>, doneAt: number, streakMult = 1): { xp: number; shards: number; inTime: boolean } {
+export function plinkoReward(drop: Pick<PlinkoDrop, 'at' | 'slot' | 'risk' | 'v'>, doneAt: number, streakMult = 1): { xp: number; shards: number; inTime: boolean } {
   const r = PLINKO_TIERS[dropTier(drop)]
   const xp = Math.round(r.xp * streakMult)
   const inTime = doneAt <= dropDeadline(drop)
@@ -216,19 +723,14 @@ export function plinkoDrops(log: DayLog | undefined): PlinkoDrop[] {
     .sort((a, b) => a.n - b.n)
 }
 
-/** Balls of the day: 2 free + 1 per Plinko task closed in time + 1 for all main quests, at most 6 */
-export function ballsFor(log: DayLog | undefined, allMains: boolean): number {
-  const earned = plinkoDrops(log).filter(doneInTime).length + (allMains ? 1 : 0)
-  return Math.min(PLINKO_MAX, PLINKO_FREE + earned)
-}
-
-export function ballsLeft(log: DayLog | undefined, allMains: boolean): number {
-  return Math.max(0, ballsFor(log, allMains) - plinkoDrops(log).length)
+/** Balls left today: 5 a day, no bonus balls */
+export function ballsLeft(log: DayLog | undefined): number {
+  return Math.max(0, PLINKO_BALLS - plinkoDrops(log).length)
 }
 
 /** Next throw number of the day, or null when no balls are left */
-export function nextThrow(log: DayLog | undefined, allMains: boolean): number | null {
-  if (ballsLeft(log, allMains) <= 0) return null
+export function nextThrow(log: DayLog | undefined): number | null {
+  if (ballsLeft(log) <= 0) return null
   const used = new Set(plinkoDrops(log).map((d) => d.n))
   for (let n = 0; n < PLINKO_MAX; n++) if (!used.has(n)) return n
   return null
@@ -294,7 +796,13 @@ export function plinkoEvents(data: Pick<AppData, 'days'>): PlinkoEvent[] {
   for (const { day, drop: d } of orderedDrops(data.days)) {
     if (d.doneAt === undefined || d.doneAt < d.at) continue
     const r = plinkoReward(d, d.doneAt, streakMult(streaks.get(dropKey(day, d.n)) ?? 0))
-    out.push({ day, at: d.doneAt, xp: r.xp, shards: r.shards, stat: plinkoTaskById(d.taskId)?.stat ?? 'will' })
+    out.push({
+      day,
+      at: d.doneAt,
+      xp: r.xp,
+      shards: r.shards,
+      stat: plinkoTaskById(d.taskId)?.stat ?? 'will',
+    })
   }
   return out
 }
@@ -305,11 +813,14 @@ export function sanitizeDrop(raw: unknown): PlinkoDrop | null {
   const d = raw as Record<string, unknown>
   const n = d.n
   const slot = d.slot
-  const risk = d.risk === undefined ? undefined : riskOf(d.risk)
+  const v2 = d.v === 2
+  const risk = v2 || d.risk === undefined ? undefined : riskOf(d.risk)
+  const slots = v2 ? BOARD_SLOTS : slotsOf(risk)
   if (typeof n !== 'number' || !Number.isInteger(n) || n < 0 || n >= PLINKO_MAX) return null
-  if (typeof slot !== 'number' || !Number.isInteger(slot) || slot < 0 || slot >= slotsOf(risk)) return null
+  if (typeof slot !== 'number' || !Number.isInteger(slot) || slot < 0 || slot >= slots) return null
   if (typeof d.at !== 'number' || !Number.isFinite(d.at) || typeof d.taskId !== 'string') return null
   const out: PlinkoDrop = { n, at: d.at, slot, taskId: d.taskId }
+  if (v2) out.v = 2
   if (risk) out.risk = risk
   if (typeof d.doneAt === 'number' && Number.isFinite(d.doneAt)) out.doneAt = d.doneAt
   if (typeof d.laterAt === 'number' && Number.isFinite(d.laterAt)) out.laterAt = d.laterAt

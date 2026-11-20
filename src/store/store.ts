@@ -50,7 +50,7 @@ import type {
   Trend,
   Duel,
 } from '../engine'
-import { MAX_ACTIVE_SKILLS, PRACTICE_LIMIT, barMin, canStartFlow, chestsFor, extraUsed, pityCount, practicesToday, rollChest } from '../engine'
+import { MAX_ACTIVE_SKILLS, MONEY_MAX, MONEY_NOTE_MAX, MONEY_SOURCE_MAX, PRACTICE_LIMIT, barMin, canStartFlow, chestsFor, extraUsed, pityCount, practicesToday, rollChest } from '../engine'
 
 type Fn = (d: AppData) => void
 
@@ -95,6 +95,8 @@ interface Store {
   setPlinkoDone: (day: DayKey, n: number, at: number | null) => void
   /** v0.6 Плинко: «Позже» (resets the streak) */
   setPlinkoLater: (day: DayKey, n: number, at: number) => void
+  /** v0.7: the day's 16 slot tasks */
+  setPlinkoBoard: (day: DayKey, ids: string[]) => void
   setBlocks: (day: DayKey, blocks: TimeBlock[]) => void
   setSettings: (patch: Partial<Settings>) => void
   // ---- v0.4 skills ----
@@ -131,6 +133,10 @@ interface Store {
   putDuel: (d: Duel) => void
   patchDuel: (id: string, patch: Partial<Duel>) => void
   removeDuel: (id: string) => void
+  // ---- v0.7 «Заработано» ----
+  /** null when the amount or the day is not valid */
+  addIncome: (x: { amount: number; day: DayKey; projectId?: string; source?: string; note?: string }, now: Date) => string | null
+  deleteIncome: (id: string) => void
   importData: (raw: unknown) => void
   resetAll: () => void
   finalize: (now: Date) => void
@@ -355,6 +361,10 @@ export const useStore = create<Store>()(
             if (at === null) delete drop.doneAt
             else drop.doneAt = at
           }),
+        setPlinkoBoard: (day, ids) =>
+          update((d) => {
+            dayLog(d, day).plinkoBoard = ids.slice()
+          }),
         setPlinkoLater: (day, n, at) =>
           update((d) => {
             const drop = d.days[day]?.plinko?.[String(n)]
@@ -557,6 +567,18 @@ export const useStore = create<Store>()(
             if (x) Object.assign(x, patch)
           }),
         removeDuel: (id) => update((d) => void (d.duels = (d.duels ?? []).filter((x) => x.id !== id))),
+        addIncome: (x, now) => {
+          const today = gameDayOf(now)
+          if (!Number.isInteger(x.amount) || x.amount <= 0 || x.amount > MONEY_MAX || !/^\d{4}-\d{2}-\d{2}$/.test(x.day) || x.day > today) return null
+          const id = uid()
+          const source = x.source?.trim().slice(0, MONEY_SOURCE_MAX)
+          const note = x.note?.trim().slice(0, MONEY_NOTE_MAX)
+          update((d) => {
+            ;(d.incomes ??= []).push({ id, day: x.day, at: now.getTime(), amount: x.amount, ...(x.projectId ? { projectId: x.projectId } : source ? { source } : {}), ...(note ? { note } : {}) })
+          })
+          return id
+        },
+        deleteIncome: (id) => update((d) => void (d.incomes = (d.incomes ?? []).filter((x) => x.id !== id))),
         importData: (raw) => set({ data: normalizeData(raw) }),
         resetAll: () => set({ data: createInitialData() }),
         finalize: (now) => {

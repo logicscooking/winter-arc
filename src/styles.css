@@ -1865,3 +1865,71 @@ a.fchip { text-decoration: none; }
 .also-row > .px:first-child { width: 36px; height: 36px; }
 .seg-switch button { white-space: nowrap; padding: 0 13px; font-size: 0.92rem; }
 .tile-art .px { filter: drop-shadow(0 3px 0 var(--lip)); }
+
+/* ---------- v7: themed status bar, top garland, canvas snow, form grid ---------- */
+
+/*
+  The home-screen app uses status-bar-style black-translucent: the page runs under the clock and the top bar
+  (padded by safe-area-inset-top) paints that strip, so it changes with every theme, «auto» included.
+  The shade keeps the strip solid on screens without a top bar. iOS draws the clock white there,
+  so the light theme gets a dark band instead of its cream bar.
+*/
+:root, [data-tp] { --status-bg: var(--bar-bg); }
+:root[data-theme='light'] { --status-bg: color-mix(in srgb, var(--ink) 80%, var(--mist)); }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) { --status-bg: color-mix(in srgb, var(--ink) 80%, var(--mist)); }
+}
+.status-shade {
+  position: fixed; z-index: 26; top: 0; left: 0; right: 0; height: var(--safe-t);
+  background: var(--status-bg); pointer-events: none;
+}
+/* the night haze moves from .app to body, so the back snow canvas can sit between them */
+body { background: radial-gradient(900px 420px at 50% -160px, var(--bg-haze), transparent 70%) no-repeat, var(--bg); }
+.app { background: none; }
+/* anchors and scrollIntoView stop below the sticky top bar and its garland */
+html { scroll-padding-top: calc(var(--safe-t) + 66px + 26px); }
+
+/* canvas snow: the back layer under the page, the front one over the cards (below the tab bar and sheets) */
+.snow-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; display: block; }
+.snow-canvas.back { z-index: 0; }
+.snow-canvas.front { z-index: 28; }
+
+/* the top garland: one string of small lights on the bottom edge of the top bar, on every screen */
+.top-garland {
+  position: fixed; z-index: 27; left: 0; right: 0; top: calc(var(--safe-t) + 61px);
+  height: 30px; pointer-events: none; overflow: visible; contain: layout;
+}
+.top-garland.is-off { display: none; }
+.top-garland svg { display: block; overflow: visible; }
+@media (min-width: 1024px) { .top-garland { left: 256px; } }
+.tg-wire { fill: none; stroke: #1f3a2a; stroke-width: 1.6; stroke-linecap: round; }
+:root[data-theme='light'] .tg-wire { stroke: #4d6b58; }
+@media (prefers-color-scheme: light) { :root:not([data-theme]) .tg-wire { stroke: #4d6b58; } }
+:root[data-theme='polar'] .tg-wire { stroke: #2a3c66; }
+:root[data-theme='aurora'] .tg-wire { stroke: #2a3546; }
+.tg-cap { fill: #2a4a36; stroke: #16281d; stroke-width: 0.6; }
+.tg-glass { fill: var(--bc); fill-opacity: 0.32; stroke: var(--bc); stroke-opacity: 0.55; stroke-width: 0.8; }
+.tg-shine { fill: #fff; opacity: 0.5; }
+/* slow breathing, never a blink: opacity only, eased both ways, each bulb on its own phase */
+.tg-lit { fill: var(--bc); opacity: 0.6; animation: tg-breathe var(--tg-t, 5s) ease-in-out var(--tg-d, 0s) infinite alternate; }
+.tg-glow { opacity: 0.4; animation: tg-glow var(--tg-t, 5s) ease-in-out var(--tg-d, 0s) infinite alternate; }
+@keyframes tg-breathe { from { opacity: 0.35; } to { opacity: 0.95; } }
+@keyframes tg-glow { from { opacity: 0.12; } to { opacity: 0.62; } }
+@media (prefers-reduced-motion: reduce) {
+  .tg-lit, .tg-glow { animation: none !important; }
+  .tg-lit { opacity: 0.75; }
+  .tg-glow { opacity: 0.4; }
+}
+
+/* two-column fields: the columns may shrink, iOS time inputs drop their native min width */
+.grid-2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.grid-2 > * { min-width: 0; }
+input[type='time'].input, input[type='date'].input {
+  -webkit-appearance: none; appearance: none; display: block;
+  width: 100%; min-width: 0; max-width: 100%; text-align: left; line-height: 1.3;
+}
+input[type='time'].input::-webkit-date-and-time-value, input[type='date'].input::-webkit-date-and-time-value { text-align: left; margin: 0; }
+/* room under the top bar for the hanging bulbs, so the first row of every screen stays clear */
+body:has(.top-garland:not(.is-off)) .topbar { margin-bottom: 26px; }
+/* «План дня» on a 375px phone: quest names get a third line instead of an ellipsis */
+#plan-add .pick span { -webkit-line-clamp: 3; line-clamp: 3; }

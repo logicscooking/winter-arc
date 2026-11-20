@@ -64,7 +64,7 @@ export function RewardPop() {
           )}
           {!!pop.destiny && (
             <span className="reward-chip gold">
-              <Px name="dice" size={22} /> Судьба +{pop.destiny}
+              <Px name="plinko" size={22} /> Судьба +{pop.destiny}
             </span>
           )}
         </div>

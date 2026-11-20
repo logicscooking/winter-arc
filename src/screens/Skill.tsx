@@ -36,7 +36,8 @@ import {
   FLOW,
   GOAL_XP,
 } from '../engine'
-import type { Goal, GoalType, SkillNode, StatId, Trait, TraitView, ValueKind } from '../engine'
+import type { Goal, GoalType, SkillNode, SkillView, StatId, Trait, TraitView, ValueKind } from '../engine'
+import { SkillTreeView } from '../components/SkillTreeView'
 import { useStore } from '../store/store'
 import { go, nowWithOffset, reward, useNow } from '../store/hooks'
 import { useUi } from '../store/ui'
@@ -66,7 +67,7 @@ export function SkillScreen({ id, tab }: { id: string; tab?: string }) {
     )
   }
   const s = view.skill
-  const t = tab === 'goals' ? 'goals' : 'tree'
+  const t = tab === 'goals' ? 'goals' : tab === 'list' ? 'list' : 'tree'
   const extra = extraUsed(data, s.id, today)
   const next = RANKS[Math.min(4, RANKS.indexOf(view.rank) + 1)]
 
@@ -157,12 +158,15 @@ export function SkillScreen({ id, tab }: { id: string; tab?: string }) {
         <button role="tab" aria-pressed={t === 'tree'} onClick={() => go(`/skill/${s.id}`)}>
           Дерево
         </button>
+        <button role="tab" aria-pressed={t === 'list'} onClick={() => go(`/skill/${s.id}?tab=list`)}>
+          Список
+        </button>
         <button role="tab" aria-pressed={t === 'goals'} onClick={() => go(`/skill/${s.id}?tab=goals`)}>
           Цели
         </button>
       </div>
 
-      {t === 'tree' ? <TreeTab traits={view.traits} skillId={s.id} /> : <GoalsTab skillId={s.id} />}
+      {t === 'tree' ? <GraphTab view={view} /> : t === 'list' ? <TreeTab traits={view.traits} skillId={s.id} /> : <GoalsTab skillId={s.id} />}
       {s.status === 'active' && <ThemeCard compact />}
 
       {edit && <SkillEdit id={s.id} onClose={() => setEdit(false)} />}
@@ -173,6 +177,17 @@ export function SkillScreen({ id, tab }: { id: string; tab?: string }) {
 }
 
 // ---------- tree ----------
+
+/** v0.7: the visual RPG tree; trait editing reuses the list view's sheet */
+function GraphTab({ view }: { view: SkillView }) {
+  const [editTrait, setEditTrait] = useState<Trait | null>(null)
+  return (
+    <>
+      <SkillTreeView view={view} onEditTrait={setEditTrait} />
+      {editTrait && <TraitSheet trait={editTrait} onClose={() => setEditTrait(null)} />}
+    </>
+  )
+}
 
 function TreeTab({ traits, skillId }: { traits: TraitView[]; skillId: string }) {
   const addTrait = useStore((s) => s.addTrait)

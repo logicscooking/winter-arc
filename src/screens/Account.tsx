@@ -10,6 +10,7 @@ import { AuthForm } from '../components/AuthForm'
 import { Field } from '../components/ui'
 import { HeroAva } from '../components/HeroAva'
 import { timeAgo } from './Party'
+import { MoneyShareRow } from '../components/Money'
 
 /** the title lives in the top bar; `title` stays for the accessible region name */
 function Sub({ title, children }: { title: string; children: ReactNode }) {
@@ -169,6 +170,7 @@ function Signed() {
             <button className="switch" role="switch" aria-checked={share[k]} aria-label={SHARE_LABEL[k].title} onClick={() => setSettings({ share: { ...share, [k]: !share[k] } })} />
           </div>
         ))}
+        <MoneyShareRow />
         <p className="tiny muted">Уровень, HP, гирлянда дня и серии видны участникам пати всегда. Исповеди, замеры, причины срывов и заметки не уходят никогда.</p>
       </section>
 

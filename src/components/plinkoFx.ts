@@ -41,13 +41,47 @@ function tone(freq: number, start: number, dur: number, opts: { type?: Oscillato
   o.stop(start + dur + 0.02)
 }
 
-/** Peg click: short glassy tick, a little higher with every row */
-export function sfxPeg(row: number, rows: number): void {
+/** Peg click: short glassy tick, a little higher with every row, louder on a harder hit (0..1) */
+export function sfxPeg(row: number, rows: number, force = 0.7): void {
   if (!ctx) return
   const t = ctx.currentTime
-  const f = 900 + (row / Math.max(1, rows)) * 700 + Math.random() * 40
-  tone(f, t, 0.06, { type: 'triangle', vol: 0.32 })
-  tone(f * 2.01, t, 0.03, { type: 'sine', vol: 0.12 })
+  const f = 900 + (row / Math.max(1, rows)) * 700 + Math.random() * 60
+  const k = 0.35 + 0.65 * Math.max(0, Math.min(1, force))
+  tone(f, t, 0.05 + 0.02 * k, { type: 'triangle', vol: 0.32 * k })
+  tone(f * 2.01, t, 0.03, { type: 'sine', vol: 0.12 * k })
+}
+
+/** Santa's «хо-хо»: two low hums with a vowel-ish overtone, then a tiny sleigh bell */
+export function sfxHoHo(): void {
+  if (!ctx) return
+  const t = ctx.currentTime
+  for (const [dt, f] of [
+    [0, 150],
+    [0.22, 135],
+  ]) {
+    tone(f, t + dt, 0.18, { type: 'sawtooth', vol: 0.08, slideTo: f * 0.85 })
+    tone(f * 2, t + dt, 0.16, { type: 'sine', vol: 0.22, slideTo: f * 1.7 })
+    tone(f * 4.1, t + dt, 0.1, { type: 'sine', vol: 0.05 })
+  }
+  sfxBell(0.48)
+}
+
+/** Sleigh bell: a few bright detuned pings */
+export function sfxBell(delay = 0): void {
+  if (!ctx) return
+  const t = ctx.currentTime + delay
+  for (let i = 0; i < 3; i++) {
+    const f = 2350 + i * 170 + Math.random() * 80
+    tone(f, t + i * 0.045, 0.22, { type: 'sine', vol: 0.12 })
+    tone(f * 1.5, t + i * 0.045, 0.12, { type: 'triangle', vol: 0.05 })
+  }
+}
+
+/** Santa dozes off: a soft falling yawn */
+export function sfxYawn(): void {
+  if (!ctx) return
+  const t = ctx.currentTime
+  tone(330, t, 0.7, { type: 'sine', vol: 0.12, slideTo: 170 })
 }
 
 /** Slot chime: richer the further from the centre (tier 1..5) */

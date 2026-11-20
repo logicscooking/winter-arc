@@ -26,6 +26,8 @@ import { AddTask, TaskTree } from '../components/TaskTree'
 import { FlowChip, PracticeSheet, RankBadge, SkillLevelBar, Strikes, ThemeCard, skillSprite, startFlowAndGo } from '../components/skills'
 import { Px } from '../pixel/Pixel'
 import { RankChanceCard } from '../components/skillPlus'
+import { MoneyCard, MoneySheet } from '../components/Money'
+import { SkillTreeMini } from '../components/SkillTreeView'
 
 /** «Путь»: skills (progression) on top, the Deal of the day and projects below */
 export function Deal() {
@@ -112,6 +114,7 @@ export function Deal() {
             </div>
             <Projects />
           </section>
+          <MoneyCard />
         </div>
       </div>
       <DealFab />
@@ -122,6 +125,7 @@ export function Deal() {
 /** «+»: a new skill, a project or an import */
 function DealFab() {
   const [dial, setDial] = useState(false)
+  const [money, setMoney] = useState(false)
   const addProject = () => {
     setDial(false)
     const el = document.getElementById('add-project')?.querySelector<HTMLInputElement>('input')
@@ -141,9 +145,13 @@ function DealFab() {
           <a className="fab-item" role="menuitem" href="#/skill-new?import=1">
             <Px name="gift" size={22} /> Импорт дерева
           </a>
+          <button className="fab-item" role="menuitem" onClick={() => (setDial(false), setMoney(true))}>
+            <Px name="coin" size={22} /> Заработал
+          </button>
         </div>
       )}
-      <button className={`fab round${dial ? ' on' : ''}`} onClick={() => setDial(!dial)} aria-expanded={dial} aria-label={dial ? 'Закрыть меню' : 'Добавить: навык, проект, импорт'}>
+      {money && <MoneySheet onClose={() => setMoney(false)} />}
+      <button className={`fab round${dial ? ' on' : ''}`} onClick={() => setDial(!dial)} aria-expanded={dial} aria-label={dial ? 'Закрыть меню' : 'Добавить: навык, проект, импорт, доход'}>
         {dial ? <X size={28} strokeWidth={3} /> : <Plus size={30} strokeWidth={3} />}
       </button>
     </div>
@@ -177,6 +185,7 @@ function SkillCard({ skill, view, theme, xp }: { skill: Skill; view: ReturnType<
             <Strikes n={view.strikes.strikes} />
           </span>
           <RankChanceCard view={view} compact />
+          <SkillTreeMini view={view} />
         </span>
         <RankBadge rank={view.rank} />
       </a>

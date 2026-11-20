@@ -5,7 +5,7 @@ import { useStore } from './store/store'
 import { useGame, useNow, useRoute } from './store/hooks'
 import { useUi } from './store/ui'
 import { ConfirmSheet, Floaters, Toast } from './components/ui'
-import { Party, Snow } from './components/festive'
+import { Party, Snow, TopGarland } from './components/festive'
 import { Today } from './screens/Today'
 import { Deal } from './screens/Deal'
 import { SkillScreen } from './screens/Skill'
@@ -42,7 +42,7 @@ const NAV: { path: string; label: string; icon: SpriteName; tab: boolean }[] = [
   { path: '/party', label: 'Пати', icon: 'campfire', tab: true },
   { path: '/hero', label: 'Персонаж', icon: 'hero', tab: true },
   // 5 tabs max on the phone: the rest opens from «Сегодня» (Судьба, План, ❄ → Магазин) and from «Ещё»
-  { path: '/destiny', label: 'Судьба дня', icon: 'dice', tab: false },
+  { path: '/destiny', label: 'Судьба дня', icon: 'plinko', tab: false },
   { path: '/plan', label: 'План дня', icon: 'dial', tab: false },
   { path: '/shop', label: 'Магазин', icon: 'shard', tab: false },
   { path: '/charts', label: 'Графики', icon: 'star', tab: false },
@@ -51,18 +51,34 @@ const NAV: { path: string; label: string; icon: SpriteName; tab: boolean }[] = [
 /** sub-screens that light up a tab */
 const TAB_OF: Record<string, string> = { '/avatar': '/hero', '/charts': '/more', '/skill': '/deal', '/skill-new': '/deal', '/flow': '/deal' }
 
-/** status bar color per theme */
-const THEME_BG: Record<string, string> = { dark: '#0f1d17', light: '#f0e8dd', polar: '#0b1530', aurora: '#0d1219', fir: '#0e2017' }
+/** the theme's top bar color as #rrggbb: the tokens are color-mix()es, so let the browser resolve them */
+function barColor() {
+  const probe = document.createElement('div')
+  probe.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;background:var(--bar-bg)'
+  document.body.appendChild(probe)
+  const css = getComputedStyle(probe).backgroundColor
+  probe.remove()
+  const c = document.createElement('canvas').getContext('2d')
+  if (!c) return '#0f1d17'
+  c.fillStyle = css
+  c.fillRect(0, 0, 1, 1)
+  const [r, g, b] = c.getImageData(0, 0, 1, 1).data
+  return `#${[r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('')}`
+}
 
-/** «Ночь» by default, «Снег» by choice or by the system in «auto», plus three v0.5 winter themes */
+/**
+ * «Ночь» by default, «Снег» by choice or by the system in «auto», plus three v0.5 winter themes.
+ * The status bar: the home-screen app runs with status-bar-style black-translucent (index.html), so iOS
+ * draws the clock over the page itself and the top bar (padded by safe-area-inset-top) paints under it —
+ * it follows the theme instantly, «auto» included. theme-color is kept in sync for Safari tabs and Android.
+ */
 function useTheme(pref: ThemePref) {
   useEffect(() => {
     const root = document.documentElement
     if (pref === 'auto') delete root.dataset.theme
     else root.dataset.theme = pref
     const apply = () => {
-      const light = pref === 'light' || (pref === 'auto' && window.matchMedia('(prefers-color-scheme: light)').matches)
-      const color = light ? THEME_BG.light : (THEME_BG[pref] ?? THEME_BG.dark)
+      const color = barColor()
       document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', color))
     }
     apply()
@@ -92,7 +108,6 @@ function Overlays() {
 export default function App() {
   useEffect(() => bootCloud(), [])
   const route = useRoute()
-  const nudgeCount = useSocial((s) => s.nudges.length)
   const data = useStore((s) => s.data)
   const finalize = useStore((s) => s.finalize)
   const now = useNow()
@@ -120,17 +135,25 @@ export default function App() {
 
   const top = route.parts[0] ?? 'today'
 
-  if (top === 'pause') return <Pause app={route.query.get('app') ?? 'instagram'} />
-  if (!data.profile)
-    return (
-      <>
-        <Snow />
-        <Onboarding />
-      </>
-    )
+  // snow and the top garland live outside the router: the same nodes on every screen, never remounted
+  const missed = data.profile ? unacknowledgedMissed(game, data.ack.missedThrough) : []
+  const shell = top !== 'pause' && !!data.profile && missed.length === 0
+  return (
+    <>
+      <Snow />
+      <TopGarland hidden={!shell} />
+      <div className="status-shade" aria-hidden />
+      {top === 'pause' ? <Pause app={route.query.get('app') ?? 'instagram'} /> : !data.profile ? <Onboarding /> : missed.length > 0 ? <MissedDays days={missed} /> : <Shell top={top} />}
+    </>
+  )
+}
 
-  const missed = unacknowledgedMissed(game, data.ack.missedThrough)
-  if (missed.length > 0) return <MissedDays days={missed} />
+/** the tabbed app: sidebar / tab bar, the routed screen under its top bar, overlays */
+function Shell({ top }: { top: string }) {
+  const route = useRoute()
+  const nudgeCount = useSocial((s) => s.nudges.length)
+  const data = useStore((s) => s.data)
+  const profile = data.profile!
 
   let screen
   switch (top) {
@@ -197,7 +220,7 @@ export default function App() {
         ))}
         <div className="grow" />
         <a href="#/hero" className="muted tiny" style={{ padding: '0 12px', textDecoration: 'none', fontWeight: 800 }}>
-          {data.profile.nick}
+          {profile.nick}
         </a>
       </nav>
       <main className="page">
@@ -214,7 +237,6 @@ export default function App() {
         ))}
       </nav>
       <NudgeBanner hidden={top === 'party'} />
-      <Snow />
       <Overlays />
       <ConfirmSheet />
       <Floaters />

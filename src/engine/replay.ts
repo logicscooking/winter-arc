@@ -18,6 +18,7 @@ import {
 import { taskXp } from './tasks'
 import { duelEvents } from './duels'
 import { plinkoEvents } from './plinko'
+import { moneyEvents } from './money'
 import { FLOW, barMult, flowAt, flowWindows, skillEvents } from './skills'
 import {
   ARC_END,
@@ -263,6 +264,8 @@ export function computeState(data: AppData, now: Date): GameState {
   for (const e of duelEvents(data)) push({ day: e.day, at: e.at, xp: e.xp, stat: 'will', shards: e.shards })
   // v0.6 «Судьба дня» Плинко: full reward in time, half after the timer
   for (const e of plinkoEvents(data)) push({ day: e.day, at: e.at, xp: e.xp, stat: e.stat, shards: e.shards })
+  // v0.7 «Заработано»: once a day into «Дело», by the order of the day's total
+  for (const e of moneyEvents(data)) push({ day: e.day, at: e.at, xp: e.xp, stat: 'deal' })
   for (const s of data.slips) {
     push({ day: s.day, at: s.at, hp: HP.slip })
     if (s.comebackAt && s.comebackAt >= s.at && s.comebackAt - s.at <= COMEBACK_WINDOW_MS) {
