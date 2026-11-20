@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ArrowLeft, Lock, Plus, Trash2 } from 'lucide-react'
 import { CHAPTERS, GEAR, SHOP_ITEMS, canBuy, chapterOf, formatDayShort, gameDayOf, gearPurchaseId, levelOf, ownsGear, priceFor, priceMultiplier, wornOutfit } from '../engine'
-import type { ShopKind } from '../engine'
+import type { Rarity, ShopKind } from '../engine'
 import { useStore } from '../store/store'
 import { nowWithOffset, reward, useGame, useNow } from '../store/hooks'
 import { useUi } from '../store/ui'
@@ -15,6 +15,7 @@ export function Shop() {
   const buy = useStore((s) => s.buy)
   const addReward = useStore((s) => s.addReward)
   const removeReward = useStore((s) => s.removeReward)
+  const updateReward = useStore((s) => s.updateReward)
   const undoPurchase = useStore((s) => s.undoPurchase)
   const setOutfit = useStore((s) => s.setOutfit)
   const say = useUi((s) => s.say)
@@ -149,6 +150,13 @@ export function Shop() {
                     >
                       <Trash2 size={15} />
                     </button>
+                    <button
+                      className={`rarity-btn r-${r.rarity ?? 'none'}`}
+                      onClick={() => updateReward(r.id, { rarity: RARITY_NEXT[r.rarity ?? 'none'] })}
+                      aria-label={`Сундук: ${RARITY_LABEL[r.rarity ?? 'none']}`}
+                    >
+                      сундук: {RARITY_LABEL[r.rarity ?? 'none']}
+                    </button>
                   </div>
                 ))}
               </div>
@@ -256,3 +264,6 @@ export function Shop() {
     </div>
   )
 }
+
+const RARITY_LABEL: Record<string, string> = { none: 'нет', common: 'обычная', rare: 'редкая', legendary: 'легенда' }
+const RARITY_NEXT: Record<string, Rarity | undefined> = { none: 'common', common: 'rare', rare: 'legendary', legendary: undefined }

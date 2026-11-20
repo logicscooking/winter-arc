@@ -75,6 +75,10 @@ export interface RewardPop {
   crit: boolean
   /** «Судьба дня» bonus */
   destiny?: number
+  /** v0.4: what a practice changed in the skill */
+  impact?: string
+  flow?: boolean
+  theme?: boolean
 }
 
 interface FxStore {
@@ -105,7 +109,7 @@ export const useFx = create<FxStore>((set, get) => ({
     const id = ++fxId
     set({ pop: { ...p, id } })
     if (p.crit) haptic([15, 40, 25])
-    setTimeout(() => get().pop?.id === id && set({ pop: undefined }), p.crit ? 4200 : 3400)
+    setTimeout(() => get().pop?.id === id && set({ pop: undefined }), p.crit || p.impact ? 4800 : 3400)
   },
   hidePop: () => set({ pop: undefined }),
 }))

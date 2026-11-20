@@ -22,8 +22,20 @@ export function createInitialData(): AppData {
     reviews: {},
     settings: { debugOffsetDays: 0, reelsLimit: REELS_LIMIT, defaultSwap: '10 отжиманий', theme: 'dark', snow: true },
     ack: { reviewedWeeks: [], hints: [], celebrated: [] },
+    skills: [],
+    traits: [],
+    nodes: [],
+    practices: [],
+    goals: [],
+    flows: [],
+    bars: [],
+    themes: [],
+    extras: [],
+    chests: [],
   }
 }
+
+export const V04_COLLECTIONS = ['skills', 'traits', 'nodes', 'practices', 'goals', 'flows', 'bars', 'themes', 'extras', 'chests'] as const
 
 /** Accepts an exported backup (or persisted state) and fills any missing fields. */
 export function normalizeData(raw: unknown): AppData {
@@ -32,6 +44,8 @@ export function normalizeData(raw: unknown): AppData {
   if (r.data && typeof r.data === 'object' && !('quests' in r)) return normalizeData(r.data)
   if (!Array.isArray(r.quests) || typeof r.days !== 'object') throw new Error('В файле нет квестов или дней — это не бэкап Winter Arc')
   const base = createInitialData()
+  // v0.4 collections: anything that is not an array (corrupt or from a future shape) becomes empty
+  for (const k of V04_COLLECTIONS) if (k in r && !Array.isArray(r[k])) delete (r as Record<string, unknown>)[k]
   return migrateV03({
     ...base,
     ...r,

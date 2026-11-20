@@ -9,6 +9,7 @@ import { levelOf } from './levels'
 import { COMEBACK_WINDOW_MS, isCompleted } from './quests'
 import { marksFor, planFor } from './replay'
 import type { GameState } from './replay'
+import { activeSkills, skillView } from './skills'
 import { ARC_START, chapterOf, gameDayOf, weekDays } from './time'
 import type { AppData, DayKey, Outfit, SlipWhat } from './types'
 
@@ -63,7 +64,19 @@ export interface PublicStats {
   boss: { week: number; name: string; hp: number; damage: number; won: boolean } | null
   /** worn pixel-hero look (owned gear only). Missing in snapshots from older app versions */
   outfit?: Outfit
+  /** v0.4: active skills, title and rank only. «Кайф», notes and feedback stay private */
+  skills?: { t: string; r: string }[]
   at: number
+}
+
+/** Frozen days of the replay: they never give strikes */
+export function frozenDays(game: GameState): Set<DayKey> {
+  return new Set(Object.values(game.days).filter((r) => r.frozen).map((r) => r.day))
+}
+
+export function publicSkills(data: AppData, game: GameState): { t: string; r: string }[] {
+  const frozen = frozenDays(game)
+  return activeSkills(data).map((s) => ({ t: s.title.slice(0, 40), r: skillView(data, s.id, game.today, frozen)?.rank ?? 'D' }))
 }
 
 export function buildPublicStats(data: AppData, game: GameState, now: Date): PublicStats {
@@ -98,6 +111,7 @@ export function buildPublicStats(data: AppData, game: GameState, now: Date): Pub
     freezes: game.freezes,
     boss: bossWeek ? { week: bossWeek.week, name: bossWeek.name, hp: bossWeek.hp, damage: bossWeek.damage, won: bossWeek.won } : null,
     outfit: wornOutfit(data.profile?.outfit, level, data.purchases),
+    ...(activeSkills(data).length ? { skills: publicSkills(data, game) } : {}),
     at: now.getTime(),
   }
 }

@@ -9,7 +9,7 @@
  *   - on an exact tie the remote side wins, so both devices converge on the same result.
  * Nothing here touches storage or the network.
  */
-import { normalizeData } from './data'
+import { V04_COLLECTIONS, normalizeData } from './data'
 import type { AppData, DayLog, Task } from './types'
 
 export type Atoms = Record<string, unknown>
@@ -31,7 +31,8 @@ export interface SyncDoc extends SyncMeta {
 export const LOCAL_SETTINGS = ['theme', 'snow', 'debugOffsetDays'] as const
 
 const SEP = '/'
-const COLLECTIONS = ['quests', 'tasks', 'slips', 'cravings', 'purchases', 'rewards', 'pauses', 'books'] as const
+// v0.4 collections merge per item exactly like tasks: one atom per id, LWW by stamp, tombstone on delete
+const COLLECTIONS = ['quests', 'tasks', 'slips', 'cravings', 'purchases', 'rewards', 'pauses', 'books', ...V04_COLLECTIONS] as const
 type CollectionKey = (typeof COLLECTIONS)[number]
 const SET_ACKS = ['reviewedWeeks', 'hints', 'celebrated'] as const
 const KNOWN = new Set<string>(['schemaVersion', 'profile', 'days', 'activeBookId', 'baseline', 'final', 'reviews', 'settings', 'ack', ...COLLECTIONS])
@@ -114,9 +115,10 @@ export function fromAtoms(atoms: Atoms, local: AppData): AppData {
     reviews: {},
     settings: {},
     ack: { reviewedWeeks: [], hints: [], celebrated: [] },
+    ...Object.fromEntries(V04_COLLECTIONS.map((k) => [k, []])),
   } as unknown as AppData & Record<string, unknown>
   const profile: Record<string, unknown> = {}
-  const lists: Record<CollectionKey, unknown[]> = { quests: [], tasks: [], slips: [], cravings: [], purchases: [], rewards: [], pauses: [], books: [] }
+  const lists = Object.fromEntries(COLLECTIONS.map((k) => [k, [] as unknown[]])) as Record<CollectionKey, unknown[]>
   const sets: Record<string, unknown[]> = {}
 
   for (const path of Object.keys(atoms).sort()) {
@@ -173,6 +175,21 @@ export function fromAtoms(atoms: Atoms, local: AppData): AppData {
   out.purchases = (lists.purchases as AppData['purchases']).sort(byAt)
   out.pauses = (lists.pauses as AppData['pauses']).sort(byAt)
   out.books = (lists.books as AppData['books']).sort((a, b) => (a.startDay < b.startDay ? -1 : a.startDay > b.startDay ? 1 : a.id < b.id ? -1 : 1))
+  // v0.4: orders that do not depend on the device
+  type Ordered = { id: string; order?: number; createdAt?: number }
+  const byOrderId = (a: Ordered, b: Ordered) => (a.order ?? 0) - (b.order ?? 0) || (a.createdAt ?? 0) - (b.createdAt ?? 0) || (a.id < b.id ? -1 : 1)
+  const byIdOnly = (a: { id: string }, b: { id: string }) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+  const o = out as unknown as Record<string, unknown[]>
+  o.skills = (lists.skills as Ordered[]).sort(keepOrder('skills'))
+  o.traits = (lists.traits as Ordered[]).sort(byOrderId)
+  o.nodes = (lists.nodes as Ordered[]).sort(byOrderId)
+  o.goals = (lists.goals as Ordered[]).sort(byOrderId)
+  o.practices = (lists.practices as { at: number; id: string }[]).sort(byAt)
+  o.extras = (lists.extras as { at: number; id: string }[]).sort(byAt)
+  o.chests = (lists.chests as { at: number; id: string }[]).sort(byAt)
+  o.flows = (lists.flows as { startedAt: number; id: string }[]).sort((a, b) => a.startedAt - b.startedAt || byIdOnly(a, b))
+  o.bars = (lists.bars as { id: string }[]).sort(byIdOnly)
+  o.themes = (lists.themes as { id: string }[]).sort(byIdOnly)
   const tasks = (lists.tasks as Task[]).sort((a, b) => a.createdAt - b.createdAt || (a.id < b.id ? -1 : 1))
   // a subtask whose parent was deleted on the other device is kept as a top-level task
   const ids = new Set(tasks.map((t) => t.id))

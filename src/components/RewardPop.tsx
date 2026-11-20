@@ -40,6 +40,7 @@ export function RewardPop() {
           <Bar value={levelUp && !filled ? 1 : shown.progress} label={`${statName(pop.stat)}: опыт уровня`} />
           <span className="num">{lo + after.span}</span>
         </div>
+        {pop.impact && <p className="pop-impact">{pop.impact}</p>}
         <div className="pop-chips">
           {pop.shards > 0 && (
             <span className="reward-chip ice">
@@ -49,6 +50,16 @@ export function RewardPop() {
           {pop.crit && (
             <span className="reward-chip crit">
               <Px name="flame" size={22} /> КРИТ! ×1,5
+            </span>
+          )}
+          {pop.flow && (
+            <span className="reward-chip gold">
+              <Px name="play" size={22} /> Поток ×2
+            </span>
+          )}
+          {pop.theme && (
+            <span className="reward-chip gold">
+              <Px name="star" size={22} /> Тема ×1,5
             </span>
           )}
           {!!pop.destiny && (

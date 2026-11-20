@@ -7,6 +7,9 @@ import { ConfirmSheet, Floaters, Toast } from './components/ui'
 import { Party, Snow } from './components/festive'
 import { Today } from './screens/Today'
 import { Deal } from './screens/Deal'
+import { SkillScreen } from './screens/Skill'
+import { SkillNew } from './screens/SkillNew'
+import { Flow } from './screens/Flow'
 import { Hero } from './screens/Hero'
 import { Charts } from './screens/Charts'
 import { Shop } from './screens/Shop'
@@ -33,7 +36,7 @@ import { ConfessionSheet } from './flows/Confession'
 
 const NAV: { path: string; label: string; icon: SpriteName; tab: boolean }[] = [
   { path: '/today', label: 'Сегодня', icon: 'quests', tab: true },
-  { path: '/deal', label: 'Дело', icon: 'hammer', tab: true },
+  { path: '/deal', label: 'Путь', icon: 'fir', tab: true },
   { path: '/party', label: 'Пати', icon: 'campfire', tab: true },
   { path: '/hero', label: 'Персонаж', icon: 'hero', tab: true },
   // 5 tabs max on the phone: the rest opens from «Сегодня» (Судьба, План, ❄ → Магазин) and from «Ещё»
@@ -44,7 +47,7 @@ const NAV: { path: string; label: string; icon: SpriteName; tab: boolean }[] = [
   { path: '/more', label: 'Ещё', icon: 'chest', tab: true },
 ]
 /** sub-screens that light up a tab */
-const TAB_OF: Record<string, string> = { '/avatar': '/hero', '/charts': '/more' }
+const TAB_OF: Record<string, string> = { '/avatar': '/hero', '/charts': '/more', '/skill': '/deal', '/skill-new': '/deal', '/flow': '/deal' }
 
 /** «Полярная ночь» by default, «Снежный крем» by choice or by the system in «auto» */
 function useTheme(pref: 'auto' | 'light' | 'dark') {
@@ -127,6 +130,15 @@ export default function App() {
   switch (top) {
     case 'deal':
       screen = <Deal />
+      break
+    case 'skill':
+      screen = <SkillScreen id={route.parts[1] ?? ''} tab={route.query.get('tab') ?? undefined} />
+      break
+    case 'skill-new':
+      screen = <SkillNew importMode={route.query.get('import') === '1'} />
+      break
+    case 'flow':
+      screen = <Flow />
       break
     case 'hero':
       screen = <Hero />

@@ -16,6 +16,7 @@ import {
   resolveMark,
 } from './quests'
 import { taskXp } from './tasks'
+import { FLOW, barMult, flowAt, flowWindows, skillEvents } from './skills'
 import {
   ARC_END,
   ARC_START,
@@ -98,6 +99,10 @@ export interface GameState {
   bestHonesty: number
   freezesEarned: number
   freezesUsed: number
+  /** v0.4: XP earned per skill */
+  skillXp: Record<string, number>
+  /** v0.4: what each flow session closed */
+  flowStats: Record<string, { closed: number; xp: number }>
 }
 
 interface Ev {
@@ -108,6 +113,8 @@ interface Ev {
   shards?: number
   hp?: number
   boss?: number
+  skill?: string
+  flow?: string
 }
 
 export const emptyStats = (): Record<StatId, number> => ({ energy: 0, body: 0, mind: 0, will: 0, deal: 0 })
@@ -175,6 +182,8 @@ export function computeState(data: AppData, now: Date): GameState {
     bestHonesty: 0,
     freezesEarned: 0,
     freezesUsed: 0,
+    skillXp: {},
+    flowStats: {},
   }
   const start = replayStartOf(data)
   if (!data.profile || today < start) return st
@@ -210,11 +219,14 @@ export function computeState(data: AppData, now: Date): GameState {
       const r = questReward(d, p, m.status)
       if (r.crit) crits.push(p.id)
       const dealTask = q?.kind === 'deal' ? data.tasks.find((t) => t.id === log?.dealTaskId) : undefined
-      const at = m.at ?? dealTask?.doneAt ?? log?.confession?.at ?? dayStart(d).getTime()
+      const dealPractice = q?.kind === 'deal' && log?.dealNodeId && !(dealTask?.doneDay === d) ? (data.practices ?? []).filter((x) => x.nodeId === log.dealNodeId && x.day === d).sort((a, b) => a.at - b.at)[0] : undefined
+      const at = m.at ?? (dealTask?.doneDay === d ? dealTask.doneAt : undefined) ?? dealPractice?.at ?? dealTask?.doneAt ?? log?.confession?.at ?? dayStart(d).getTime()
+      // «Планка»: +10% XP per step on a full completion
+      const xp = m.status === 'done' ? Math.round(r.xp * barMult(data, p.id, d)) : r.xp
       push({
         day: d,
         at,
-        xp: r.xp,
+        xp,
         stat: p.stat,
         shards: r.shards,
         boss: p.role === 'main' || q?.kind === 'deal' ? r.baseXp : 0,
@@ -235,11 +247,16 @@ export function computeState(data: AppData, now: Date): GameState {
     if (log?.confession) push({ day: d, at: log.confession.at, xp: XP.confession, stat: 'will', shards: SHARDS.confession })
   }
 
+  // v0.4 «Поток»: tasks closed inside a valid flow give ×2 XP (boss damage stays base)
+  const windows = flowWindows(data.flows)
   for (const t of data.tasks) {
     if (!t.doneAt || !t.doneDay) continue
     const xp = taskXp(data.tasks, t)
-    if (xp) push({ day: t.doneDay, at: t.doneAt, xp, stat: t.stat, boss: t.scope === 'deal' ? xp : 0 })
+    const flow = xp ? flowAt(windows, t.doneAt) : undefined
+    if (xp) push({ day: t.doneDay, at: t.doneAt, xp: flow ? xp * FLOW.mult : xp, stat: t.stat, boss: t.scope === 'deal' ? xp : 0, flow: flow?.id })
   }
+  // v0.4 skills: practices, goals, «Сделал больше плана»
+  for (const e of skillEvents(data, windows)) push({ day: e.day, at: e.at, xp: e.xp, stat: e.stat, shards: e.shards, skill: e.skillId, flow: e.flowId })
   for (const s of data.slips) {
     push({ day: s.day, at: s.at, hp: HP.slip })
     if (s.comebackAt && s.comebackAt >= s.at && s.comebackAt - s.at <= COMEBACK_WINDOW_MS) {
@@ -283,6 +300,12 @@ export function computeState(data: AppData, now: Date): GameState {
         st.chapterXp[chapterOf(d)] += e.xp
         st.xpByDay[d] = (st.xpByDay[d] ?? 0) + e.xp
         info.xp += e.xp
+        if (e.skill) st.skillXp[e.skill] = (st.skillXp[e.skill] ?? 0) + e.xp
+        if (e.flow) {
+          const f = (st.flowStats[e.flow] ??= { closed: 0, xp: 0 })
+          f.closed++
+          f.xp += e.xp
+        }
       }
       if (e.boss) info.boss += e.boss
       if (e.shards) {

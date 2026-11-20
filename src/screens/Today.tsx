@@ -32,6 +32,8 @@ import { Hint, formatMMSS } from '../components/ui'
 import { Garland } from '../components/festive'
 import { Spark } from '../components/Spark'
 import { PAGES_GOAL, WAKE_GOAL, pagesValues, wakeValues, window7 } from '../store/trends'
+import { BAR_LADDERS, BAR_STEP_BONUS, barStep, barSuggestion } from '../engine'
+import { FlowChip, ThemeCard } from '../components/skills'
 
 export function Today() {
   const data = useStore((s) => s.data)
@@ -250,6 +252,10 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
             </div>
           )}
 
+          <FlowChip />
+          <BarOffers />
+          <ThemeCard compact />
+
           <Garland bulbs={bulbs} label={warmup ? 'Гирлянда разминки' : 'Гирлянда дня'} />
 
           <Hint id="quests">
@@ -435,5 +441,59 @@ function SupportQuests() {
         })}
       </div>
     </section>
+  )
+}
+
+/** «Планка»: raise the norm after 5 done in a row, lower it without penalty after two weeks of mini/skip */
+function BarOffers() {
+  const data = useStore((s) => s.data)
+  const setBar = useStore((s) => s.setBar)
+  const setAck = useStore((s) => s.setAck)
+  const game = useGame()
+  const today = gameDayOf(useNow())
+  const plan = planFor(data, today)
+  const offers = Object.keys(BAR_LADDERS)
+    .filter((qid) => plan.some((p) => p.id === qid))
+    .map((qid) => {
+      const dismissed = (data.ack.hints ?? []).filter((h) => h.startsWith(`bar-no:${qid}:`)).map((h) => h.split(':')[2]).sort().at(-1)
+      const kind = barSuggestion(data, qid, today, (d) => game.days[d]?.marks[qid], replayStartOf(data), dismissed)
+      return kind ? { qid, kind } : null
+    })
+    .filter((x): x is { qid: string; kind: 'up' | 'down' } => !!x)
+  if (!offers.length) return null
+  return (
+    <>
+      {offers.map(({ qid, kind }) => {
+        const q = data.quests.find((x) => x.id === qid)
+        const ladder = BAR_LADDERS[qid]
+        const step = barStep(data, qid, today)
+        const to = kind === 'up' ? step + 1 : step - 1
+        const markedToday = !!data.days[today]?.quests[qid]
+        const from = markedToday ? addDays(today, 1) : today
+        return (
+          <section key={qid} className="panel bar-offer">
+            <div className="row" style={{ gap: 10 }}>
+              <Px name={kind === 'up' ? 'star' : 'snowflake'} size={30} />
+              <div className="grow">
+                <span className="tiny muted">Планка · {q?.title}</span>
+                <h3>{kind === 'up' ? 'Поднять планку?' : 'Опустить без штрафа?'}</h3>
+              </div>
+            </div>
+            <p className="small" style={{ margin: '8px 0 12px' }}>
+              {kind === 'up' ? '5 раз подряд норма выполнена. Игра = прогрессия.' : 'Две недели только мини и пропуски. Опустить — не провал.'} {ladder.steps[to].name}: <b>{ladder.steps[to].norm}</b>, XP квеста +{Math.round(to * BAR_STEP_BONUS * 100)}%.
+              {markedToday ? ' С завтрашнего дня.' : ''}
+            </p>
+            <div className="grid-2">
+              <button className="btn ghost" onClick={() => setAck({ hints: [...(data.ack.hints ?? []), `bar-no:${qid}:${today}`] })}>
+                Не сейчас
+              </button>
+              <button className={`btn ${kind === 'up' ? 'primary' : ''}`} onClick={() => setBar(qid, to, from)}>
+                {kind === 'up' ? 'Поднять' : 'Опустить'}
+              </button>
+            </div>
+          </section>
+        )
+      })}
+    </>
   )
 }

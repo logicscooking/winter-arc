@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Check, Minus, X } from 'lucide-react'
-import { SHARDS, formatHM, questReward, questStreak, questXp, statusFromValue } from '../engine'
+import { BAR_LADDERS, BAR_STEP_BONUS, SHARDS, barMin, barStep, formatHM, questReward, questStreak, questXp, statusFromValue } from '../engine'
 import type { DayKey, GameState, MarkStatus, PlannedQuest, Quest } from '../engine'
 import { useStore } from '../store/store'
 import { go, nowWithOffset, reward, useFx } from '../store/hooks'
@@ -33,7 +33,11 @@ export function QuestRow({ plan, quest, status, auto, day, game, locked, wakeTar
   const [draft, setDraft] = useState<string>('')
   const numeric = quest.kind === 'reading' || quest.kind === 'number'
   const streak = questStreak(game, quest.id)
-  const doneXp = questXp(plan.role, plan.base, 'done')
+  const bars = useStore((s) => s.data.bars)
+  const ladder = BAR_LADDERS[quest.id]
+  const step = ladder ? barStep({ bars }, quest.id, day) : 0
+  const barNorm = ladder && bars?.some((b) => b.questId === quest.id) ? ladder.steps[step] : undefined
+  const doneXp = Math.round(questXp(plan.role, plan.base, 'done') * (1 + BAR_STEP_BONUS * step))
   const completed = status === 'done' || status === 'mini'
 
   /** every change to a mark gets an undo */
@@ -46,7 +50,8 @@ export function QuestRow({ plan, quest, status, auto, day, game, locked, wakeTar
 
   /** XP floaters + the reward card (stat progress, ❄, CRITICAL, «Судьба») */
   const celebrate = (el: Element, s: MarkStatus, at: number) => {
-    const r = questReward(day, plan, s)
+    const r0 = questReward(day, plan, s)
+    const r = s === 'done' ? { ...r0, xp: Math.round(r0.xp * (1 + BAR_STEP_BONUS * step)) } : r0
     const z = useStore.getState().data.days[day]?.destiny
     const destiny = z?.ref === 'quest' && z.id === quest.id && at >= z.startedAt && at <= z.startedAt + z.minutes * 60_000 ? SHARDS.destiny : 0
     reward(el, { xp: r.xp })
@@ -95,7 +100,7 @@ export function QuestRow({ plan, quest, status, auto, day, game, locked, wakeTar
     const prevStatus = status
     const now = nowWithOffset()
     withUndo(v > 0 ? `Записано: ${v} ${quest.unit ?? ''}`.trim() : 'Значение стёрто', () => setValue(day, quest.id, v, now))
-    const s = statusFromValue(quest, v)
+    const s = statusFromValue(quest, v, barMin({ bars }, quest.id, day))
     if (s && s !== prevStatus) celebrate(el, s, now.getTime())
     setEntry(false)
   }
@@ -103,7 +108,8 @@ export function QuestRow({ plan, quest, status, auto, day, game, locked, wakeTar
   const cls = ['quest', plan.role, status ?? '', completed ? 'done' : ''].join(' ')
   let hint: string | null = null
   if (quest.kind === 'wake' && wakeTarget !== undefined) hint = `цель ${formatHM(wakeTarget)} ±30 мин`
-  if (quest.kind === 'reading') hint = value ? `${value} стр${book ? ` · ${book.title}` : ''}` : `${book ? `${book.title} · ` : ''}мин ${quest.min ?? 10}, цель ${quest.goal ?? 25} стр`
+  if (quest.kind === 'reading') hint = value ? `${value} стр${book ? ` · ${book.title}` : ''}` : `${book ? `${book.title} · ` : ''}${barNorm && step > 0 ? `планка ${barNorm.norm}` : `мин ${quest.min ?? 10}, цель ${quest.goal ?? 25} стр`}`
+  if (quest.id === 'workout' && barNorm && !completed) hint = barNorm.norm
   if (quest.kind === 'number') hint = value ? `${value} ${quest.unit ?? ''}` : `цель ${quest.goal ?? quest.min} ${quest.unit ?? ''}`
   if (quest.kind === 'reels' || quest.kind === 'bedtime') hint = 'отметится по исповеди'
   if (quest.kind === 'deal' && !completed) hint = 'закрой Дело дня'
@@ -131,6 +137,7 @@ export function QuestRow({ plan, quest, status, auto, day, game, locked, wakeTar
             </span>
           )}
           {plan.base && <span className="tag base">база ×0.5</span>}
+          {barNorm && step > 0 && <span className="tag bar-tag">планка {step} · +{step * 10}%</span>}
           {auto && status && <span className="tag auto">авто</span>}
           {hint && <span>{hint}</span>}
         </div>

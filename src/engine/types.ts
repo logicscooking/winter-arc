@@ -80,6 +80,8 @@ export interface DayLog {
   destiny?: Destiny
   /** v0.3 «План дня»: time blocks on the 24h ring */
   blocks?: TimeBlock[]
+  /** v0.4 «Сегодня качаю»: a skill node as the Deal of the day; a practice on it closes the quest */
+  dealNodeId?: string
 }
 
 export interface Destiny {
@@ -154,12 +156,16 @@ export interface Purchase {
   kind: ShopKind
 }
 
+export type Rarity = 'common' | 'rare' | 'legendary'
+
 export interface Reward {
   id: string
   title: string
   price: number
   /** pixel icon name (v0.3), optional */
   icon?: string
+  /** v0.4 chest prize rarity; missing = not in chests */
+  rarity?: Rarity
 }
 
 export interface PauseLog {
@@ -249,6 +255,152 @@ export interface Ack {
   celebrated?: DayKey[]
 }
 
+// ---------- v0.4 «Навыки и прогрессия» ----------
+
+export type SkillStatus = 'active' | 'later'
+/** «Кайф» (к чему) or «Боль» (от чего ухожу) */
+export type ValueKind = 'joy' | 'pain'
+
+export interface Skill {
+  id: string
+  title: string
+  /** patron stat: practice XP goes there */
+  stat: StatId
+  icon?: string
+  value: string
+  valueKind?: ValueKind
+  status: SkillStatus
+  /** «чего хочешь → что мешает» */
+  bridge?: { want?: string; block?: string }
+  templateId?: string
+  createdAt: number
+  order: number
+}
+
+/** Характеристика: 1–8 nodes */
+export interface Trait {
+  id: string
+  skillId: string
+  title: string
+  /** что повышает (+) */
+  plus?: string
+  /** что понижает (−) */
+  minus?: string
+  order: number
+}
+
+export interface SkillNode {
+  id: string
+  skillId: string
+  traitId: string
+  title: string
+  /** «как качать» */
+  how?: string
+  order: number
+  createdAt: number
+  /** «что попробую иначе» after three practices without progress */
+  pivot?: string
+  pivotAt?: number
+}
+
+export type Trend = 'better' | 'same' | 'worse'
+
+export interface Practice {
+  id: string
+  skillId: string
+  nodeId: string
+  day: DayKey
+  at: number
+  /** one line of feedback: what got better / what broke. Empty → half XP */
+  note?: string
+  trend?: Trend
+}
+
+export type GoalType = 'short' | 'mid' | 'long' | 'repeat'
+
+export interface GoalCheck {
+  day: DayKey
+  at: number
+}
+
+export interface ScalePoint {
+  day: DayKey
+  value: number
+  at: number
+}
+
+export interface Goal {
+  id: string
+  skillId: string
+  type: GoalType
+  title: string
+  /** short → mid, mid → long */
+  parentId?: string
+  createdAt: number
+  order: number
+  /** short/repeat: streaks and misses count from this day (reset on «проще» / «поднять») */
+  since?: DayKey
+  /** short and repeat goals are checked per day */
+  checks?: GoalCheck[]
+  /** mid / long: closed once */
+  doneAt?: number
+  doneDay?: DayKey
+  /** retired by «Разбить» / «Поднять»: kept for history, not shown */
+  archived?: boolean
+  /** repeat: times a week */
+  perWeek?: number
+  /** long: numeric scale, can move both ways */
+  scale?: { from: number; to: number; unit?: string; points: ScalePoint[] }
+  /** manual deadline, only for things done many times */
+  deadline?: DayKey
+}
+
+export interface FlowSession {
+  id: string
+  day: DayKey
+  startedAt: number
+  endedAt?: number
+  /** planned length, min (default 90, «Не могу начать» = 15) */
+  minutes?: number
+  skillId?: string
+}
+
+/** «Планка»: quest norm step, valid from `from` on */
+export interface BarStep {
+  id: string
+  questId: string
+  step: number
+  from: DayKey
+}
+
+/** Season theme: one skill per chapter, ×1.5 practice XP */
+export interface SeasonTheme {
+  id: string
+  chapter: ChapterId
+  skillId: string
+}
+
+/** «Сделал больше плана»: once a day per skill */
+export interface Extra {
+  id: string
+  skillId: string
+  day: DayKey
+  at: number
+}
+
+export type ChestType = 'repeat' | 'short' | 'mid'
+
+export interface ChestOpen {
+  /** `${day}:${type}` */
+  id: string
+  day: DayKey
+  type: ChestType
+  at: number
+  rewardId?: string
+  rewardTitle?: string
+  rarity?: Rarity
+}
+
 export interface AppData {
   schemaVersion: 1
   profile?: Profile
@@ -267,4 +419,15 @@ export interface AppData {
   reviews: Record<number, Review>
   settings: Settings
   ack: Ack
+  // v0.4: optional so old saves and old clients stay valid
+  skills?: Skill[]
+  traits?: Trait[]
+  nodes?: SkillNode[]
+  practices?: Practice[]
+  goals?: Goal[]
+  flows?: FlowSession[]
+  bars?: BarStep[]
+  themes?: SeasonTheme[]
+  extras?: Extra[]
+  chests?: ChestOpen[]
 }

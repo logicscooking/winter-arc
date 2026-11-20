@@ -12,6 +12,9 @@ import { createParty, deleteEvent, joinParty, leaveParty, markNudgesSeen, react,
 import { AuthForm } from '../components/AuthForm'
 import { HeroAva, useUserOutfit } from '../components/HeroAva'
 import { Bar, HpBar, Sheet } from '../components/ui'
+import { RankBadge } from '../components/skills'
+import { RANKS } from '../engine'
+import type { Rank } from '../engine'
 import { BossSprite, PixelAvatar, Px } from '../pixel/Pixel'
 
 export function Party() {
@@ -543,6 +546,16 @@ function MemberDay({ s, fresh }: { s: PublicStats; fresh: boolean }) {
             </li>
           ))}
         </ul>
+      )}
+      {Array.isArray(s.skills) && s.skills.length > 0 && (
+        <div className="member-skills" aria-label="Навыки">
+          {s.skills.slice(0, 3).map((k) => (
+            <span key={k.t} className="member-skill">
+              <RankBadge rank={(RANKS as readonly string[]).includes(k.r) ? (k.r as Rank) : 'D'} size="sm" />
+              {String(k.t).slice(0, 40)}
+            </span>
+          ))}
+        </div>
       )}
     </div>
   )

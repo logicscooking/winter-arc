@@ -141,9 +141,9 @@ export function questShards(role: Role, status: MarkStatus | undefined): number 
 export const isCompleted = (s: MarkStatus | undefined) => s === 'done' || s === 'mini'
 
 /** Status from a numeric value: ≥ min → done, >0 → mini */
-export function statusFromValue(q: Quest, value: number | undefined): MarkStatus | undefined {
+export function statusFromValue(q: Quest, value: number | undefined, minOverride?: number): MarkStatus | undefined {
   if (value === undefined || value <= 0) return undefined
-  const min = q.min ?? 1
+  const min = minOverride ?? q.min ?? 1
   return value >= min ? 'done' : 'mini'
 }
 
@@ -203,9 +203,12 @@ export function wakeTargetFor(data: Pick<AppData, 'profile'>, day: DayKey): numb
 export function resolveCtx(data: AppData, day: DayKey): ResolveCtx {
   const dealId = data.days[day]?.dealTaskId
   const task = dealId ? data.tasks.find((t) => t.id === dealId) : undefined
+  // v0.4: «Сегодня качаю: навык → узел» — a practice on that node closes the Deal of the day
+  const node = data.days[day]?.dealNodeId
+  const practiced = !!node && (data.practices ?? []).some((p) => p.nodeId === node && p.day === day)
   return {
     wakeTarget: wakeTargetFor(data, day),
     reelsLimit: reelsLimitFor(data, day),
-    dealDoneOnDay: task?.doneDay === day,
+    dealDoneOnDay: task?.doneDay === day || practiced,
   }
 }

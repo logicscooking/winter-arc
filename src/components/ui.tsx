@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Brain, Dumbbell, Hammer, Lightbulb, Shield, X, Zap, type LucideIcon } from 'lucide-react'
 import type { StatId } from '../engine'
 import { useFx } from '../store/hooks'
@@ -53,7 +54,8 @@ export function Sheet({ title, onClose, children, wide }: { title?: ReactNode; o
       document.body.style.overflow = prev
     }
   }, [onClose])
-  return (
+  // portal: a sheet opened inside .page (its own stacking context) must still cover the tab bar
+  return createPortal(
     <div className="sheet-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="sheet" role="dialog" aria-modal="true" style={wide ? { maxWidth: 680 } : undefined}>
         <div className="sheet-grip" />
@@ -65,7 +67,8 @@ export function Sheet({ title, onClose, children, wide }: { title?: ReactNode; o
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
