@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowLeft, Lock, Plus, Trash2 } from 'lucide-react'
+import { Lock, Plus, Trash2 } from 'lucide-react'
 import { CHAPTERS, GEAR, SHOP_ITEMS, canBuy, chapterOf, formatDayShort, gameDayOf, gearPurchaseId, levelOf, ownsGear, priceFor, priceMultiplier, wornOutfit } from '../engine'
 import type { Rarity, ShopKind } from '../engine'
 import { useStore } from '../store/store'
@@ -49,15 +49,9 @@ export function Shop() {
 
   return (
     <div className="stack-lg">
-      <button className="back mobile-only" onClick={() => (window.history.length > 1 ? window.history.back() : (location.hash = '#/today'))}>
-        <ArrowLeft size={18} /> Назад
-      </button>
-      <header className="stack" style={{ gap: 4, marginTop: -16 }}>
-        <h1>Магазин</h1>
-        <p className="small muted">
-          {CHAPTERS[ch].id === 0 ? 'Пролог' : `Глава ${CHAPTERS[ch].roman}`}: цены дофамина ×{String(mult).replace('.', ',')}
-        </p>
-      </header>
+      <p className="small muted page-sub">
+        {CHAPTERS[ch].id === 0 ? 'Пролог' : `Глава ${CHAPTERS[ch].roman}`}: цены дофамина ×{String(mult).replace('.', ',')}
+      </p>
 
       <div className="wallet">
         <Px name="shard" size={44} />

@@ -56,8 +56,8 @@ function SchemaBanner() {
 function PageHead({ kicker, title, sub }: { kicker?: string; title: string; sub?: ReactNode }) {
   return (
     <div>
-      {kicker && <div className="chapter-name">{kicker}</div>}
-      <h1 style={kicker ? { marginTop: 4 } : undefined}>{title}</h1>
+      {kicker && kicker !== 'Пати' && <div className="chapter-name">{kicker}</div>}
+      {title !== 'Пати' && <h2 className="page-h">{title}</h2>}
       {sub && (
         <p className="muted" style={{ marginTop: 8 }}>
           {sub}
@@ -258,7 +258,7 @@ function PartyHome({ initialCode }: { initialCode?: string }) {
           <div className="chapter-name">
             Пати · {members.length} из 8
           </div>
-          <h1 style={{ marginTop: 4 }}>{party.name}</h1>
+          <h2 className="page-h">{party.name}</h2>
         </div>
         <button className="icon-btn" aria-label="Обновить" onClick={() => refreshParty(party.id).then(() => setErr(undefined), (e) => setErr(ruError(e)))}>
           <RefreshCw size={18} className={st.loading ? 'spin' : undefined} />

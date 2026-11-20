@@ -82,6 +82,8 @@ export interface DayLog {
   blocks?: TimeBlock[]
   /** v0.4 «Сегодня качаю»: a skill node as the Deal of the day; a practice on it closes the quest */
   dealNodeId?: string
+  /** v0.6 «Судьба дня» Плинко: throws of the day by throw number ("0", "1") */
+  plinko?: Record<string, PlinkoDrop>
 }
 
 export interface Destiny {
@@ -91,6 +93,26 @@ export interface Destiny {
   startedAt: number
   minutes: number
 }
+
+/** v0.6: one Plinko throw. The slot comes from the deterministic path (engine/plinko.ts). */
+export interface PlinkoDrop {
+  /** throw number of the day, 0-based */
+  n: number
+  /** thrown at, ms: the task timer starts here */
+  at: number
+  /** 0..slots-1, centre = easy, edges = hard */
+  slot: number
+  /** PLINKO_POOL id */
+  taskId: string
+  /** «Сделал» */
+  doneAt?: number
+  /** risk of the board; missing = 'mid' */
+  risk?: PlinkoRisk
+  /** «Позже» pressed: the streak resets */
+  laterAt?: number
+}
+
+export type PlinkoRisk = 'low' | 'mid' | 'high'
 
 export interface TimeBlock {
   id: string
@@ -246,6 +268,10 @@ export interface Settings {
   share?: Partial<Record<'slips' | 'perfect' | 'boss' | 'level' | 'book', boolean>>
   /** v0.5 «ИИ-помощник»: off by default, turned on only after the consent screen */
   ai?: { on: boolean; consentAt?: number }
+  /** v0.6 Плинко: last chosen risk */
+  plinkoRisk?: PlinkoRisk
+  /** v0.6 sound effects on this device (missing = on) */
+  sound?: boolean
   /** v0.5: AI request counter of this device (kept local, never synced) */
   aiUse?: { day: DayKey; n: number; last: number }
 }

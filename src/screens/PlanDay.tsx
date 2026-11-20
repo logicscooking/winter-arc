@@ -1,5 +1,5 @@
 import { useMemo, useState, type PointerEvent } from 'react'
-import { ArrowLeft, Trash2 } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 import { addDays, blockAt, blocksOverlap, formatDayRu, formatHM, gameDayOf, nextFreeStart, parseHM, plannedMinutes, sleepWindow, sortBlocks, statName, uid } from '../engine'
 import type { StatId, TimeBlock } from '../engine'
 import { useStore } from '../store/store'
@@ -107,11 +107,7 @@ export function PlanDay() {
 
   return (
     <div className="stack-lg">
-      <a className="back" href="#/today">
-        <ArrowLeft size={18} /> Сегодня
-      </a>
-      <header className="stack" style={{ gap: 8, marginTop: -14 }}>
-        <h1>План дня</h1>
+      <header className="stack" style={{ gap: 8 }}>
         <div className="row between wrap">
           <span className="small muted">{formatDayRu(day)}</span>
           <div className="seg-switch" role="tablist" aria-label="День">

@@ -1,4 +1,4 @@
-import { ArrowLeft } from 'lucide-react'
+
 import { ARC_START, ARC_WEEKS, FINAL_MEASURE_FROM, STATS, booksFinishedInArc, gameDayOf, levelOf, parseHM, questStreak } from '../engine'
 import type { Measurements } from '../engine'
 import { useStore } from '../store/store'
@@ -34,9 +34,6 @@ export function Finale() {
   if (!open) {
     return (
       <div className="stack-lg">
-        <a className="back" href="#/today">
-          <ArrowLeft size={18} /> Сегодня
-        </a>
         <div className="empty">Финал откроется 22 февраля, в последнюю неделю арки.</div>
       </div>
     )
@@ -44,15 +41,7 @@ export function Finale() {
 
   return (
     <div className="stack-lg">
-      <div>
-        <a className="back" href="#/today">
-          <ArrowLeft size={18} /> Сегодня
-        </a>
-        <span className="chapter-name">23 ноября → 28 февраля</span>
-        <div className="big-title" style={{ marginTop: 6 }}>
-          Финал арки
-        </div>
-      </div>
+      <p className="small muted page-sub">23 ноября → 28 февраля</p>
 
       <div className="grid-2" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
         {(

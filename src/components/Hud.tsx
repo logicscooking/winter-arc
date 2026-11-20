@@ -1,8 +1,7 @@
-import { X } from 'lucide-react'
 import { ARC_DAYS, ARC_START, CHAPTERS, addDays, arcDayNumber, bossOf, chapterOf, diffDays, levelOf, plural, weekOf } from '../engine'
 import type { GameState } from '../engine'
 import { useStore } from '../store/store'
-import { Bar, HpBar, useHint } from './ui'
+import { Banner, useHint } from './ui'
 import { BossSprite, PixelAvatar, Px } from '../pixel/Pixel'
 import { useWornOutfit } from '../pixel/useHero'
 
@@ -20,7 +19,7 @@ export function NewYearChip({ today }: { today: string }) {
   )
 }
 
-export function Hud({ game }: { game: GameState }) {
+export function Hud({ game, mainsDone, mainsTotal }: { game: GameState; mainsDone: number; mainsTotal: number }) {
   const profile = useStore((s) => s.data.profile)!
   const outfit = useWornOutfit()
   const warmup = game.today < ARC_START
@@ -29,72 +28,74 @@ export function Hud({ game }: { game: GameState }) {
   const lvl = levelOf(game.xp)
   const toArc = diffDays(game.today, ARC_START)
   const [hpHint, dismissHp] = useHint('hp')
+  const xpPct = Math.round(lvl.progress * 100)
+  const mainPct = mainsTotal ? Math.round((mainsDone / mainsTotal) * 100) : 0
   return (
     <header className="hud">
-      <div className="today-head">
-        <div>
-          <div className="chapter-name">{warmup ? 'Разминка перед аркой' : ch.id === 0 ? `Пролог · неделя ${weekOf(game.today)}` : `Глава ${ch.roman}. ${ch.name}`}</div>
-          {warmup ? (
-            <div className="day-counter" aria-label={`До старта арки ${toArc} ${plural(toArc, 'день', 'дня', 'дней')}`}>
-              {toArc}
-              <small>{plural(toArc, 'день', 'дня', 'дней')} до старта</small>
-            </div>
-          ) : (
-            <div className="day-counter" aria-label={`День ${day} из ${ARC_DAYS}`}>
-              День {day}
-              <small>/{ARC_DAYS}</small>
-            </div>
-          )}
-          <NewYearChip today={game.today} />
-        </div>
+      <div className="day-line">
+        <span className="chapter-name">{warmup ? 'Разминка' : ch.id === 0 ? `Пролог · неделя ${weekOf(game.today)}` : `Глава ${ch.roman}. ${ch.name}`}</span>
+        {warmup ? (
+          <span className="day-counter" aria-label={`До старта арки ${toArc} ${plural(toArc, 'день', 'дня', 'дней')}`}>
+            {toArc}
+            <small>{plural(toArc, 'день', 'дня', 'дней')} до старта</small>
+          </span>
+        ) : (
+          <span className="day-counter" aria-label={`День ${day} из ${ARC_DAYS}`}>
+            День {day}
+            <small>/{ARC_DAYS}</small>
+          </span>
+        )}
       </div>
-      <a className="profile-card" href="#/hero" aria-label={`${profile.nick}, уровень ${lvl.level}. Открыть персонажа`} style={game.fallen ? { borderColor: 'var(--hp)' } : undefined}>
-        <span className="profile-ava">
-          <PixelAvatar outfit={outfit} size={64} title={`Аватар ${profile.nick}`} />
+      <a className="hero-strip" href="#/hero" aria-label={`${profile.nick}, уровень ${lvl.level}, HP ${game.hp}. Открыть персонажа`} style={game.fallen ? { borderColor: 'var(--hp)' } : undefined}>
+        <span className="hs-left">
+          <span className="hs-name">{profile.nick}</span>
+          <span className="hs-ava">
+            <PixelAvatar outfit={outfit} size={78} title={`Аватар ${profile.nick}`} />
+          </span>
+          <span className={`hp-badge${game.hp <= 30 ? ' low' : ''}`}>
+            <Px name="heart" size={18} />
+            <span className="num">{game.hp}/100</span>
+          </span>
         </span>
-        <span className="meters">
-          <span className="lvl-line">
-            <b style={{ fontWeight: 900, fontSize: '1.05rem' }}>{profile.nick}</b>
-            <span className="lvl-badge">УР {lvl.level}</span>
+        <span className="hs-right">
+          <span className="hs-lvl">
+            <span>Ур. {lvl.level}</span>
+            <Px name="shield" size={22} />
+            <span className="grow" />
+            <span className="hs-next">→ Ур. {lvl.level + 1}</span>
+            <Px name="shield" size={22} className="dim" />
           </span>
-          <span className="meter">
-            <Px name="heart" size={20} />
-            <HpBar hp={game.hp} />
-            <span className="num hp-v">{game.hp}/100</span>
-          </span>
-          <span className="meter">
-            <Px name="star" size={20} />
-            <Bar value={lvl.progress} label="Опыт до следующего уровня" />
+          <span className="hs-k">
+            <Px name="star" size={16} />
             <span className="num">
-              {lvl.into}/{lvl.span}
+              XP: {lvl.into}/{lvl.span}
             </span>
+          </span>
+          <span className="fat-row">
+            <span className="fat-bar xp" role="progressbar" aria-label="Опыт до следующего уровня" aria-valuemin={0} aria-valuemax={100} aria-valuenow={xpPct}>
+              <i style={{ width: `${Math.max(xpPct, 4)}%` }} />
+            </span>
+            <span className="num">{xpPct}%</span>
+          </span>
+          <span className="hs-k">
+            <Px name="quests" size={16} />
+            <span className="num">
+              Главные: {mainsDone}/{mainsTotal}
+            </span>
+          </span>
+          <span className="fat-row">
+            <span className="fat-bar gold" role="progressbar" aria-label="Главные квесты сегодня" aria-valuemin={0} aria-valuemax={100} aria-valuenow={mainPct}>
+              <i style={{ width: `${mainPct ? Math.max(mainPct, 4) : 0}%` }} />
+            </span>
+            <span className="num">{mainPct}%</span>
           </span>
         </span>
       </a>
-      <nav className="quickbar" aria-label="Инструменты дня">
-        <a className="quick" href="#/destiny">
-          <Px name="dice" size={26} />
-          <span>Судьба</span>
-        </a>
-        <a className="quick" href="#/plan">
-          <Px name="dial" size={26} />
-          <span>План</span>
-        </a>
-        <a className="quick" href="#/shop" aria-label={`Магазин, осколков: ${game.shards}`}>
-          <Px name="shard" size={24} />
-          <span className="num">{game.shards}</span>
-          <span className="wide-only">Магазин</span>
-        </a>
-      </nav>
+      <NewYearChip today={game.today} />
       {hpHint && (
-        <p className="hud-hint">
-          <span className="grow">
-            <b>HP</b> — твоя жизнь в арке, падает за пропуски{warmup ? ' (в разминке не тратится)' : ''}. <b style={{ color: 'var(--frost)' }}>❄</b> осколки — валюта магазина наград.
-          </span>
-          <button className="icon-btn" onClick={dismissHp} aria-label="Скрыть подсказку">
-            <X size={16} />
-          </button>
-        </p>
+        <Banner icon="heart" title="HP — твоя жизнь в арке" art={['heart', 'shard']} onClose={dismissHp}>
+          Падает за пропуски{warmup ? ' (в разминке не тратится)' : ''}. Осколки ❄ — валюта магазина наград.
+        </Banner>
       )}
       {!warmup && <ArcStrip game={game} />}
     </header>

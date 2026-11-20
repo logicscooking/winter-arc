@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Check, ChevronRight, Crosshair, Plus } from 'lucide-react'
+import { Check, ChevronRight, Crosshair, Plus, X } from 'lucide-react'
 import {
   CHEST,
   GOAL_META,
   MAX_ACTIVE_SKILLS,
+  STATS,
   XP,
   activeSkills,
   chestsFor,
@@ -35,17 +36,32 @@ export function Deal() {
   const later = (data.skills ?? []).filter((s) => s.status === 'later')
   const frozen = frozenDays(game)
   const theme = themeOf(data, chapterOf(today))
+  const [filter, setFilter] = useState<'all' | 'skills' | 'deal'>('all')
 
   return (
     <div className="stack-lg">
-      <header className="stack" style={{ gap: 6 }}>
-        <h1>Путь</h1>
-        <p className="muted">Квесты держат уровень. Навыки растут: практика → обратная связь → ступень.</p>
-      </header>
+      <p className="small muted page-sub">Квесты держат уровень. Навыки растут: практика → обратная связь → ступень.</p>
       <FlowChip />
 
+      <div className="filter-row" role="group" aria-label="Что показать">
+        {(
+          [
+            ['all', 'Все'],
+            ['skills', 'Навыки'],
+            ['deal', 'Дело'],
+          ] as const
+        ).map(([id, label]) => (
+          <button key={id} className="fchip" aria-pressed={filter === id} onClick={() => setFilter(id)}>
+            {label}
+          </button>
+        ))}
+        <a className="fchip add" href="#/skill-new">
+          <Plus size={18} strokeWidth={3} aria-hidden /> Навык
+        </a>
+      </div>
+
       <div className="cols">
-        <div className="stack-lg">
+        <div className="stack-lg" hidden={filter === 'deal'}>
           <section className="stack">
             <div className="section-title">
               <h2>Навыки</h2>
@@ -63,14 +79,6 @@ export function Deal() {
               {active.map((s) => (
                 <SkillCard key={s.id} skill={s} theme={theme === s.id} view={skillView(data, s.id, today, frozen)} xp={game.skillXp[s.id] ?? 0} />
               ))}
-            </div>
-            <div className="grid-2">
-              <a className="btn primary" href="#/skill-new">
-                <Plus size={18} /> Навык
-              </a>
-              <a className="btn ghost" href="#/skill-new?import=1">
-                Импорт
-              </a>
             </div>
             {active.length >= MAX_ACTIVE_SKILLS && <p className="tiny muted">3 в фокусе — максимум. Новый навык встанет в «Позже».</p>}
             {later.length > 0 && (
@@ -95,7 +103,7 @@ export function Deal() {
           <Chests />
         </div>
 
-        <div className="stack-lg">
+        <div className="stack-lg" hidden={filter === 'skills'}>
           <DealOfDay />
           <section>
             <div className="section-title">
@@ -106,6 +114,38 @@ export function Deal() {
           </section>
         </div>
       </div>
+      <DealFab />
+    </div>
+  )
+}
+
+/** «+»: a new skill, a project or an import */
+function DealFab() {
+  const [dial, setDial] = useState(false)
+  const addProject = () => {
+    setDial(false)
+    const el = document.getElementById('add-project')?.querySelector<HTMLInputElement>('input')
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    el?.focus({ preventScroll: true })
+  }
+  return (
+    <div className="fab-wrap">
+      {dial && (
+        <div className="fab-menu" role="menu">
+          <a className="fab-item" role="menuitem" href="#/skill-new">
+            <Px name="fir" size={22} /> Навык
+          </a>
+          <button className="fab-item" role="menuitem" onClick={addProject}>
+            <Px name="hammer" size={22} /> Проект
+          </button>
+          <a className="fab-item" role="menuitem" href="#/skill-new?import=1">
+            <Px name="gift" size={22} /> Импорт дерева
+          </a>
+        </div>
+      )}
+      <button className={`fab round${dial ? ' on' : ''}`} onClick={() => setDial(!dial)} aria-expanded={dial} aria-label={dial ? 'Закрыть меню' : 'Добавить: навык, проект, импорт'}>
+        {dial ? <X size={28} strokeWidth={3} /> : <Plus size={30} strokeWidth={3} />}
+      </button>
     </div>
   )
 }
@@ -114,9 +154,10 @@ function SkillCard({ skill, view, theme, xp }: { skill: Skill; view: ReturnType<
   if (!view) return null
   return (
     <div className="skill-card">
+      <span className="ear">Навык · {STATS.find((x) => x.id === skill.stat)?.name ?? 'Дело'}</span>
       <a className="skill-card-main" href={`#/skill/${skill.id}`}>
         <span className="skill-ico">
-          <Px name={skillSprite(skill)} size={34} />
+          <Px name={skillSprite(skill)} size={42} />
         </span>
         <span className="grow stack" style={{ gap: 5 }}>
           <span className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
@@ -276,7 +317,9 @@ function Projects() {
     <>
       {projects.length === 0 && <div className="empty">Проект — это то, что двигает тебя к деньгам или мечте. Например «Портфолио» или «Канал».</div>}
       <TaskTree scope="deal" roots={projects} pickDay={today} dealId={dealId} locked={false} />
-      <AddTask scope="deal" parentId={null} placeholder="Новый проект" />
+      <div id="add-project">
+        <AddTask scope="deal" parentId={null} placeholder="Новый проект" />
+      </div>
     </>
   )
 }

@@ -54,8 +54,7 @@ export function Charts() {
   return (
     <div className="stack-lg">
       <header className="stack" style={{ gap: 12 }}>
-        <div className="row between wrap">
-          <h1>Графики</h1>
+        <div className="row wrap" style={{ justifyContent: 'center' }}>
           <div className="seg-switch" role="group" aria-label="Период">
             <button aria-pressed={range === 'week'} onClick={() => setRange('week')}>
               7 дней

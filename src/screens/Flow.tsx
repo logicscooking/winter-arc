@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Check, Plus } from 'lucide-react'
+import { Check, Plus } from 'lucide-react'
 import { FLOW, PRACTICE_LIMIT, activeSkills, canStartFlow, checkedOn, flowEnd, gameDayOf, goalsOf, liveFlow, practicesToday, flowWindows } from '../engine'
 import type { FlowSession } from '../engine'
 import { useStore } from '../store/store'
@@ -33,9 +33,6 @@ export function Flow() {
   const block = canStartFlow(data, now)
   return (
     <div className="stack-lg">
-      <a className="back" href="#/deal">
-        <ArrowLeft size={18} /> Путь
-      </a>
       {summary && (
         <section className="panel glow stack flow-summary">
           <div className="row" style={{ gap: 10 }}>
@@ -56,10 +53,7 @@ export function Flow() {
         </section>
       )}
 
-      <header className="stack" style={{ gap: 6 }}>
-        <h1>Поток</h1>
-        <p className="muted">Таймер глубокой работы. Всё, что закроешь внутри, даёт ×2 XP.</p>
-      </header>
+      <p className="small muted page-sub">Таймер глубокой работы. Всё, что закроешь внутри, даёт ×2 XP.</p>
       <div className="flow-rules">
         <span>
           <b className="num">{FLOW.maxMin}</b> мин максимум

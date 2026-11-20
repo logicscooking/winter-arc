@@ -21,6 +21,7 @@ import { WeekReview } from './screens/WeekReview'
 import { Finale } from './screens/Finale'
 import { Party as PartyScreen } from './screens/Party'
 import { NudgeBanner } from './components/NudgeBanner'
+import { RouteTopBar } from './components/TopBar'
 import { useSocial } from './cloud/state'
 import { bootCloud } from './cloud/boot'
 import { MissedDays } from './flows/MissedDays'
@@ -199,12 +200,15 @@ export default function App() {
           {data.profile.nick}
         </a>
       </nav>
-      <main className="page">{screen}</main>
+      <main className="page">
+        <RouteTopBar top={top} sub={route.parts[1]} query={route.query} />
+        {screen}
+      </main>
       <nav className="tabbar" aria-label="Разделы">
         {NAV.filter((n) => n.tab).map((n) => (
           <a key={n.path} href={`#${n.path}`} className="tab" aria-current={currentTab === n.path ? 'page' : undefined} onClick={() => current === n.path && window.scrollTo({ top: 0, behavior: 'smooth' })}>
-            <Px name={n.icon} size={26} />
-            {n.label}
+            <Px name={n.icon} size={28} />
+            <span className="tab-label">{n.label}</span>
             {n.path === '/party' && nudgeCount > 0 && <span className="badge" aria-label={`${nudgeCount} новых`}>{nudgeCount}</span>}
           </a>
         ))}

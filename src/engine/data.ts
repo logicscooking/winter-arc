@@ -1,6 +1,7 @@
 import { DEFAULT_QUESTS, REELS_LIMIT } from './quests'
 import { sanitizeBlock } from './plan'
-import type { AppData, DayLog, TimeBlock } from './types'
+import { sanitizeDrop } from './plinko'
+import type { AppData, DayLog, PlinkoDrop, TimeBlock } from './types'
 
 export const SCHEMA_VERSION = 1
 export const STORAGE_KEY = 'winter-arc-v1'
@@ -65,7 +66,7 @@ export function normalizeData(raw: unknown): AppData {
 function migrateV03(d: AppData): AppData {
   let days = d.days
   for (const [day, log] of Object.entries(d.days ?? {})) {
-    if (!log || (log.blocks === undefined && log.destiny === undefined)) continue
+    if (!log || (log.blocks === undefined && log.destiny === undefined && log.plinko === undefined)) continue
     const next: DayLog = { ...log }
     if (log.blocks !== undefined) {
       const clean = Array.isArray(log.blocks) ? log.blocks.map(sanitizeBlock).filter((b): b is TimeBlock => !!b) : []
@@ -74,6 +75,15 @@ function migrateV03(d: AppData): AppData {
     }
     const z = log.destiny
     if (z !== undefined && !(z && (z.ref === 'quest' || z.ref === 'task') && typeof z.id === 'string' && Number.isFinite(z.startedAt) && Number.isFinite(z.minutes))) delete next.destiny
+    if (log.plinko !== undefined) {
+      const drops: Record<string, PlinkoDrop> = {}
+      if (log.plinko && typeof log.plinko === 'object') for (const raw of Object.values(log.plinko)) {
+        const dr = sanitizeDrop(raw)
+        if (dr) drops[String(dr.n)] = dr
+      }
+      if (Object.keys(drops).length) next.plinko = drops
+      else delete next.plinko
+    }
     if (days === d.days) days = { ...d.days }
     days[day] = next
   }

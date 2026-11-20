@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowLeft } from 'lucide-react'
+
 import { GEAR, OUTFIT_SLOTS, canBuy, gearPurchaseId, levelOf, ownsGear, wornOutfit } from '../engine'
 import type { GearItem, Outfit, OutfitSlot } from '../engine'
 import { useStore } from '../store/store'
@@ -45,16 +45,6 @@ export function AvatarScreen() {
 
   return (
     <div className="stack-lg">
-      <a className="back" href="#/hero">
-        <ArrowLeft size={18} /> Персонаж
-      </a>
-      <header className="row between" style={{ marginTop: -14 }}>
-        <h1>Образ</h1>
-        <a className="quick" href="#/shop" aria-label={`Осколки: ${game.shards}`}>
-          <Px name="shard" size={22} />
-          <span className="num">{game.shards}</span>
-        </a>
-      </header>
 
       <div className="cols">
         <section className="panel dress-stage" aria-label="Предпросмотр">

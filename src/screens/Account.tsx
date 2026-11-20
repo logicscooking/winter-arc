@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { ArrowLeft, ChevronRight, CloudOff, History, LogIn, RefreshCw } from 'lucide-react'
+import { ChevronRight, CloudOff, History, LogIn, RefreshCw } from 'lucide-react'
 import { SHARE_KEYS, SHARE_LABEL, shareSettings } from '../engine'
 import { useStore } from '../store/store'
 import { useUi } from '../store/ui'
@@ -11,17 +11,12 @@ import { Field } from '../components/ui'
 import { HeroAva } from '../components/HeroAva'
 import { timeAgo } from './Party'
 
+/** the title lives in the top bar; `title` stays for the accessible region name */
 function Sub({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="stack-lg">
-      <div>
-        <a className="back" href="#/more">
-          <ArrowLeft size={18} /> Ещё
-        </a>
-        <h1>{title}</h1>
-      </div>
+    <section className="stack-lg" aria-label={title}>
       {children}
-    </div>
+    </section>
   )
 }
 

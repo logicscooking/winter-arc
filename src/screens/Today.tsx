@@ -1,5 +1,5 @@
-import { useEffect, type ReactNode } from 'react'
-import { AlertTriangle, BookOpen, Check, ChevronRight, Hammer, ListChecks, Ruler, Snowflake, Waves, type LucideIcon } from 'lucide-react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { AlertTriangle, BookOpen, Check, ChevronRight, Hammer, ListChecks, Plus, Ruler, Snowflake, Waves, X, type LucideIcon } from 'lucide-react'
 import { Px, questSprite } from '../pixel/Pixel'
 import type { SpriteName } from '../pixel/sprites'
 import {
@@ -192,11 +192,20 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
     )
   }
 
+  const [filter, setFilter] = useState<'all' | 'main' | 'side'>('all')
+  const [dial, setDial] = useState(false)
+  const addDaily = () => {
+    setDial(false)
+    const el = document.getElementById('add-daily')?.querySelector<HTMLInputElement>('input')
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    el?.focus({ preventScroll: true })
+  }
+
   const bulbs = plan.map((p) => ({ id: p.id, main: p.role === 'main', on: isCompleted(marks[p.id].status) }))
 
   return (
     <div>
-      <Hud game={game} />
+      <Hud game={game} mainsDone={doneMain} mainsTotal={mains.length} />
       <div className="cols">
         <div className="stack-lg">
           {game.fallen && (
@@ -258,26 +267,48 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
 
           <Garland bulbs={bulbs} label={warmup ? 'Гирлянда разминки' : 'Гирлянда дня'} />
 
-          <Hint id="quests">
-            Нажми квадрат справа — квест выполнен. Нажми на название — мини-версия на 2 минуты или пропуск. Ошибся — внизу будет «Отменить».
+          <div className="filter-row" role="group" aria-label="Какие квесты показать">
+            {(
+              [
+                ['all', 'Все'],
+                ['main', 'Главные'],
+                ['side', 'Побочные'],
+              ] as const
+            ).map(([id, label]) => (
+              <button key={id} className="fchip" aria-pressed={filter === id} onClick={() => setFilter(id)}>
+                {label}
+              </button>
+            ))}
+            <button className="fchip add" onClick={addDaily}>
+              <Plus size={18} strokeWidth={3} aria-hidden /> Задача
+            </button>
+          </div>
+
+          <Hint id="quests" title="Как отмечать квесты" art={['quests', 'star']}>
+            Квадрат справа — выполнено. Тап по названию — мини-версия или пропуск. Ошибся — внизу будет «Отменить».
           </Hint>
 
-          <section>
-            <div className="section-title">
-              <h2>Главные квесты</h2>
-              <span className="num small muted">
-                {doneMain}/{mains.length}
-              </span>
-            </div>
-            <div className="quests">{mains.map(renderQuest)}</div>
-          </section>
-          <section>
-            <div className="section-title">
-              <h2>Побочные</h2>
-              <span className="small muted">только XP</span>
-            </div>
-            <div className="quests">{sides.map(renderQuest)}</div>
-          </section>
+          {filter !== 'side' && (
+            <section>
+              <div className="section-title">
+                <h2>
+                  <Px name="shield" size={24} /> Главные квесты <span className="count-pill num">{doneMain}/{mains.length}</span>
+                </h2>
+              </div>
+              <div className="quests">{mains.map(renderQuest)}</div>
+            </section>
+          )}
+          {filter !== 'main' && sides.length > 0 && (
+            <section>
+              <div className="section-title">
+                <h2>
+                  <Px name="star" size={24} /> Побочные <span className="count-pill num">{sides.length}</span>
+                </h2>
+                <span className="small muted">только XP</span>
+              </div>
+              <div className="quests">{sides.map(renderQuest)}</div>
+            </section>
+          )}
         </div>
 
         <div className="stack-lg" style={{ marginTop: 4 }}>
@@ -319,16 +350,28 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
               <span className="small muted">подзадача +3 XP</span>
             </div>
             {dailyRoots.length > 0 && <TaskTree scope="daily" roots={dailyRoots} />}
-            <AddTask scope="daily" parentId={null} placeholder="Что сделать сегодня" />
+            <div id="add-daily">
+              <AddTask scope="daily" parentId={null} placeholder="Что сделать сегодня" />
+            </div>
           </section>
         </div>
       </div>
       <div className="fab-wrap">
-        <button className="fab secondary" onClick={() => open({ kind: 'craving' })}>
-          <Waves size={20} aria-hidden /> Тяга
-        </button>
-        <button className="fab" onClick={() => open({ kind: 'slip' })}>
-          Слился
+        {dial && (
+          <div className="fab-menu" role="menu">
+            <button className="fab-item" role="menuitem" onClick={addDaily}>
+              <Px name="quests" size={22} /> Задача дня
+            </button>
+            <button className="fab-item" role="menuitem" onClick={() => (setDial(false), open({ kind: 'craving' }))}>
+              <Waves size={20} aria-hidden /> Тяга
+            </button>
+            <button className="fab-item hp" role="menuitem" onClick={() => (setDial(false), open({ kind: 'slip' }))}>
+              <Px name="flame" size={22} /> Слился
+            </button>
+          </div>
+        )}
+        <button className={`fab round${dial ? ' on' : ''}`} onClick={() => setDial(!dial)} aria-expanded={dial} aria-label={dial ? 'Закрыть меню' : 'Добавить: задача, тяга, срыв'}>
+          {dial ? <X size={28} strokeWidth={3} /> : <Plus size={30} strokeWidth={3} />}
         </button>
       </div>
     </div>

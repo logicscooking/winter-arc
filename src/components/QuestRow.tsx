@@ -116,23 +116,24 @@ export function QuestRow({ plan, quest, status, auto, day, game, locked, wakeTar
 
   return (
     <div className={cls}>
+      <span className="ear">{plan.role === 'main' ? 'Главный' : 'Побочный'}</span>
       <span className="q-icon">
-        <Px name={questSprite(quest)} size={32} />
+        <Px name={questSprite(quest)} size={44} />
       </span>
       <button className="quest-body" onClick={() => !locked && setMenu(!menu)} disabled={locked} aria-expanded={menu} aria-label={`${quest.title}: варианты — мини-версия, пропуск`} style={{ cursor: locked ? 'default' : 'pointer' }}>
         <div className="quest-title">{quest.title}</div>
         <div className="quest-sub">
           <span className="xp-chip" title="XP за выполнение">
-            <Px name={STAT_SPRITE[quest.stat]} size={14} />+{doneXp}
+            <Px name={STAT_SPRITE[quest.stat]} size={18} />+{doneXp} XP
           </span>
           {plan.role === 'main' && (
             <span className="ice-chip" title="Осколки за выполнение">
-              <Px name="shard" size={14} />+{SHARDS.main}
+              <Px name="shard" size={18} />+{SHARDS.main}
             </span>
           )}
           {streak.last7 > 0 && (
             <span className="streak-chip" title={`Серия: ${streak.current}, лучшая ${streak.best}`} aria-label={`${streak.last7} из последних 7 дней`}>
-              <Px name="flame" size={14} />
+              <Px name="flame" size={18} />
               {streak.last7}/7
             </span>
           )}
@@ -150,9 +151,9 @@ export function QuestRow({ plan, quest, status, auto, day, game, locked, wakeTar
         disabled={locked && !status}
       >
         <span>
-          {status === 'done' && <Check size={22} strokeWidth={3.5} />}
-          {status === 'mini' && <Minus size={22} strokeWidth={3.5} />}
-          {status === 'skip' && <X size={20} strokeWidth={3.5} />}
+          {status === 'done' && <Check size={30} strokeWidth={4} />}
+          {status === 'mini' && <Minus size={30} strokeWidth={4} />}
+          {status === 'skip' && <X size={26} strokeWidth={4} />}
         </span>
       </button>
       {entry && (

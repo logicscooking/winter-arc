@@ -1,268 +1,230 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft } from 'lucide-react'
-import { SHARDS, gameDayOf, questReward, planFor, statusFromValue, taskXp } from '../engine'
-import type { MarkStatus } from '../engine'
+import { Volume2, VolumeX } from 'lucide-react'
+
+import {
+  PLINKO_FREE,
+  PLINKO_MAX,
+  PLINKO_RISKS,
+  PLINKO_RISK_IDS,
+  PLINKO_TIERS,
+  ballsFor,
+  ballsLeft,
+  doneInTime,
+  dropDeadline,
+  dropRisk,
+  dropStreakMult,
+  dropTier,
+  gameDayOf,
+  nextStreak,
+  nextThrow,
+  plinkoDrops,
+  plinkoReward,
+  plinkoSeed,
+  plinkoTaskById,
+  riskOf,
+  rollPlinko,
+  statName,
+  streakMult,
+} from '../engine'
+import type { PlinkoDrop } from '../engine'
 import { useStore } from '../store/store'
 import { nowWithOffset, reward, useFx, useGame, useNow } from '../store/hooks'
-import { useUi } from '../store/ui'
-import { Ring, formatMMSS } from '../components/ui'
+import { PlinkoBoard, PlinkoCard, formatLeft, type PlinkoHandle } from '../components/Plinko'
+import { buzz, sfxDone, unlockAudio } from '../components/plinkoFx'
 import { Px } from '../pixel/Pixel'
-import { dayItems, type DayItem } from './dayItems'
+import { SPRITES, type SpriteName } from '../pixel/sprites'
 
-const MINUTES = [15, 25, 45]
+const iconOf = (id: string | undefined): SpriteName => (id && id in SPRITES ? (id as SpriteName) : 'dice')
+const fmtMult = (m: number) => `×${String(m).replace('.', ',')}`
 
-/** «Судьба дня»: an ornate frame spins over today's open quests and tasks, picks one, starts a focus timer */
+/**
+ * «Судьба дня»: Плинко. The ball picks a small useful task; centre — easy, edges — hard and fat in XP.
+ * The reward comes only after «Сделал»; a task closed in time earns another ball and grows the streak.
+ */
 export function Destiny() {
   const data = useStore((s) => s.data)
-  const setDestiny = useStore((s) => s.setDestiny)
-  const setMark = useStore((s) => s.setMark)
-  const setValue = useStore((s) => s.setValue)
-  const toggleTask = useStore((s) => s.toggleTask)
-  const say = useUi((s) => s.say)
+  const addPlinkoDrop = useStore((s) => s.addPlinkoDrop)
+  const setPlinkoDone = useStore((s) => s.setPlinkoDone)
+  const setPlinkoLater = useStore((s) => s.setPlinkoLater)
+  const setSettings = useStore((s) => s.setSettings)
   const game = useGame()
   const now = useNow()
   const today = gameDayOf(now)
-  const locked = !!data.days[today]?.confession
-  const all = dayItems(data, today, { handOnly: true })
-  const open = all.filter((i) => !i.done).slice(0, 9)
-  const z = data.days[today]?.destiny
-  const zItem = z ? all.find((i) => i.ref === z.ref && i.id === z.id) : undefined
-  const won = !!game.days[today]?.destinyWon
+  const log = data.days[today]
+  const locked = !!log?.confession
+  const allMains = !!game.days[today]?.perfect
+  const drops = plinkoDrops(log)
+  const next = nextThrow(log, allMains)
+  const left = ballsLeft(log, allMains)
+  const budget = ballsFor(log, allMains)
+  const risk = riskOf(data.settings.plinkoRisk)
+  const sound = data.settings.sound ?? true
 
-  const [lit, setLit] = useState<number | null>(null)
-  const [picked, setPicked] = useState<DayItem | null>(null)
-  const [spinning, setSpinning] = useState(false)
-  const [minutes, setMinutes] = useState(25)
-  const [draft, setDraft] = useState('')
-  const timers = useRef<ReturnType<typeof setTimeout>[]>([])
+  const board = useRef<PlinkoHandle>(null)
+  const [falling, setFalling] = useState<number | null>(null)
+  const [open, setOpen] = useState<number | null>(null)
   const [, tick] = useState(0)
 
-  const end = z ? z.startedAt + z.minutes * 60_000 : 0
   const nowMs = nowWithOffset().getTime()
-  const running = !!z && !!zItem && !zItem.done && nowMs < end
-  const expired = !!z && !!zItem && !zItem.done && nowMs >= end
-
+  const ticking = drops.some((d) => d.doneAt === undefined && nowMs < dropDeadline(d))
   useEffect(() => {
-    if (!running) return
+    if (!ticking) return
     const t = setInterval(() => tick((n) => n + 1), 1000)
     return () => clearInterval(t)
-  }, [running])
-  useEffect(() => () => timers.current.forEach(clearTimeout), [])
+  }, [ticking])
 
-  const spin = () => {
-    if (open.length === 0 || spinning) return
-    setPicked(null)
-    const target = Math.floor(Math.random() * open.length)
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (reduce || open.length === 1) {
-      setLit(target)
-      setPicked(open[target])
-      return
-    }
-    setSpinning(true)
-    const steps = open.length * 3 + target
-    let t = 0
-    for (let i = 0; i <= steps; i++) {
-      const p = i / steps
-      t += 45 + 260 * p * p * p
-      timers.current.push(
-        setTimeout(() => {
-          setLit(i % open.length)
-          if (i === steps) {
-            setSpinning(false)
-            setPicked(open[target])
-          }
-        }, t),
-      )
-    }
+  const streakNow = streakMult(nextStreak(data.days, nowMs))
+  const last = drops[drops.length - 1]
+  const visible = drops.filter((d) => d.n !== falling)
+  const card = open !== null && falling === null ? drops.find((d) => d.n === open) : undefined
+
+  const throwBall = async () => {
+    if (locked || falling !== null || next === null) return
+    if (sound) unlockAudio()
+    const when = nowWithOffset()
+    const r = rollPlinko(today, next, plinkoSeed(data), when, risk)
+    addPlinkoDrop(today, { n: next, at: when.getTime(), slot: r.slot, taskId: r.task.id, risk })
+    setOpen(null)
+    setFalling(next)
+    buzz(8)
+    await board.current?.drop(r.path)
+    setFalling(null)
+    setOpen(next)
   }
 
-  const start = () => {
-    if (!picked) return
-    setDestiny(today, { ref: picked.ref, id: picked.id, startedAt: nowWithOffset().getTime(), minutes })
-    setPicked(null)
-    setLit(null)
-  }
-
-  const finish = (el: Element) => {
-    if (!z || !zItem) return
-    const n = nowWithOffset()
-    const inTime = n.getTime() <= end
-    if (zItem.ref === 'quest') {
-      const p = planFor(data, today).find((x) => x.id === zItem.id)
-      if (!p) return
-      let status: MarkStatus | undefined = 'done'
-      if (zItem.kind === 'reading' || zItem.kind === 'number') {
-        const v = Number(draft)
-        const q = data.quests.find((x) => x.id === zItem.id)
-        if (!q || !(v > 0)) return say(`Впиши, сколько ${zItem.unit ?? ''}`.trim())
-        setValue(today, zItem.id, v, n)
-        status = statusFromValue(q, v)
-      } else setMark(today, zItem.id, 'done', n)
-      const r = questReward(today, p, status)
-      reward(el, { xp: r.xp })
-      useFx.getState().showPop({ title: zItem.title, stat: zItem.stat, fromXp: game.xpByStat[zItem.stat], xp: r.xp, shards: r.shards, crit: r.crit, destiny: inTime ? SHARDS.destiny : 0 })
-    } else {
-      const t = data.tasks.find((x) => x.id === zItem.id)
-      if (!t) return
-      toggleTask(t.id, n)
-      const xp = taskXp(data.tasks, t)
-      reward(el, { xp })
-      useFx.getState().showPop({ title: t.title, stat: t.stat, fromXp: game.xpByStat[t.stat], xp, shards: 0, crit: false, destiny: inTime ? SHARDS.destiny : 0 })
+  const finish = (drop: PlinkoDrop, el: HTMLElement) => {
+    const task = plinkoTaskById(drop.taskId)
+    const at = nowWithOffset().getTime()
+    const r = plinkoReward(drop, at, dropStreakMult(data.days, today, drop.n))
+    setPlinkoDone(today, drop.n, at)
+    if (sound) {
+      unlockAudio()
+      sfxDone()
     }
+    buzz([12, 30, 18])
+    reward(el, { xp: r.xp, shards: r.shards })
+    if (task) useFx.getState().showPop({ title: task.title, stat: task.stat, fromXp: game.xpByStat[task.stat], xp: r.xp, shards: r.shards, crit: false })
   }
 
-  const cells: (DayItem | null)[] = Array.from({ length: 9 }, (_, i) => open[i] ?? null)
-  const litId = running || expired ? `${z!.ref}:${z!.id}` : null
+  const later = (drop: PlinkoDrop) => {
+    if (drop.doneAt === undefined && nowMs < dropDeadline(drop)) setPlinkoLater(today, drop.n, nowWithOffset().getTime())
+    setOpen(null)
+  }
+
+  // how to get another ball when none are left
+  const pendingInTime = drops.some((d) => d.doneAt === undefined && d.laterAt === undefined && nowMs < dropDeadline(d))
+  const moreHint =
+    budget >= PLINKO_MAX
+      ? `Сегодня выбраны все ${PLINKO_MAX} шаров. Завтра — снова ${PLINKO_FREE}.`
+      : pendingInTime
+        ? 'Закрой выпавшее задание до конца таймера — получишь ещё шар.'
+        : !allMains
+          ? 'Ещё шар — за все главные квесты дня. Или приходи завтра.'
+          : `Шары на сегодня кончились. Завтра — снова ${PLINKO_FREE}.`
 
   return (
     <div className="stack-lg">
-      <a className="back" href="#/today">
-        <ArrowLeft size={18} /> Сегодня
-      </a>
-      <header className="row between" style={{ marginTop: -14 }}>
-        <div>
-          <h1>Судьба дня</h1>
-          <p className="small muted">Не знаешь, с чего начать? Пусть выберет рамка.</p>
-        </div>
-        <a className="quick" href="#/shop" aria-label={`Осколки: ${game.shards}`}>
-          <Px name="shard" size={22} />
-          <span className="num">{game.shards}</span>
-        </a>
-      </header>
+      <p className="small muted page-sub">Не знаешь, чем заняться? Шар выберет маленькое полезное дело. Сделал — получил ещё шар.</p>
 
-      <div className="cols">
-        <div className="destiny-frame">
-          <span className="gem top">
-            <Px name="shard" size={34} />
+      <div className="pk">
+        <div className="pk-hud">
+          <span className="pk-balls num" aria-label={`Шаров: ${left}`}>
+            <span aria-hidden>🎱</span> ×{left}
           </span>
-          <span className="gem bottom">
-            <Px name="snowflake" size={30} />
-          </span>
-          <span className="gem left">
-            <Px name="shard" size={22} />
-          </span>
-          <span className="gem right">
-            <Px name="shard" size={22} />
-          </span>
-          <div className="destiny-grid" aria-live="polite">
-            {cells.map((c, i) => {
-              const isLit = c && (lit === i || litId === `${c.ref}:${c.id}`)
-              return (
-                <div key={c ? `${c.ref}:${c.id}` : `e${i}`} className={`d-cell ${c ? '' : 'empty-cell'} ${isLit ? 'lit' : ''} ${isLit && picked ? 'won' : ''}`}>
-                  {c ? (
-                    <>
-                      <Px name={c.sprite} size={34} />
-                      <span>{c.title}</span>
-                    </>
-                  ) : (
-                    <Px name="snowflake" size={22} />
-                  )}
-                </div>
-              )
-            })}
-          </div>
+          {streakNow > 1 && <span className="pk-streak num">серия {fmtMult(streakNow)}</span>}
+          <span className="grow" />
+          <button className="pk-mute" aria-pressed={sound} aria-label={sound ? 'Выключить звук' : 'Включить звук'} onClick={() => setSettings({ sound: !sound })}>
+            {sound ? <Volume2 size={18} /> : <VolumeX size={18} />}
+          </button>
         </div>
 
-        <section className="stack">
+        <div className="pk-risk" role="radiogroup" aria-label="Риск">
+          {PLINKO_RISK_IDS.map((id) => (
+            <button key={id} role="radio" aria-checked={risk === id} className={risk === id ? 'on' : ''} disabled={falling !== null} onClick={() => setSettings({ plinkoRisk: id })}>
+              {PLINKO_RISKS[id].label}
+            </button>
+          ))}
+        </div>
+
+        <p className="pk-rule">
+          <b className="c1">Центр</b> — лёгкие, <b className="c5">края</b> — тяжёлые и жирные по XP
+        </p>
+        <PlinkoBoard ref={board} risk={risk} sound={sound} restSlot={last && dropRisk(last) === risk ? last.slot : null} />
+        <div className="pk-actions">
           {locked ? (
-            <div className="empty">День закрыт исповедью. Судьба ждёт завтра.</div>
-          ) : won ? (
-            <div className="destiny-result" style={{ borderColor: 'var(--pine-line)' }}>
-              <Px name="trophy" size={40} />
-              <div>
-                <small>Судьба исполнена</small>
-                <h3>{zItem?.title ?? 'Квест'}</h3>
-                <p className="small muted">Успел до конца таймера: +{SHARDS.destiny} ❄. Судьба выпадает раз в день — завтра рамка закрутится снова.</p>
-              </div>
-            </div>
-          ) : running ? (
-            <>
-              <div className="destiny-result">
-                <Px name={zItem!.sprite} size={40} />
-                <div>
-                  <small>Твоя судьба</small>
-                  <h3>{zItem!.title}</h3>
-                </div>
-              </div>
-              <Ring progress={(end - nowMs) / (z!.minutes * 60_000)} size={200} stroke={10} color="var(--pine)">
-                <span className="t">{formatMMSS(end - nowMs)}</span>
-              </Ring>
-              {(zItem!.kind === 'reading' || zItem!.kind === 'number') && (
-                <input className="input num" type="number" inputMode="numeric" min={0} placeholder={zItem!.unit} value={draft} onChange={(e) => setDraft(e.target.value.replace(/[^\d]/g, ''))} aria-label={zItem!.unit ?? 'значение'} />
-              )}
-              <div className="stake">
-                <span className="small">Успеешь до нуля</span>
-                <span className="num">
-                  <Px name="shard" size={18} />+{SHARDS.destiny}
-                </span>
-              </div>
-              <button className="btn primary block" onClick={(e) => finish(e.currentTarget)}>
-                Сделал!
-              </button>
-              <button className="btn ghost block" onClick={() => setDestiny(today, null)}>
-                Сдаться и выбрать заново
-              </button>
-            </>
-          ) : picked ? (
-            <>
-              <button className="destiny-result" style={{ textAlign: 'left' }} onClick={start}>
-                <Px name={picked.sprite} size={40} />
-                <div>
-                  <small>Твоя судьба</small>
-                  <h3>{picked.title}</h3>
-                </div>
-              </button>
-              <div className="field">
-                <span>Таймер фокуса</span>
-                <div className="chips" role="radiogroup" aria-label="Минут на таймере">
-                  {MINUTES.map((m) => (
-                    <button key={m} className="chip num" role="radio" aria-checked={minutes === m} aria-pressed={minutes === m} onClick={() => setMinutes(m)}>
-                      {m} мин
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="stake">
-                <span className="small">Успеешь до конца таймера</span>
-                <span className="num">
-                  <Px name="shard" size={18} />+{SHARDS.destiny}
-                </span>
-              </div>
-              <button className="btn primary block" onClick={start}>
-                Принять судьбу
-              </button>
-              <button className="btn ghost block" onClick={spin}>
-                Крутить ещё раз
-              </button>
-            </>
+            <p className="small pk-note">День закрыт исповедью. Шар ждёт завтра.</p>
+          ) : next === null ? (
+            <p className="small pk-note">{moreHint}</p>
           ) : (
-            <>
-              {expired && (
-                <div className="hint" role="note">
-                  <Px name="clock" size={22} />
-                  <div className="grow">Время вышло: «{zItem!.title}» всё ещё можно закрыть на «Сегодня», но без бонуса. Или крути заново.</div>
-                </div>
-              )}
-              {open.length === 0 ? (
-                <div className="empty">
-                  <Px name="snowman" size={48} />
-                  Все ручные квесты и задачи на сегодня закрыты. Добавь задачу дня — и будет что крутить.
-                </div>
-              ) : (
-                <>
-                  <p className="small muted">
-                    В рамке {open.length} {open.length === 1 ? 'дело' : open.length < 5 ? 'дела' : 'дел'}: главные квесты, задачи дня и побочные. Закрой выпавшее до конца таймера — +{SHARDS.destiny} ❄.
-                  </p>
-                  <button className="btn primary block" onClick={spin} disabled={spinning}>
-                    <Px name="dice" size={24} /> {spinning ? 'Крутится…' : 'Крутить'}
-                  </button>
-                </>
-              )}
-            </>
+            <button className="btn primary block pk-throw" onClick={throwBall} disabled={falling !== null}>
+              <Px name="snowflake" size={22} /> {falling !== null ? 'Шар летит…' : 'Бросить шар'}
+            </button>
           )}
-        </section>
+        </div>
       </div>
+
+      {card && (
+        <DropCard
+          key={card.n}
+          drop={card}
+          nowMs={nowMs}
+          streak={dropStreakMult(data.days, today, card.n)}
+          onDone={(el) => finish(card, el)}
+          onLater={() => later(card)}
+        />
+      )}
+
+      {visible.length > 0 && (
+        <section className="stack">
+          <h2 className="pk-h">
+            Задания дня <span className="muted small num">шаров {drops.length}/{budget}</span>
+          </h2>
+          {visible.map((d) => {
+            const task = plinkoTaskById(d.taskId)
+            const tier = dropTier(d)
+            const left = dropDeadline(d) - nowMs
+            const mult = dropStreakMult(data.days, today, d.n)
+            const doneR = d.doneAt !== undefined ? plinkoReward(d, d.doneAt, mult) : undefined
+            return (
+              <button key={d.n} className={`pk-row t${tier} ${doneR ? 'done' : ''} ${open === d.n ? 'on' : ''}`} onClick={() => setOpen(open === d.n ? null : d.n)}>
+                <Px name={iconOf(task?.icon)} size={30} />
+                <span className="grow">
+                  <b>{task?.title ?? 'Задание'}</b>
+                  <small className="muted">
+                    ×{PLINKO_TIERS[tier].mult} · +{Math.round(PLINKO_TIERS[tier].xp * mult)} XP +{PLINKO_TIERS[tier].shards} ❄
+                  </small>
+                </span>
+                <span className="pk-row-state num">
+                  {doneR ? `✓ +${doneR.xp}${doneInTime(d) ? ' 🎱' : ''}` : left > 0 ? formatLeft(left) : 'Время вышло'}
+                </span>
+              </button>
+            )
+          })}
+        </section>
+      )}
     </div>
+  )
+}
+
+function DropCard({ drop, nowMs, streak, onDone, onLater }: { drop: PlinkoDrop; nowMs: number; streak: number; onDone: (el: HTMLElement) => void; onLater: () => void }) {
+  const task = plinkoTaskById(drop.taskId)
+  const tier = dropTier(drop)
+  const r = PLINKO_TIERS[tier]
+  return (
+    <PlinkoCard
+      icon={<Px name={iconOf(task?.icon)} size={40} />}
+      title={task?.title ?? 'Задание'}
+      hint={task?.hint ?? ''}
+      tier={tier}
+      statLabel={task ? statName(task.stat) : ''}
+      xp={Math.round(r.xp * streak)}
+      shards={r.shards}
+      streak={streak}
+      left={dropDeadline(drop) - nowMs}
+      total={r.minutes * 60_000}
+      doneXp={drop.doneAt !== undefined ? plinkoReward(drop, drop.doneAt, streak).xp : undefined}
+      onDone={onDone}
+      onLater={onLater}
+    />
   )
 }

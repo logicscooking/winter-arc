@@ -1,6 +1,8 @@
 import { useEffect, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { Brain, Dumbbell, Hammer, Lightbulb, Shield, X, Zap, type LucideIcon } from 'lucide-react'
+import { Brain, Dumbbell, Hammer, Shield, X, Zap, type LucideIcon } from 'lucide-react'
+import { Px } from '../pixel/Pixel'
+import type { SpriteName } from '../pixel/sprites'
 import type { StatId } from '../engine'
 import { useFx } from '../store/hooks'
 import { useStore } from '../store/store'
@@ -220,17 +222,40 @@ export function useHint(id: string): [boolean, () => void] {
   return [!seen, () => setAck({ hints: [...(hints ?? []), id] })]
 }
 
+/** A hint banner: bold title, a line of text, pixel art on the right and a close cross */
+export function Banner({ title, icon, art, onClose, children, tone }: { title: ReactNode; icon?: SpriteName; art?: SpriteName[]; onClose?: () => void; children?: ReactNode; tone?: 'gold' | 'frost' }) {
+  return (
+    <div className={`banner${tone ? ` ${tone}` : ''}`} role="note">
+      <div className="banner-text">
+        <b className="banner-title">
+          {icon && <Px name={icon} size={20} />}
+          {title}
+        </b>
+        {children && <span className="banner-sub">{children}</span>}
+      </div>
+      {art && art.length > 0 && (
+        <span className="banner-art" aria-hidden>
+          {art.map((a, i) => (
+            <Px key={i} name={a} size={i === 0 ? 44 : 36} />
+          ))}
+        </span>
+      )}
+      {onClose && (
+        <button className="banner-x" onClick={onClose} aria-label="Скрыть">
+          <X size={18} strokeWidth={3} />
+        </button>
+      )}
+    </div>
+  )
+}
+
 /** A light first-run hint, dismissable, shown once */
-export function Hint({ id, children }: { id: string; children: ReactNode }) {
+export function Hint({ id, title = 'Подсказка', art = ['owl'], children }: { id: string; title?: string; art?: SpriteName[]; children: ReactNode }) {
   const [show, dismiss] = useHint(id)
   if (!show) return null
   return (
-    <div className="hint" role="note">
-      <Lightbulb size={18} aria-hidden />
-      <div className="grow">{children}</div>
-      <button className="link-btn" onClick={dismiss}>
-        Понятно
-      </button>
-    </div>
+    <Banner icon="star" title={title} art={art} onClose={dismiss}>
+      {children}
+    </Banner>
   )
 }

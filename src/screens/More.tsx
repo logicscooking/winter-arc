@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactNode } from 'react'
-import { ArrowLeft, BookOpen, Bug, ChartLine, Download, Hand, ListChecks, Ruler, ScrollText, Activity, ChevronRight } from 'lucide-react'
+import { BookOpen, Bug, ChartLine, Download, Hand, ListChecks, Ruler, ScrollText, Activity, ChevronRight } from 'lucide-react'
 import { Px } from '../pixel/Pixel'
 import type { SpriteName } from '../pixel/sprites'
 import { AccountEntry, AccountPage } from './Account'
@@ -48,17 +48,12 @@ const PAGES: { id: string; title: string; hint: string; icon: typeof ListChecks;
   { id: 'debug', title: 'Отладка', hint: 'Сдвиг даты «сегодня»', icon: Bug },
 ]
 
+/** the title lives in the top bar; `title` stays for the accessible region name */
 function Sub({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="stack-lg">
-      <div>
-        <a className="back" href="#/more">
-          <ArrowLeft size={18} /> Ещё
-        </a>
-        <h1>{title}</h1>
-      </div>
+    <section className="stack-lg" aria-label={title}>
       {children}
-    </div>
+    </section>
   )
 }
 
@@ -85,7 +80,6 @@ export function More({ sub }: { sub?: string }) {
   }
   return (
     <div className="stack-lg">
-      <h1>Ещё</h1>
       <div className="stack" style={{ gap: 8 }}>
         {GAME.map((p) => (
           <a key={p.href} className="list-btn" href={p.href}>
@@ -183,6 +177,15 @@ function Appearance() {
           </span>
         </span>
         <button className="switch" role="switch" aria-checked={snow} aria-label="Падающий снег" onClick={() => setSettings({ snow: !snow })} />
+      </div>
+      <div className="switch-row">
+        <span>
+          <span style={{ fontWeight: 700 }}>Звук</span>
+          <span className="tiny muted" style={{ display: 'block' }}>
+            Щелчки и звон в Плинко. Беззвучный режим телефона сайт не видит
+          </span>
+        </span>
+        <button className="switch" role="switch" aria-checked={settings.sound ?? true} aria-label="Звук" onClick={() => setSettings({ sound: !(settings.sound ?? true) })} />
       </div>
     </section>
   )

@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { ArrowLeft, Check, Crosshair, Pencil, Plus, Share2, Trash2 } from 'lucide-react'
+import { Check, Crosshair, Pencil, Plus, Trash2 } from 'lucide-react'
+import { BackBtn, BarBtn, TopBar } from '../components/TopBar'
 import {
   EXTRA_XP,
   GOAL_META,
@@ -59,9 +60,7 @@ export function SkillScreen({ id, tab }: { id: string; tab?: string }) {
   if (!view) {
     return (
       <div className="stack-lg">
-        <a className="back" href="#/deal">
-          <ArrowLeft size={18} /> Путь
-        </a>
+        <TopBar title="Навык" left={<BackBtn href="#/deal" />} />
         <div className="empty">Навык не найден.</div>
       </div>
     )
@@ -73,35 +72,32 @@ export function SkillScreen({ id, tab }: { id: string; tab?: string }) {
 
   return (
     <div className="stack-lg">
-      <div className="row between">
-        <a className="back" href="#/deal">
-          <ArrowLeft size={18} /> Путь
-        </a>
-        <div className="row" style={{ gap: 2 }}>
-          <button
-            className="icon-btn"
-            aria-label="Поделиться деревом"
-            onClick={async () => {
-              const tree = treeFromSkill(useStore.getState().data, s.id)
-              if (!tree) return
-              const code = await encodeTree(tree)
-              setShare(code)
-            }}
-          >
-            <Share2 size={20} />
-          </button>
-          <button className="icon-btn" aria-label="Изменить навык" onClick={() => setEdit(true)}>
-            <Pencil size={20} />
-          </button>
-        </div>
-      </div>
+      <TopBar
+        title="Навык"
+        left={<BackBtn href="#/deal" />}
+        right={
+          <>
+            <BarBtn
+              icon="gift"
+              label="Поделиться деревом"
+              onClick={async () => {
+                const tree = treeFromSkill(useStore.getState().data, s.id)
+                if (!tree) return
+                const code = await encodeTree(tree)
+                setShare(code)
+              }}
+            />
+            <BarBtn icon="pen" label="Изменить навык" onClick={() => setEdit(true)} />
+          </>
+        }
+      />
 
       <section className="skill-head">
         <span className="skill-head-ico">
           <Px name={skillSprite(s)} size={56} />
         </span>
         <div className="grow stack" style={{ gap: 6 }}>
-          <h1 style={{ fontSize: '1.6rem' }}>{s.title}</h1>
+          <h2 className="skill-name">{s.title}</h2>
           <div className="row wrap" style={{ gap: 6 }}>
             <StatChip stat={s.stat} />
             {s.status === 'later' && <span className="tag">позже</span>}

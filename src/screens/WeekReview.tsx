@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { ArrowLeft, Trophy } from 'lucide-react'
+import { Trophy } from 'lucide-react'
+import { BackBtn, TopBar } from '../components/TopBar'
 import { ARC_WEEKS, bossOf, formatDayRu, weekDays } from '../engine'
 import { useStore } from '../store/store'
 import { useGame } from '../store/hooks'
@@ -112,15 +113,10 @@ export function WeekReview({ week }: { week: number }) {
 
   return (
     <div className="stack-lg">
-      <div>
-        <a className="back" href="#/today" onClick={markReviewed}>
-          <ArrowLeft size={18} /> Сегодня
-        </a>
-        <span className="chapter-name">
-          Неделя {week}, {formatDayRu(days[0])} – {formatDayRu(days[6])}
-        </span>
-        <h1 style={{ marginTop: 4 }}>Обзор недели</h1>
-      </div>
+      <TopBar title="Обзор недели" left={<BackBtn href="#/today" onBack={markReviewed} />} />
+      <p className="small muted page-sub">
+        Неделя {week}, {formatDayRu(days[0])} – {formatDayRu(days[6])}
+      </p>
 
       <section className={`panel ${b?.won ? 'glow' : ''}`} style={b?.won ? { borderColor: 'var(--gold)' } : undefined}>
         <div className="row">

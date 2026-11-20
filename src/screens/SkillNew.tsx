@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowLeft } from 'lucide-react'
+
 import { MAX_ACTIVE_SKILLS, STATS, TEMPLATES, VALUE_MAX, checkValue, decodeTree, gameDayOf, materializeTree, templateTree, uid } from '../engine'
 import type { SkillTemplate, StatId, TreeCode, ValueKind } from '../engine'
 import { useStore } from '../store/store'
@@ -25,12 +25,8 @@ export function SkillNew({ importMode }: { importMode?: boolean }) {
 
   return (
     <div className="stack-lg">
-      <a className="back" href="#/deal">
-        <ArrowLeft size={18} /> Путь
-      </a>
-      <header className="stack" style={{ gap: 6 }}>
-        <h1>Новый навык</h1>
-        <p className="muted">Думай навыками, а не целями: результат — следствие навыка. {active >= MAX_ACTIVE_SKILLS && 'В фокусе уже 3 — новый встанет в «Позже».'}</p>
+      <header>
+        <p className="small muted page-sub">Думай навыками, а не целями: результат — следствие навыка. {active >= MAX_ACTIVE_SKILLS && 'В фокусе уже 3 — новый встанет в «Позже».'}</p>
       </header>
 
       {!importMode && (

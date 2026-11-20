@@ -3,7 +3,7 @@ import { ARC_START, ARC_WEEKS, CHAPTERS, STATS, bossOf, chapterOf, chapterRank, 
 import type { StatId } from '../engine'
 import { useStore } from '../store/store'
 import { useGame } from '../store/hooks'
-import { Bar, HpBar } from '../components/ui'
+import { Bar } from '../components/ui'
 import { Spark } from '../components/Spark'
 import { MiniTrends } from './Today'
 import { hpValues, window7, xpValues } from '../store/trends'
@@ -39,30 +39,45 @@ export function Hero() {
       <div className="cols">
         <div className="stack-lg">
           <section className="hero-card" aria-label="Персонаж">
+            <div className="hero-name">{profile.nick}</div>
             <a className="hero-ava" href="#/avatar" aria-label="Изменить образ">
               <PixelAvatar outfit={outfit} size={132} title={`Аватар ${profile.nick}`} />
             </a>
-            <div>
-              <div className="hero-name">{profile.nick}</div>
-              <div className="row" style={{ justifyContent: 'center', gap: 8, marginTop: 6 }}>
-                <span className="lvl-badge">УРОВЕНЬ {lvl.level}</span>
-                <span className="small muted">{rankTitle(rank)}</span>
-              </div>
+            <span className={`hp-badge${game.hp <= 30 ? ' low' : ''}`}>
+              <Px name="heart" size={18} />
+              <span className="num">{game.hp}/100</span>
+            </span>
+            <div className="hero-lvl">
+              <span>Ур. {lvl.level}</span>
+              <Px name="shield" size={24} />
+              <span className="muted">→ Ур. {lvl.level + 1}</span>
+              <Px name="shield" size={24} className="dim" />
             </div>
-            <div className="hero-meters">
-              <div className="meter">
-                <Px name="heart" size={22} />
-                <HpBar hp={game.hp} />
-                <span className="num hp-v">{game.hp}/100</span>
-              </div>
-              <div className="meter">
-                <Px name="star" size={22} />
-                <Bar value={lvl.progress} label="Опыт уровня" />
+            <span className="small muted">{rankTitle(rank)}</span>
+            <div className="hero-bars">
+              <span className="hs-k">
+                <Px name="star" size={16} />
                 <span className="num">
-                  {lvl.into}/{lvl.span}
+                  XP: {lvl.into}/{lvl.span}
                 </span>
-              </div>
-              <p className="tiny muted" style={{ textAlign: 'center' }}>
+              </span>
+              <span className="fat-row">
+                <span className="fat-bar xp" role="progressbar" aria-label="Опыт уровня" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(lvl.progress * 100)}>
+                  <i style={{ width: `${Math.max(4, Math.round(lvl.progress * 100))}%` }} />
+                </span>
+                <span className="num">{Math.round(lvl.progress * 100)}%</span>
+              </span>
+              <span className="hs-k">
+                <Px name="heart" size={16} />
+                <span className="num">HP: {game.hp}/100</span>
+              </span>
+              <span className="fat-row">
+                <span className="fat-bar hp" role="progressbar" aria-label="HP" aria-valuemin={0} aria-valuemax={100} aria-valuenow={game.hp}>
+                  <i style={{ width: `${game.hp}%` }} />
+                </span>
+                <span className="num">{game.hp}%</span>
+              </span>
+              <p className="tiny muted" style={{ textAlign: 'center', marginTop: 4 }}>
                 {game.xp} XP всего · до уровня {lvl.level + 1}: {lvl.toNext} XP. XP не сгорает никогда.
               </p>
             </div>

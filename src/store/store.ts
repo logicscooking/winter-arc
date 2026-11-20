@@ -35,6 +35,7 @@ import type {
   TaskScope,
   Ack,
   Destiny,
+  PlinkoDrop,
   Outfit,
   TimeBlock,
   ChapterId,
@@ -88,6 +89,12 @@ interface Store {
   setAck: (patch: Partial<Ack>) => void
   setOutfit: (patch: Partial<Outfit>) => void
   setDestiny: (day: DayKey, d: Destiny | null) => void
+  /** v0.6 Плинко: record a throw (ignored when the slot number is taken) */
+  addPlinkoDrop: (day: DayKey, drop: PlinkoDrop) => void
+  /** v0.6 Плинко: «Сделал» (at) or undo (null) */
+  setPlinkoDone: (day: DayKey, n: number, at: number | null) => void
+  /** v0.6 Плинко: «Позже» (resets the streak) */
+  setPlinkoLater: (day: DayKey, n: number, at: number) => void
   setBlocks: (day: DayKey, blocks: TimeBlock[]) => void
   setSettings: (patch: Partial<Settings>) => void
   // ---- v0.4 skills ----
@@ -334,6 +341,24 @@ export const useStore = create<Store>()(
             const log = dayLog(d, day)
             if (z) log.destiny = z
             else delete log.destiny
+          }),
+        addPlinkoDrop: (day, drop) =>
+          update((d) => {
+            const log = dayLog(d, day)
+            const map = (log.plinko ??= {})
+            if (!map[String(drop.n)]) map[String(drop.n)] = drop
+          }),
+        setPlinkoDone: (day, n, at) =>
+          update((d) => {
+            const drop = d.days[day]?.plinko?.[String(n)]
+            if (!drop) return
+            if (at === null) delete drop.doneAt
+            else drop.doneAt = at
+          }),
+        setPlinkoLater: (day, n, at) =>
+          update((d) => {
+            const drop = d.days[day]?.plinko?.[String(n)]
+            if (drop && drop.doneAt === undefined && drop.laterAt === undefined) drop.laterAt = at
           }),
         setBlocks: (day, blocks) =>
           update((d) => {
