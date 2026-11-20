@@ -1,8 +1,11 @@
-import { Snowflake, Trophy, Users } from 'lucide-react'
-import { ARC_WEEKS, CHAPTERS, STATS, bossOf, chapterOf, chapterRank, levelOf, rankTitle } from '../engine'
+import { ChevronRight, ShoppingBag, Snowflake, Trophy, Users } from 'lucide-react'
+import { ARC_START, ARC_WEEKS, CHAPTERS, STATS, bossOf, chapterOf, chapterRank, levelOf, rankTitle } from '../engine'
 import { useStore } from '../store/store'
 import { useGame } from '../store/hooks'
 import { Bar, StatIcon } from '../components/ui'
+import { Spark } from '../components/Spark'
+import { MiniTrends } from './Today'
+import { hpValues, window7, xpValues } from '../store/trends'
 
 export function Hero() {
   const profile = useStore((s) => s.data.profile)!
@@ -10,6 +13,12 @@ export function Hero() {
   const lvl = levelOf(game.xp)
   const ch = chapterOf(game.today)
   const rank = chapterRank(game, ch)
+  const data = useStore((s) => s.data)
+  const days = window7(data, game.today)
+  const xp7 = xpValues(game, days, game.today)
+  const hp7 = hpValues(game, days, game.today)
+  const xpWeek = xp7.reduce<number>((s, v) => s + (v ?? 0), 0)
+  const warmup = game.today < ARC_START
   return (
     <div className="stack-lg">
       <header className="row" style={{ gap: 14 }}>
@@ -38,6 +47,30 @@ export function Hero() {
               До уровня {lvl.level + 1}: {lvl.toNext} XP. XP не сгорает никогда.
             </p>
           </section>
+
+          <div className="mini-trends">
+            <a className="mini-trend" href="#/charts">
+              <span className="k">
+                XP <span>7 дней</span>
+              </span>
+              <span className="v xp-v">
+                +{xpWeek}
+                <small>за неделю</small>
+              </span>
+              <Spark values={xp7} kind="bar" min={0} color="var(--c-xp)" label="XP по дням за 7 дней" />
+            </a>
+            <a className="mini-trend" href="#/charts">
+              <span className="k">
+                HP <span>7 дней</span>
+              </span>
+              <span className="v hp-v">
+                {game.hp}
+                <small>{warmup ? 'до старта' : 'сейчас'}</small>
+              </span>
+              <Spark values={hp7} kind="line" min={0} max={100} color="var(--c-hp)" label="HP на конец дня за 7 дней" />
+            </a>
+          </div>
+          <MiniTrends />
 
           <section className="stack">
             <h2>Статы</h2>
@@ -72,7 +105,7 @@ export function Hero() {
               <h2>{rankTitle(rank)}</h2>
               <span className="num xp-v">{rank} XP</span>
             </div>
-            {game.chapterPenalty[ch] > 0 && <p className="tiny" style={{ color: 'var(--ember)' }}>Падение отняло {game.chapterPenalty[ch]} XP ранга.</p>}
+            {game.chapterPenalty[ch] > 0 && <p className="tiny" style={{ color: 'var(--hp)' }}>Падение отняло {game.chapterPenalty[ch]} XP ранга.</p>}
           </section>
 
           <section className="grid-2">
@@ -87,13 +120,22 @@ export function Hero() {
               <span className="small muted">Заморозки</span>
               <div className="row" style={{ gap: 4 }}>
                 {[0, 1].map((i) => (
-                  <Snowflake key={i} size={26} color={i < game.freezes ? 'var(--ice)' : 'var(--line)'} aria-hidden />
+                  <Snowflake key={i} size={26} color={i < game.freezes ? 'var(--frost)' : 'var(--line)'} aria-hidden />
                 ))}
                 <span className="sr">{game.freezes} из 2</span>
               </div>
               <span className="tiny muted">идеальных подряд: {game.perfectRun}/7</span>
             </div>
           </section>
+
+          <a className="list-btn" href="#/shop">
+            <ShoppingBag aria-hidden />
+            <span className="grow">
+              Магазин наград
+              <small>{game.shards} ❄ — шоколад, кола, рилсы и свои награды</small>
+            </span>
+            <ChevronRight size={18} color="var(--mist)" aria-hidden />
+          </a>
 
           <section className="stack">
             <div className="section-title">

@@ -1,27 +1,28 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
-    <radialGradient id="bg" cx="30%" cy="18%" r="95%">
-      <stop offset="0" stop-color="#12304a"/>
-      <stop offset="0.55" stop-color="#0a1424"/>
-      <stop offset="1" stop-color="#060a13"/>
+    <radialGradient id="bg" cx="32%" cy="20%" r="95%">
+      <stop offset="0" stop-color="#2b7357"/>
+      <stop offset="0.6" stop-color="#1e5b45"/>
+      <stop offset="1" stop-color="#143f30"/>
     </radialGradient>
-    <linearGradient id="ice" x1="0" y1="1" x2="1" y2="0">
-      <stop offset="0" stop-color="#2bb7cc"/>
-      <stop offset="1" stop-color="#b6f3fb"/>
-    </linearGradient>
   </defs>
   <rect width="512" height="512" fill="url(#bg)"/>
-  <g transform="translate(256 272)">
-    <path d="M -150 0 A 150 150 0 1 1 106 106" fill="none" stroke="url(#ice)" stroke-width="30" stroke-linecap="round"/>
-    <circle cx="106" cy="106" r="26" fill="#f5b347"/>
-    <g stroke="#e7f0fa" stroke-width="14" stroke-linecap="round">
-      <line x1="0" y1="-62" x2="0" y2="62"/>
-      <line x1="-54" y1="-31" x2="54" y2="31"/>
-      <line x1="-54" y1="31" x2="54" y2="-31"/>
+  <g transform="translate(256 268)">
+    <path d="M -150 0 A 150 150 0 1 1 106 106" fill="none" stroke="#f3f6f3" stroke-opacity="0.22" stroke-width="22" stroke-linecap="round"/>
+    <path d="M -150 0 A 150 150 0 0 1 106 -106" fill="none" stroke="#e7ad35" stroke-width="22" stroke-linecap="round"/>
+    <circle cx="106" cy="106" r="24" fill="#d23a52"/>
+    <g stroke="#ffffff" stroke-width="15" stroke-linecap="round">
+      <line x1="0" y1="-66" x2="0" y2="66"/>
+      <line x1="-57" y1="-33" x2="57" y2="33"/>
+      <line x1="-57" y1="33" x2="57" y2="-33"/>
     </g>
-    <g stroke="#e7f0fa" stroke-width="10" stroke-linecap="round" fill="none">
-      <polyline points="-14,-48 0,-34 14,-48"/>
-      <polyline points="-14,48 0,34 14,48"/>
+    <g stroke="#ffffff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <polyline points="-15,-50 0,-35 15,-50"/>
+      <polyline points="-15,50 0,35 15,50"/>
+      <polyline points="-50,-12 -30,-17 -36,-37" transform="rotate(0)"/>
+      <polyline points="50,12 30,17 36,37"/>
+      <polyline points="-36,37 -30,17 -50,12"/>
+      <polyline points="36,-37 30,-17 50,-12"/>
     </g>
   </g>
 </svg>

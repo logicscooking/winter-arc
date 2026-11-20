@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
 import { Snowflake } from 'lucide-react'
-import { computeState, formatDayRu, gameDayOf, isCompleted, marksFor, planFor, reelsLimitFor, uid, weekOf } from '../engine'
+import { ARC_START, computeState, formatDayRu, gameDayOf, isCompleted, marksFor, planFor, reelsLimitFor, uid, weekOf } from '../engine'
 import type { AppData, Confession, DayKey, GameState, MarkStatus, SugarAnswer } from '../engine'
 import { useStore } from '../store/store'
-import { haptic, nowWithOffset } from '../store/hooks'
+import { haptic, nowWithOffset, useFx } from '../store/hooks'
 import { useUi } from '../store/ui'
 import { Chips, Field, Sheet } from '../components/ui'
 
@@ -23,12 +23,13 @@ function applyDraft(data: AppData, day: DayKey, c: Draft, res: Record<string, Ma
 function Summary({ before, after, day, onClose }: { before: GameState; after: GameState; day: DayKey; onClose: () => void }) {
   const r = after.days[day]
   const w = weekOf(day)
-  const dmg = (after.bosses[w]?.damage ?? 0) - 0
+  const warmup = day < ARC_START
+  const dmg = after.bosses[w]?.damage ?? 0
   const rows: [string, string, string][] = [
-    ['XP за день', `+${r?.xp ?? 0}`, 'var(--amber)'],
-    ['HP', `${after.hp - before.hp >= 0 ? '+' : ''}${after.hp - before.hp} → ${after.hp}`, after.hp >= before.hp ? 'var(--ok)' : 'var(--ember)'],
-    ['Осколки', `${after.shards - before.shards >= 0 ? '+' : ''}${after.shards - before.shards} ❄`, 'var(--ice)'],
-    ['Урон боссу за неделю', `${dmg} / ${after.bosses[w]?.hp ?? 0}`, 'var(--ink)'],
+    ['XP за день', `+${r?.xp ?? 0}`, 'var(--gold)'],
+    warmup ? ['HP', 'в разминке не тратится', 'var(--mist)'] : ['HP', `${after.hp - before.hp >= 0 ? '+' : ''}${after.hp - before.hp} → ${after.hp}`, after.hp >= before.hp ? 'var(--pine)' : 'var(--hp)'],
+    ['Осколки', `${after.shards - before.shards >= 0 ? '+' : ''}${after.shards - before.shards} ❄`, 'var(--frost)'],
+    ...(warmup ? [] : [['Урон боссу за неделю', `${dmg} / ${after.bosses[w]?.hp ?? 0}`, 'var(--ink)'] as [string, string, string]]),
   ]
   return (
     <div className="stack-lg">
@@ -43,8 +44,8 @@ function Summary({ before, after, day, onClose }: { before: GameState; after: Ga
           </div>
         ))}
       </div>
-      {after.fallen && !before.fallen && <p style={{ color: 'var(--ember)' }}>HP на нуле. Падение: 3 идеальных дня подряд вернут 50 HP.</p>}
-      {after.bosses[w]?.done && <p>{after.bosses[w].won ? `Босс «${after.bosses[w].name}» повержен: +15 ❄ и трофей.` : `Босс «${after.bosses[w].name}» выстоял. Новая неделя — новый бой.`}</p>}
+      {after.fallen && !before.fallen && <p style={{ color: 'var(--hp)' }}>HP на нуле. Падение: 3 идеальных дня подряд вернут 50 HP.</p>}
+      {!warmup && after.bosses[w]?.done && <p>{after.bosses[w].won ? `Босс «${after.bosses[w].name}» повержен: +15 ❄ и трофей.` : `Босс «${after.bosses[w].name}» выстоял. Новая неделя — новый бой.`}</p>}
       <button className="btn primary block" onClick={onClose}>
         Спокойной ночи
       </button>
@@ -71,6 +72,8 @@ export function ConfessionSheet({ day }: { day: DayKey }) {
   const [res, setRes] = useState<Record<string, MarkStatus>>({})
   const [freeze, setFreeze] = useState(false)
   const [done, setDone] = useState<{ before: GameState; after: GameState }>()
+  const celebrate = useFx((s) => s.celebrate)
+  const warmup = day < ARC_START
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft((d) => ({ ...d, [k]: v }))
 
   const autoByConfession = new Set(['reels', 'bedtime'])
@@ -103,6 +106,9 @@ export function ConfessionSheet({ day }: { day: DayKey }) {
     const after = computeState(useStore.getState().data, at)
     haptic([15, 40, 15])
     setDone({ before: b, after })
+    const w = weekOf(day)
+    if (!warmup && after.bosses[w]?.won && after.bosses[w]?.done && !b.bosses[w]?.done) celebrate({ kind: 'boss', title: `${after.bosses[w].name} повержен`, text: 'Трофей недели и +15 ❄ твои.' })
+    else if (after.days[day]?.perfect) celebrate({ kind: 'perfect', title: 'Идеальный день', text: warmup ? 'Разминка закрыта на все главные.' : '+5 HP за все главные квесты.' })
   }
 
   const isLate = day !== gameDayOf(now)
@@ -111,7 +117,7 @@ export function ConfessionSheet({ day }: { day: DayKey }) {
       <div className="stack-lg">
         <div className="grid-2">
           <Field label={`Рилсы, мин (лимит ${limit})`}>
-            <input className="input num" type="number" inputMode="numeric" min={0} value={draft.reelsMin} onChange={(e) => set('reelsMin', Math.max(0, Number(e.target.value) || 0))} />
+            <input className="input num" type="number" inputMode="numeric" min={0} max={1440} value={draft.reelsMin} onChange={(e) => set('reelsMin', Math.min(1440, Math.max(0, Number(e.target.value) || 0)))} />
           </Field>
           <Field label="Во сколько ляжешь">
             <input className="input num" type="time" value={draft.bedtime} onChange={(e) => set('bedtime', e.target.value)} />
@@ -127,7 +133,7 @@ export function ConfessionSheet({ day }: { day: DayKey }) {
           value={draft.sugar}
           onChange={(v) => set('sugar', v)}
         />
-        {draft.sugar === 'outside' && <p className="small" style={{ color: 'var(--ember)', marginTop: -12 }}>Засчитается как «Слился» задним числом: −10 HP.</p>}
+        {draft.sugar === 'outside' && <p className="small" style={{ color: 'var(--hp)', marginTop: -12 }}>{warmup ? 'Запишется как «Слился» — в разминке без урона.' : 'Засчитается как «Слился» задним числом: −10 HP.'}</p>}
         <Chips
           label="Кола после 14:00"
           options={[
@@ -150,7 +156,7 @@ export function ConfessionSheet({ day }: { day: DayKey }) {
                 <div key={p.id} className="stack" style={{ gap: 6 }}>
                   <div className="row between">
                     <span style={{ fontWeight: 700 }}>{q.title}</span>
-                    {p.role === 'main' && <span className="tag ember">main</span>}
+                    {p.role === 'main' && <span className="tag ember">главный</span>}
                   </div>
                   <div className="chips">
                     {(
@@ -171,15 +177,15 @@ export function ConfessionSheet({ day }: { day: DayKey }) {
           </section>
         )}
 
-        {missedAfter > 0 && (
+        {missedAfter > 0 && !warmup && (
           <button
             className="panel row"
-            style={{ textAlign: 'left', borderColor: freeze ? 'var(--ice)' : undefined, opacity: freezesAvail ? 1 : 0.5 }}
+            style={{ textAlign: 'left', borderColor: freeze ? 'var(--pine)' : undefined, opacity: freezesAvail ? 1 : 0.5 }}
             disabled={!freezesAvail}
             onClick={() => setFreeze(!freeze)}
             aria-pressed={freeze}
           >
-            <Snowflake color="var(--ice)" aria-hidden />
+            <Snowflake color="var(--frost)" aria-hidden />
             <div className="grow">
               <h3>Потратить заморозку?</h3>
               <p className="small muted">{freezesAvail ? `Защитит серии и HP за этот день. В запасе: ${freezesAvail}.` : 'Заморозок нет. Их дают за 7 идеальных дней подряд.'}</p>
@@ -192,10 +198,12 @@ export function ConfessionSheet({ day }: { day: DayKey }) {
             <span className="muted">Итог дня</span>
             <span className="num" style={{ textAlign: 'right' }}>
               <span className="xp-v">+{pr?.xp ?? 0} XP</span>{' '}
-              <span style={{ color: preview.hp >= before.hp ? 'var(--ok)' : 'var(--ember)' }}>
-                {preview.hp - before.hp >= 0 ? '+' : ''}
-                {preview.hp - before.hp} HP
-              </span>{' '}
+              {!warmup && (
+                <span style={{ color: preview.hp >= before.hp ? 'var(--pine)' : 'var(--hp)' }}>
+                  {preview.hp - before.hp >= 0 ? '+' : ''}
+                  {preview.hp - before.hp} HP
+                </span>
+              )}{' '}
               <span className="ice-v">
                 {preview.shards - before.shards >= 0 ? '+' : ''}
                 {preview.shards - before.shards} ❄

@@ -1,7 +1,9 @@
 import { useEffect, type ReactNode } from 'react'
-import { Brain, Dumbbell, Hammer, Shield, X, Zap, type LucideIcon } from 'lucide-react'
+import { Brain, Dumbbell, Hammer, Lightbulb, Shield, X, Zap, type LucideIcon } from 'lucide-react'
 import type { StatId } from '../engine'
 import { useFx } from '../store/hooks'
+import { useStore } from '../store/store'
+import { useUi } from '../store/ui'
 
 export const STAT_ICON: Record<StatId, LucideIcon> = {
   energy: Zap,
@@ -134,13 +136,13 @@ export function Floaters() {
   )
 }
 
-export function Ring({ progress, size = 220, stroke = 8, color = 'var(--ice)', children }: { progress: number; size?: number; stroke?: number; color?: string; children?: ReactNode }) {
+export function Ring({ progress, size = 220, stroke = 8, color = 'var(--pine)', children }: { progress: number; size?: number; stroke?: number; color?: string; children?: ReactNode }) {
   const r = (size - stroke) / 2
   const c = 2 * Math.PI * r
   return (
     <div className="timer-ring" style={{ width: size, height: size }}>
       <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} aria-hidden>
-        <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--raised-2)" strokeWidth={stroke} fill="none" />
+        <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--surface-3)" strokeWidth={stroke} fill="none" />
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -162,4 +164,70 @@ export function Ring({ progress, size = 220, stroke = 8, color = 'var(--ice)', c
 export function formatMMSS(ms: number) {
   const s = Math.max(0, Math.ceil(ms / 1000))
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+}
+
+/** Toast with an optional «Отменить» for check-offs and purchases */
+export function Toast() {
+  const t = useUi((s) => s.toast)
+  const hide = useUi((s) => s.hideToast)
+  if (!t) return null
+  return (
+    <div className="toast" role="status" key={t.id}>
+      <span>{t.text}</span>
+      {t.undo && (
+        <button
+          onClick={() => {
+            t.undo!()
+            hide()
+          }}
+        >
+          Отменить
+        </button>
+      )}
+    </div>
+  )
+}
+
+/** Confirmation for destructive actions (replaces window.confirm) */
+export function ConfirmSheet() {
+  const ask = useUi((s) => s.ask)
+  const answer = useUi((s) => s.answer)
+  if (!ask) return null
+  return (
+    <Sheet title={ask.title} onClose={() => answer(false)}>
+      <div className="stack-lg">
+        {ask.body && <p style={{ color: 'var(--ink-2)' }}>{ask.body}</p>}
+        <div className="grid-2">
+          <button className="btn ghost" onClick={() => answer(false)}>
+            Отмена
+          </button>
+          <button className={`btn ${ask.danger ? 'danger' : 'primary'}`} onClick={() => answer(true)} autoFocus>
+            {ask.ok}
+          </button>
+        </div>
+      </div>
+    </Sheet>
+  )
+}
+
+export function useHint(id: string): [boolean, () => void] {
+  const seen = useStore((s) => s.data.ack.hints?.includes(id) ?? false)
+  const setAck = useStore((s) => s.setAck)
+  const hints = useStore((s) => s.data.ack.hints)
+  return [!seen, () => setAck({ hints: [...(hints ?? []), id] })]
+}
+
+/** A light first-run hint, dismissable, shown once */
+export function Hint({ id, children }: { id: string; children: ReactNode }) {
+  const [show, dismiss] = useHint(id)
+  if (!show) return null
+  return (
+    <div className="hint" role="note">
+      <Lightbulb size={18} aria-hidden />
+      <div className="grow">{children}</div>
+      <button className="link-btn" onClick={dismiss}>
+        Понятно
+      </button>
+    </div>
+  )
 }

@@ -38,7 +38,7 @@ export function CheckinSheet({ day }: { day: DayKey }) {
           <input className="input num" type="time" value={wake} onChange={(e) => setWake(e.target.value)} />
         </Field>
         {target !== undefined && (
-          <p className="small" style={{ marginTop: -10, color: onTarget ? 'var(--ice)' : 'var(--mist)' }}>
+          <p className="small" style={{ marginTop: -10, color: onTarget ? 'var(--pine)' : 'var(--mist)' }}>
             Цель дня {formatHM(target)} ±30 мин.{' '}
             {onTarget ? (diff < -30 ? `Раньше цели на ${-diff} мин — засчитано.` : 'Подъём засчитан.') : diff > 0 && diff <= 60 ? 'Не попал, но засчитается мини-версия.' : `Позже цели на ${diff} мин.`}
           </p>

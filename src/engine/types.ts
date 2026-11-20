@@ -182,10 +182,15 @@ export interface Profile {
   onboardDay: DayKey
 }
 
+export type ThemePref = 'auto' | 'light' | 'dark'
+
 export interface Settings {
   debugOffsetDays: number
   reelsLimit: number
   defaultSwap: string
+  /** added in v0.1.1, optional so older backups stay valid */
+  theme?: ThemePref
+  snow?: boolean
 }
 
 export interface Ack {
@@ -194,6 +199,10 @@ export interface Ack {
   finaleSeen?: boolean
   supportMode?: boolean
   checkinSkipped?: DayKey
+  /** first-run hints the user has dismissed */
+  hints?: string[]
+  /** days whose «perfect day» celebration was already shown */
+  celebrated?: DayKey[]
 }
 
 export interface AppData {

@@ -87,6 +87,7 @@ export function Onboarding() {
             <div className="stack" style={{ gap: 10 }}>
               <div className="big-title">Winter Arc</div>
               <p className="muted">98 дней зимы: режим, тело, разум и своё дело. Боль дисциплины вместо боли сожаления.</p>
+              {today < ARC_START && <p className="small" style={{ color: 'var(--gold)', fontWeight: 700 }}>До 23 ноября — разминка: отмечай квесты уже сегодня, XP и ❄ копятся, HP не тратится.</p>}
             </div>
             <Field label="Ник">
               <input className="input" value={nick} onChange={(e) => setNick(e.target.value)} placeholder="Как тебя звать в арке" maxLength={24} autoFocus />
@@ -118,14 +119,14 @@ export function Onboarding() {
                 {planRows.map(([d, t]) => (
                   <div key={d} style={{ display: 'contents' }}>
                     <span className="muted">{d}</span>
-                    <span className="num" style={{ textAlign: 'right', color: t === '07:00' ? 'var(--ice)' : undefined }}>
+                    <span className="num" style={{ textAlign: 'right', color: t === '07:00' ? 'var(--pine)' : undefined }}>
                       {t}
                     </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="small" style={{ color: 'var(--ice)' }}>
+              <p className="small" style={{ color: 'var(--pine)' }}>
                 Ты уже встаёшь к 07:00. Цель — держать её каждый день, и в выходные тоже.
               </p>
             )}
@@ -155,7 +156,7 @@ export function Onboarding() {
 
         <div className="grow" />
         <button className="btn primary block" onClick={next}>
-          {step === total - 1 ? 'Начать арку' : step === 2 ? 'Дальше' : 'Дальше'}
+          {step === total - 1 ? (today < ARC_START ? 'Начать разминку' : 'Начать арку') : 'Дальше'}
         </button>
         {step === 2 && (
           <button className="btn ghost block" style={{ marginTop: -8 }} onClick={() => setStep(3)}>

@@ -56,18 +56,33 @@ export interface Floater {
   tone: 'xp' | 'hp' | 'ice' | 'bad'
 }
 
+export interface Celebration {
+  id: number
+  title: string
+  text?: string
+  kind: 'perfect' | 'boss'
+}
+
 interface FxStore {
   items: Floater[]
   push: (f: Omit<Floater, 'id'>) => void
+  party?: Celebration
+  celebrate: (c: Omit<Celebration, 'id'>) => void
 }
 
 let fxId = 0
-export const useFx = create<FxStore>((set) => ({
+export const useFx = create<FxStore>((set, get) => ({
   items: [],
   push: (f) => {
     const id = ++fxId
     set((s) => ({ items: [...s.items, { ...f, id }] }))
     setTimeout(() => set((s) => ({ items: s.items.filter((i) => i.id !== id) })), 1300)
+  },
+  celebrate: (c) => {
+    const id = ++fxId
+    set({ party: { ...c, id } })
+    haptic([20, 50, 20, 50, 40])
+    setTimeout(() => get().party?.id === id && set({ party: undefined }), 3200)
   },
 }))
 

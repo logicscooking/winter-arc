@@ -39,6 +39,8 @@ export interface DayResult {
   confession: boolean
   /** closed by deadline without a confession (retroactive evaluation) */
   retro: boolean
+  /** «Разминка»: a day before the arc start. XP and ❄ count, HP never changes. */
+  warmup: boolean
   frozen: boolean
   perfect: boolean
   plan: PlannedQuest[]
@@ -111,6 +113,12 @@ export function planFor(data: AppData, day: DayKey): PlannedQuest[] {
   return data.days[day]?.plan ?? activeQuestsFor(data.quests, day)
 }
 
+/** First replayed day: the onboarding day if it is before the arc (warm-up), otherwise the arc start. */
+export function replayStartOf(data: AppData): DayKey {
+  const ob = data.profile?.onboardDay
+  return ob && ob < ARC_START ? ob : ARC_START
+}
+
 export function evalStartOf(data: AppData): DayKey {
   const ob = data.profile?.onboardDay
   return ob && ob > ARC_START ? ob : ARC_START
@@ -165,12 +173,15 @@ export function computeState(data: AppData, now: Date): GameState {
     freezesEarned: 0,
     freezesUsed: 0,
   }
-  if (!data.profile || today < ARC_START) return st
+  const start = replayStartOf(data)
+  if (!data.profile || today < start) return st
 
   const evalStart = evalStartOf(data)
   const events = new Map<DayKey, Ev[]>()
   const push = (e: Ev) => {
-    if (e.day < ARC_START || e.day > today) return
+    if (e.day < start || e.day > today) return
+    // warm-up: HP is never lost (or gained) before the arc
+    if (e.day < ARC_START && e.hp) e = { ...e, hp: undefined }
     const list = events.get(e.day)
     if (list) list.push(e)
     else events.set(e.day, [e])
@@ -179,7 +190,7 @@ export function computeState(data: AppData, now: Date): GameState {
   const dayInfo = new Map<DayKey, { plan: PlannedQuest[]; marks: Record<string, MarkStatus | undefined>; xp: number; shards: number; boss: number }>()
 
   // quest completions
-  for (let d = ARC_START; d <= today; d = addDays(d, 1)) {
+  for (let d = start; d <= today; d = addDays(d, 1)) {
     const plan = planFor(data, d)
     const marks = marksFor(data, d, plan)
     const log = data.days[d]
@@ -242,7 +253,7 @@ export function computeState(data: AppData, now: Date): GameState {
   let prevMissed = new Set<string>()
   const lastDay = today
 
-  for (let d = ARC_START; d <= lastDay; d = addDays(d, 1)) {
+  for (let d = start; d <= lastDay; d = addDays(d, 1)) {
     const info = dayInfo.get(d)!
     const evs = (events.get(d) ?? []).sort((a, b) => a.at - b.at)
     for (const e of evs) {
@@ -262,8 +273,9 @@ export function computeState(data: AppData, now: Date): GameState {
     }
 
     const log = data.days[d]
+    const warmup = d < ARC_START
     const inEval = d >= evalStart && d <= ARC_END
-    const closed = inEval && isDayClosed(data, d, now)
+    const closed = (warmup || inEval) && isDayClosed(data, d, now)
     const mains = info.plan.filter((p) => p.role === 'main')
     const missed = mains.filter((p) => !isCompleted(info.marks[p.id])).map((p) => p.id)
     const perfect = mains.length > 0 && missed.length === 0
@@ -271,7 +283,8 @@ export function computeState(data: AppData, now: Date): GameState {
       day: d,
       closed,
       confession: !!log?.confession,
-      retro: closed && !log?.confession,
+      retro: closed && !warmup && !log?.confession,
+      warmup,
       frozen: false,
       perfect,
       plan: info.plan,
@@ -284,7 +297,10 @@ export function computeState(data: AppData, now: Date): GameState {
       bossDamage: info.boss,
     }
 
-    if (closed) {
+    if (closed && warmup) {
+      // «Разминка»: the day closes for streaks and charts, nothing else changes
+      prevMissed = new Set()
+    } else if (closed) {
       const frozen = !!log?.freeze && missed.length > 0 && st.freezes > 0
       res.frozen = frozen
       let delta = 0
@@ -354,7 +370,7 @@ export function computeState(data: AppData, now: Date): GameState {
   // honesty streak: days in a row with a confession; open days don't break it
   let run = 0
   let best = 0
-  for (let d = evalStart; d <= today && d <= ARC_END; d = addDays(d, 1)) {
+  for (let d = start; d <= today && d <= ARC_END; d = addDays(d, 1)) {
     const r = st.days[d]
     if (!r) continue
     if (r.confession) {
@@ -388,7 +404,7 @@ export function daysNeedingSnapshot(data: AppData, now: Date): DayKey[] {
   const today = gameDayOf(now)
   const out: DayKey[] = []
   if (!data.profile) return out
-  for (let d = evalStartOf(data); d <= today && d <= ARC_END; d = addDays(d, 1)) {
+  for (let d = replayStartOf(data); d <= today && d <= ARC_END; d = addDays(d, 1)) {
     if (!data.days[d]?.plan && isDayClosed(data, d, now)) out.push(d)
   }
   return out

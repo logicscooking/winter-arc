@@ -26,7 +26,7 @@ export function Deal() {
 
       <section className={`panel ${deal ? 'glow' : ''}`}>
         <div className="row" style={{ alignItems: 'flex-start' }}>
-          <Crosshair color="var(--amber)" aria-hidden style={{ marginTop: 2 }} />
+          <Crosshair color="var(--gold)" aria-hidden style={{ marginTop: 2 }} />
           <div className="grow stack" style={{ gap: 6 }}>
             <span className="small muted">Дело дня</span>
             {deal ? (
@@ -38,7 +38,7 @@ export function Deal() {
                 </p>
               </>
             ) : (
-              <p>{open ? 'Не выбрано. Нажми прицел у задачи ниже.' : 'Сначала добавь проект и задачу в нём.'}</p>
+              <p>{open ? 'Не выбрано. Нажми прицел у задачи ниже — она станет Делом дня.' : projects.length ? 'Добавь задачу в проект кнопкой «+», потом нажми прицел.' : 'Начни с проекта: впиши его ниже.'}</p>
             )}
           </div>
         </div>

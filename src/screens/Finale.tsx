@@ -101,7 +101,7 @@ export function Finale() {
                       <td className="num" style={{ textAlign: 'right' }}>
                         {b ?? '—'}
                       </td>
-                      <td className="num tiny" style={{ textAlign: 'right', paddingLeft: 8, color: d.good === undefined ? 'var(--mist)' : d.good ? 'var(--ok)' : 'var(--ember)' }}>
+                      <td className="num tiny" style={{ textAlign: 'right', paddingLeft: 8, color: d.good === undefined ? 'var(--mist)' : d.good ? 'var(--pine)' : 'var(--hp)' }}>
                         {d.text}
                       </td>
                     </tr>

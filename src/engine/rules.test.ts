@@ -188,3 +188,16 @@ describe('бэкап', () => {
     expect(n.quests).toHaveLength(12)
   })
 })
+
+describe('совместимость данных v0.1', () => {
+  it('старые данные без темы, снега и подсказок получают значения по умолчанию и ничего не теряют', () => {
+    const old = createInitialData() as unknown as Record<string, unknown>
+    old.settings = { debugOffsetDays: 0, reelsLimit: 25, defaultSwap: 'вода' }
+    old.ack = { reviewedWeeks: [1], missedThrough: '2026-11-25' }
+    old.days = { '2026-11-23': { quests: { wake: { status: 'done', at: 1 } } } }
+    const d = normalizeData(old)
+    expect(d.settings).toMatchObject({ reelsLimit: 25, defaultSwap: 'вода', theme: 'auto', snow: true })
+    expect(d.ack).toMatchObject({ reviewedWeeks: [1], missedThrough: '2026-11-25', hints: [] })
+    expect(d.days['2026-11-23'].quests.wake.status).toBe('done')
+  })
+})

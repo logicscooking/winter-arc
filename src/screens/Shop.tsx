@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Lock, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Lock, Plus, Trash2 } from 'lucide-react'
 import { CHAPTERS, SHOP_ITEMS, canBuy, chapterOf, formatDayShort, gameDayOf, priceFor, priceMultiplier } from '../engine'
 import { useStore } from '../store/store'
 import { nowWithOffset, reward, useGame, useNow } from '../store/hooks'
@@ -10,7 +10,9 @@ export function Shop() {
   const buy = useStore((s) => s.buy)
   const addReward = useStore((s) => s.addReward)
   const removeReward = useStore((s) => s.removeReward)
+  const undoPurchase = useStore((s) => s.undoPurchase)
   const say = useUi((s) => s.say)
+  const ask = useUi((s) => s.confirm)
   const game = useGame()
   const today = gameDayOf(useNow())
   const ch = chapterOf(today)
@@ -21,16 +23,19 @@ export function Shop() {
   const doBuy = (el: Element, item: { itemId: string; title: string; price: number; kind: 'chocolate' | 'cola' | 'reels' | 'custom' }) => {
     const c = canBuy(game.shards, item.price, game.fallen)
     if (!c.ok) return say(c.reason!)
-    buy(item, nowWithOffset())
+    const id = buy(item, nowWithOffset())
     reward(el, { shards: -item.price })
-    say(item.kind === 'reels' ? '+15 минут к лимиту рилсов на сегодня' : item.kind === 'custom' ? `Куплено: ${item.title}. Заслужил.` : 'Записано как сахар в слоте')
+    say(item.kind === 'reels' ? '+15 минут к лимиту рилсов на сегодня' : item.kind === 'custom' ? `Куплено: ${item.title}. Заслужил.` : 'Записано как сахар в слоте', () => undoPurchase(id))
   }
 
   const history = [...data.purchases].sort((a, b) => b.at - a.at).slice(0, 30)
 
   return (
     <div className="stack-lg">
-      <header className="row between" style={{ alignItems: 'flex-end' }}>
+      <button className="back mobile-only" onClick={() => (window.history.length > 1 ? window.history.back() : (location.hash = '#/hero'))}>
+        <ArrowLeft size={18} /> Назад
+      </button>
+      <header className="row between" style={{ alignItems: 'flex-end', marginTop: -18 }}>
         <div className="stack" style={{ gap: 4 }}>
           <h1>Магазин</h1>
           <p className="small muted">
@@ -43,8 +48,8 @@ export function Shop() {
       </header>
 
       {game.fallen && (
-        <div className="panel row" style={{ borderColor: 'var(--ember)' }}>
-          <Lock color="var(--ember)" aria-hidden />
+        <div className="panel row" style={{ borderColor: 'var(--hp)' }}>
+          <Lock color="var(--hp)" aria-hidden />
           <p className="small grow">Во время падения награды недоступны. Три идеальных дня — и магазин снова открыт.</p>
         </div>
       )}
@@ -79,7 +84,7 @@ export function Shop() {
                   <span style={{ fontWeight: 700 }}>{r.title}</span>
                 </div>
                 <div className="row" style={{ gap: 4 }}>
-                  <button className="icon-btn" aria-label={`Удалить ${r.title}`} onClick={() => removeReward(r.id)}>
+                  <button className="icon-btn" aria-label={`Удалить ${r.title}`} onClick={async () => (await ask({ title: 'Удалить награду?', body: `«${r.title}» пропадёт из магазина. История покупок останется.`, ok: 'Удалить', danger: true })) && removeReward(r.id)}>
                     <Trash2 size={16} />
                   </button>
                   <button className={`btn sm ${canBuy(game.shards, r.price, game.fallen).ok ? 'primary' : 'ghost'}`} disabled={game.fallen} onClick={(e) => doBuy(e.currentTarget, { itemId: r.id, title: r.title, price: r.price, kind: 'custom' })}>
@@ -99,9 +104,9 @@ export function Shop() {
                 setPrice('')
               }}
             >
-              <input className="input grow" placeholder="Награда" value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Название награды" />
-              <input className="input num" style={{ width: 96 }} placeholder="❄" type="number" inputMode="numeric" min={1} value={price} onChange={(e) => setPrice(e.target.value)} aria-label="Цена в осколках" />
-              <button className="btn sm" type="submit" aria-label="Добавить награду">
+              <input className="input grow" placeholder="Своя награда" value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Название награды" maxLength={60} />
+              <input className="input num" style={{ width: 88 }} placeholder="❄" type="number" inputMode="numeric" min={1} max={9999} value={price} onChange={(e) => setPrice(e.target.value.replace(/[^\d]/g, ''))} aria-label="Цена в осколках" />
+              <button className="btn sm primary" type="submit" aria-label="Добавить награду" disabled={!title.trim() || !(Number(price) > 0)} style={{ minWidth: 48 }}>
                 <Plus size={18} />
               </button>
             </form>

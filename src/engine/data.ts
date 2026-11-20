@@ -19,8 +19,8 @@ export function createInitialData(): AppData {
     baseline: {},
     final: {},
     reviews: {},
-    settings: { debugOffsetDays: 0, reelsLimit: REELS_LIMIT, defaultSwap: '10 отжиманий' },
-    ack: { reviewedWeeks: [] },
+    settings: { debugOffsetDays: 0, reelsLimit: REELS_LIMIT, defaultSwap: '10 отжиманий', theme: 'auto', snow: true },
+    ack: { reviewedWeeks: [], hints: [], celebrated: [] },
   }
 }
 

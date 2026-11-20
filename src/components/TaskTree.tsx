@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from 'react'
-import { Check, ChevronDown, ChevronRight, Crosshair, Plus, Trash2 } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, Crosshair, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
 import { MAX_DEPTH, childrenOf, depthOf, needsSplitHint, plural, taskXp } from '../engine'
 import type { DayKey, Task, TaskScope } from '../engine'
 import { useStore } from '../store/store'
 import { nowWithOffset, reward } from '../store/hooks'
+import { useUi } from '../store/ui'
 
 interface Props {
   scope: TaskScope
@@ -26,9 +27,9 @@ export function AddTask({ scope, parentId, placeholder, onDone, autoFocus }: { s
   }
   return (
     <form onSubmit={submit} className="row" style={{ padding: '4px 0' }}>
-      <input className="input" value={v} onChange={(e) => setV(e.target.value)} placeholder={placeholder} autoFocus={autoFocus} onBlur={() => !v && onDone?.()} aria-label={placeholder} />
-      <button className="btn sm" type="submit" aria-label="Добавить">
-        <Plus size={18} />
+      <input className="input" value={v} onChange={(e) => setV(e.target.value)} placeholder={placeholder} autoFocus={autoFocus} onBlur={() => !v && onDone?.()} aria-label={placeholder} maxLength={120} enterKeyHint="done" />
+      <button className="btn sm primary" type="submit" aria-label="Добавить" disabled={!v.trim()} style={{ minWidth: 48 }}>
+        <Plus size={20} />
       </button>
     </form>
   )
@@ -40,7 +41,10 @@ function Node({ t, props, depth }: { t: Task; props: Props; depth: number }) {
   const del = useStore((s) => s.deleteTask)
   const rename = useStore((s) => s.renameTask)
   const setDeal = useStore((s) => s.setDeal)
+  const say = useUi((s) => s.say)
+  const confirm = useUi((s) => s.confirm)
   const [adding, setAdding] = useState(false)
+  const [actions, setActions] = useState(false)
   const [open, setOpen] = useState(true)
   const [editing, setEditing] = useState(false)
   const kids = childrenOf(tasks, t.id, t.scope)
@@ -51,11 +55,23 @@ function Node({ t, props, depth }: { t: Task; props: Props; depth: number }) {
 
   const onTick = (el: HTMLElement) => {
     if (props.locked) return
-    if (!t.doneAt) {
+    const wasDone = !!t.doneAt
+    if (!wasDone) {
       const xp = taskXp(tasks, t)
       if (xp) reward(el, { xp })
     }
     toggle(t.id, nowWithOffset())
+    say(wasDone ? `Вернул: ${t.title}` : `Готово: ${t.title}`, () => toggle(t.id, nowWithOffset()))
+  }
+
+  const remove = async () => {
+    const ok = await confirm({
+      title: isProject ? 'Удалить проект?' : 'Удалить задачу?',
+      body: kids.length ? `«${t.title}» и все подзадачи (${descCount(tasks, t.id)}) исчезнут. XP за уже закрытые пропадёт.` : `«${t.title}» исчезнет из списка.`,
+      ok: 'Удалить',
+      danger: true,
+    })
+    if (ok) del(t.id)
   }
 
   return (
@@ -84,9 +100,7 @@ function Node({ t, props, depth }: { t: Task; props: Props; depth: number }) {
               onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
             />
           ) : (
-            <div className="node-title" onDoubleClick={() => setEditing(true)}>
-              {t.title}
-            </div>
+            <div className="node-title">{t.title}</div>
           )}
           <div className="row wrap" style={{ gap: 6, marginTop: 2 }}>
             {picked && <span className="tag base">Дело дня</span>}
@@ -98,7 +112,7 @@ function Node({ t, props, depth }: { t: Task; props: Props; depth: number }) {
             {!isProject && depth === 1 && t.scope === 'deal' && <span className="tiny muted">30 XP</span>}
           </div>
           {needsSplitHint(t) && (
-            <p className="tiny" style={{ color: 'var(--amber)', marginTop: 4 }}>
+            <p className="tiny" style={{ color: 'var(--gold)', marginTop: 4 }}>
               Третий перенос. Разбей на шаги по 15 минут или удали — честно.
             </p>
           )}
@@ -106,17 +120,60 @@ function Node({ t, props, depth }: { t: Task; props: Props; depth: number }) {
         {!props.locked && (
           <div className="row" style={{ gap: 0 }}>
             {canPick && (
-              <button className={`icon-btn ${picked ? 'deal-pick' : ''}`} onClick={() => setDeal(props.pickDay!, picked ? null : t.id)} aria-label={picked ? 'Убрать из Дела дня' : 'Сделать Делом дня'} title="Дело дня">
-                <Crosshair size={18} />
+              <button className={`icon-btn ${picked ? 'deal-pick' : ''}`} onClick={() => setDeal(props.pickDay!, picked ? null : t.id)} aria-label={picked ? 'Убрать из Дела дня' : 'Сделать Делом дня'} aria-pressed={picked} title="Дело дня">
+                <Crosshair size={19} />
               </button>
             )}
+            {isProject && canAdd && (
+              <button
+                className="icon-btn"
+                onClick={() => {
+                  setAdding(true)
+                  setOpen(true)
+                }}
+                aria-label={`Добавить задачу в «${t.title}»`}
+                title="Задача"
+              >
+                <Plus size={20} />
+              </button>
+            )}
+            <button className="icon-btn" onClick={() => setActions(!actions)} aria-label={`Действия: ${t.title}`} aria-expanded={actions}>
+              <MoreHorizontal size={19} />
+            </button>
+          </div>
+        )}
+        {actions && !props.locked && (
+          <div className="node-actions">
             {canAdd && (
-              <button className="icon-btn" onClick={() => setAdding(true)} aria-label="Добавить подзадачу" title="Подзадача">
-                <Plus size={18} />
+              <button
+                className="btn sm"
+                onClick={() => {
+                  setAdding(true)
+                  setOpen(true)
+                  setActions(false)
+                }}
+              >
+                <Plus size={16} /> {isProject ? 'Задача' : 'Подзадача'}
               </button>
             )}
-            <button className="icon-btn" onClick={() => (kids.length === 0 || confirm(`Удалить «${t.title}» вместе с подзадачами?`)) && del(t.id)} aria-label="Удалить">
-              <Trash2 size={16} />
+            <button
+              className="btn sm ghost"
+              onClick={() => {
+                setEditing(true)
+                setActions(false)
+              }}
+            >
+              <Pencil size={15} /> Переименовать
+            </button>
+            <button
+              className="btn sm ghost"
+              style={{ color: 'var(--hp)' }}
+              onClick={() => {
+                setActions(false)
+                remove()
+              }}
+            >
+              <Trash2 size={15} /> Удалить
             </button>
           </div>
         )}
@@ -131,6 +188,11 @@ function Node({ t, props, depth }: { t: Task; props: Props; depth: number }) {
       )}
     </div>
   )
+}
+
+function descCount(tasks: Task[], id: string): number {
+  const kids = tasks.filter((t) => t.parentId === id)
+  return kids.reduce((s, k) => s + 1 + descCount(tasks, k.id), 0)
 }
 
 export function TaskTree(props: Props) {

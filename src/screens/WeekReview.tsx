@@ -44,9 +44,9 @@ export function WeekReview({ week }: { week: number }) {
         <h1 style={{ marginTop: 4 }}>Обзор недели</h1>
       </div>
 
-      <section className={`panel ${b?.won ? 'glow' : ''}`} style={b?.won ? { borderColor: 'var(--amber)' } : undefined}>
+      <section className={`panel ${b?.won ? 'glow' : ''}`} style={b?.won ? { borderColor: 'var(--gold)' } : undefined}>
         <div className="row">
-          <Trophy color={b?.won ? 'var(--amber)' : 'var(--mist)'} aria-hidden />
+          <Trophy color={b?.won ? 'var(--gold)' : 'var(--mist)'} aria-hidden />
           <div className="grow">
             <h2>{b?.done ? (b.won ? `${bossOf(week)} повержен` : `${bossOf(week)} выстоял`) : `Бой с «${bossOf(week)}» ещё идёт`}</h2>
             <p className="small muted">
@@ -74,8 +74,8 @@ export function WeekReview({ week }: { week: number }) {
       </div>
 
       <div className="cols">
-        <Chart title="XP по дням" days={days} series={[{ name: 'XP', color: '#d8952a', kind: 'bar' }]} values={[days.map((d) => (game.days[d] ? game.xpByDay[d] ?? 0 : null))]} yMin={0} />
-        <Chart title="HP по дням" days={days} series={[{ name: 'HP', color: '#e8553f', kind: 'line' }]} values={[days.map((d) => game.hpByDay[d] ?? null)]} yMin={0} yMax={100} />
+        <Chart title="XP по дням" days={days} series={[{ name: 'XP', color: 'var(--c-xp)', kind: 'bar' }]} values={[days.map((d) => (game.days[d] ? game.xpByDay[d] ?? 0 : null))]} yMin={0} />
+        <Chart title="HP по дням" days={days} series={[{ name: 'HP', color: 'var(--c-hp)', kind: 'line' }]} values={[days.map((d) => game.hpByDay[d] ?? null)]} yMin={0} yMax={100} />
       </div>
 
       <section className="stack">

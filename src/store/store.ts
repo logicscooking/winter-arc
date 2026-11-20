@@ -21,6 +21,7 @@ import type {
   DayLog,
   MarkStatus,
   Measurements,
+  QuestMark,
   Profile,
   Quest,
   Review,
@@ -42,12 +43,15 @@ interface Store {
   onboard: (p: Profile, baseline: Measurements) => void
   setMark: (day: DayKey, questId: string, status: MarkStatus | null, now: Date) => void
   setValue: (day: DayKey, questId: string, value: number, now: Date) => void
+  /** undo: put a quest mark back exactly as it was (book pages follow) */
+  restoreMark: (day: DayKey, questId: string, prev: QuestMark | undefined) => void
   saveCheckin: (day: DayKey, c: Omit<CheckIn, 'at'>, now: Date) => void
   saveConfession: (day: DayKey, c: Omit<Confession, 'at'>, resolutions: Record<string, MarkStatus>, freeze: boolean, now: Date) => void
   addSlip: (what: SlipWhat, why: SlipWhy, note: string, now: Date) => string
   comeback: (slipId: string, swap: string, now: Date) => void
   addCraving: (result: 'won' | 'lost', swap: string, now: Date) => void
-  buy: (item: { itemId: string; title: string; price: number; kind: ShopKind }, now: Date) => void
+  buy: (item: { itemId: string; title: string; price: number; kind: ShopKind }, now: Date) => string
+  undoPurchase: (id: string) => void
   addReward: (title: string, price: number) => void
   removeReward: (id: string) => void
   logPause: (app: string, result: 'resisted' | 'entered', minutes: number | undefined, now: Date) => void
@@ -119,6 +123,15 @@ export const useStore = create<Store>()(
             if (!status) delete log.quests[questId]
             else log.quests[questId] = { status, value: v, at: now.getTime() }
           }),
+        restoreMark: (day, questId, prev) =>
+          update((d) => {
+            const log = dayLog(d, day)
+            const cur = log.quests[questId]
+            const q = d.quests.find((x) => x.id === questId)
+            if (q?.kind === 'reading') applyReadingDelta(d, (prev?.value ?? 0) - (cur?.value ?? 0), day)
+            if (prev) log.quests[questId] = { ...prev }
+            else delete log.quests[questId]
+          }),
         saveCheckin: (day, c, now) =>
           update((d) => {
             dayLog(d, day).checkin = { ...c, at: now.getTime() }
@@ -156,10 +169,14 @@ export const useStore = create<Store>()(
           update((d) => {
             d.cravings.push({ id: uid(), at: now.getTime(), day: gameDayOf(now), result, swap })
           }),
-        buy: (item, now) =>
+        buy: (item, now) => {
+          const id = uid()
           update((d) => {
-            d.purchases.push({ id: uid(), at: now.getTime(), day: gameDayOf(now), ...item })
-          }),
+            d.purchases.push({ id, at: now.getTime(), day: gameDayOf(now), ...item })
+          })
+          return id
+        },
+        undoPurchase: (id) => update((d) => void (d.purchases = d.purchases.filter((p) => p.id !== id))),
         addReward: (title, price) => update((d) => void d.rewards.push({ id: uid(), title, price })),
         removeReward: (id) => update((d) => void (d.rewards = d.rewards.filter((r) => r.id !== id))),
         logPause: (app, result, minutes, now) =>

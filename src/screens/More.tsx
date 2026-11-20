@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactNode } from 'react'
-import { ArrowLeft, BookOpen, Bug, Download, Hand, ListChecks, Ruler, ScrollText, Users, Activity, ChevronRight } from 'lucide-react'
+import { ArrowLeft, BookOpen, Bug, Download, Hand, ListChecks, Ruler, ScrollText, Users, Activity, ChevronRight, ShoppingBag, Monitor, Sun, Moon } from 'lucide-react'
 import {
   CHAPTERS,
   FINAL_MEASURE_FROM,
@@ -17,14 +17,15 @@ import {
   RU_WEEKDAYS,
   ARC_START,
 } from '../engine'
-import type { Quest, Role, StatId } from '../engine'
+import type { Quest, Role, StatId, ThemePref } from '../engine'
 import { useStore } from '../store/store'
 import { refreshClock, useGame, useNow } from '../store/hooks'
 import { useUi } from '../store/ui'
 import { MeasurementsForm } from '../components/MeasurementsForm'
 import { Field } from '../components/ui'
 
-const PAGES: { id: string; title: string; hint: string; icon: typeof ListChecks }[] = [
+const PAGES: { id: string; title: string; hint: string; icon: typeof ListChecks; href?: string }[] = [
+  { id: 'shop', title: 'Магазин наград', hint: 'Потратить осколки ❄', icon: ShoppingBag, href: '#/shop' },
   { id: 'quests', title: 'Квесты', hint: 'Редактор, роли по главам, мини-версии', icon: ListChecks },
   { id: 'measurements', title: 'Замеры', hint: 'Старт и финал', icon: Ruler },
   { id: 'triggers', title: 'Триггеры', hint: 'Когда и почему срываешься', icon: Activity },
@@ -71,9 +72,10 @@ export function More({ sub }: { sub?: string }) {
   return (
     <div className="stack-lg">
       <h1>Ещё</h1>
+      <Appearance />
       <div className="stack" style={{ gap: 8 }}>
         {PAGES.map((p) => (
-          <a key={p.id} className="list-btn" href={`#/more/${p.id}`}>
+          <a key={p.id} className="list-btn" href={p.href ?? `#/more/${p.id}`}>
             <p.icon aria-hidden />
             <span className="grow">
               {p.title}
@@ -94,13 +96,50 @@ export function More({ sub }: { sub?: string }) {
   )
 }
 
+// ---------- appearance ----------
+
+const THEMES: { id: ThemePref; label: string; icon: typeof Sun }[] = [
+  { id: 'light', label: 'Светлая', icon: Sun },
+  { id: 'dark', label: 'Ночь', icon: Moon },
+  { id: 'auto', label: 'Авто', icon: Monitor },
+]
+
+function Appearance() {
+  const settings = useStore((s) => s.data.settings)
+  const setSettings = useStore((s) => s.setSettings)
+  const theme = settings.theme ?? 'auto'
+  const snow = settings.snow ?? true
+  return (
+    <section className="panel stack" aria-label="Оформление">
+      <h3>Оформление</h3>
+      <div className="theme-pick" role="radiogroup" aria-label="Тема">
+        {THEMES.map((t) => (
+          <button key={t.id} className="chip" role="radio" aria-checked={theme === t.id} aria-pressed={theme === t.id} onClick={() => setSettings({ theme: t.id })} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '0 8px' }}>
+            <t.icon size={16} aria-hidden /> {t.label}
+          </button>
+        ))}
+      </div>
+      <div className="switch-row">
+        <span>
+          <span style={{ fontWeight: 700 }}>Падающий снег</span>
+          <span className="tiny muted" style={{ display: 'block' }}>
+            Выключается сам, если в системе «Уменьшить движение»
+          </span>
+        </span>
+        <button className="switch" role="switch" aria-checked={snow} aria-label="Падающий снег" onClick={() => setSettings({ snow: !snow })} />
+      </div>
+    </section>
+  )
+}
+
 // ---------- quests ----------
 
 const ROLE_OPTS: { v: Role | ''; l: string }[] = [
   { v: '', l: '—' },
-  { v: 'main', l: 'main' },
-  { v: 'side', l: 'side' },
+  { v: 'main', l: 'главный' },
+  { v: 'side', l: 'побочный' },
 ]
+const ROLE_SHORT: Record<Role, string> = { main: 'главный', side: 'побоч.' }
 
 function QuestCard({ q }: { q: Quest }) {
   const update = useStore((s) => s.updateQuest)
@@ -112,13 +151,10 @@ function QuestCard({ q }: { q: Quest }) {
         <button className="grow" style={{ textAlign: 'left', fontWeight: 700 }} onClick={() => setOpen(!open)} aria-expanded={open}>
           {q.title}
           <div className="tiny muted" style={{ fontWeight: 500 }}>
-            {q.roles.map((r, i) => `${CHAPTERS[i].roman}: ${r ?? '—'}`).join('  ')}
+            {q.roles.map((r, i) => `${i === 0 ? 'Пролог' : CHAPTERS[i].roman}: ${r ? ROLE_SHORT[r] : '—'}`).join(' · ')}
           </div>
         </button>
-        <label className="row tiny muted" style={{ gap: 6 }}>
-          <input type="checkbox" checked={q.enabled} onChange={(e) => update(q.id, { enabled: e.target.checked })} style={{ width: 20, height: 20 }} />
-          вкл
-        </label>
+        <button className="switch" role="switch" aria-checked={q.enabled} aria-label={`${q.title}: ${q.enabled ? 'включён' : 'выключен'}`} onClick={() => update(q.id, { enabled: !q.enabled })} />
       </div>
       {open && (
         <div className="stack">
@@ -192,11 +228,11 @@ function QuestsEditor() {
   const mains = CHAPTERS.map((c) => quests.filter((q) => q.enabled && q.roles[c.id] === 'main').length)
   return (
     <Sub title="Квесты">
-      <p className="small muted">Не больше 5 main в день: лишние автоматически станут побочными. Квест, который был main в прошлой главе, а теперь side, получает метку «база» и XP ×0.5.</p>
+      <p className="small muted">Не больше 5 главных в день: лишние автоматически станут побочными. Квест, который был главным в прошлой главе, а теперь побочный, получает метку «база» и XP ×0.5.</p>
       <div className="row wrap" style={{ gap: 8 }}>
         {CHAPTERS.map((c, i) => (
           <span key={c.id} className={`tag ${mains[i] > 5 ? 'ember' : ''}`}>
-            {c.id === 0 ? 'Пролог' : c.roman}: {mains[i]} main
+            {c.id === 0 ? 'Пролог' : c.roman}: {mains[i]} главных
           </span>
         ))}
       </div>
@@ -216,8 +252,8 @@ function QuestsEditor() {
           setTitle('')
         }}
       >
-        <input className="input" placeholder="Новый квест" value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Название нового квеста" />
-        <button className="btn sm primary" type="submit">
+        <input className="input" placeholder="Новый квест" value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Название нового квеста" maxLength={60} />
+        <button className="btn sm primary" type="submit" disabled={!title.trim()}>
           Добавить
         </button>
       </form>
@@ -327,8 +363,8 @@ function BarRow({ label, value, max }: { label: string; value: number; max: numb
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '92px 1fr 28px', gap: 10, alignItems: 'center' }} className="small">
       <span>{label}</span>
-      <div style={{ height: 10, background: 'var(--raised-2)', borderRadius: 3 }}>
-        <div style={{ width: `${(value / max) * 100}%`, height: '100%', background: '#1ba6bd', borderRadius: '0 4px 4px 0' }} />
+      <div style={{ height: 10, background: 'var(--surface-2)', borderRadius: 3 }}>
+        <div style={{ width: `${(value / max) * 100}%`, height: '100%', background: 'var(--c1)', borderRadius: '0 4px 4px 0' }} />
       </div>
       <span className="num tiny" style={{ textAlign: 'right' }}>
         {value}
@@ -478,7 +514,7 @@ function PauseHelp() {
         ))}
       </ol>
       <div className="panel stack">
-        <code className="small" style={{ wordBreak: 'break-all', color: 'var(--ice)' }}>
+        <code className="small" style={{ wordBreak: 'break-all', color: 'var(--pine)' }}>
           {url}
         </code>
         <div className="row wrap">
@@ -510,6 +546,7 @@ function Backup() {
   const importData = useStore((s) => s.importData)
   const resetAll = useStore((s) => s.resetAll)
   const say = useUi((s) => s.say)
+  const ask = useUi((s) => s.confirm)
   const file = useRef<HTMLInputElement>(null)
   const [err, setErr] = useState<string>()
 
@@ -539,7 +576,7 @@ function Backup() {
             if (!f) return
             try {
               const raw = JSON.parse(await f.text())
-              if (!confirm('Заменить текущие данные данными из файла?')) return
+              if (!(await ask({ title: 'Загрузить бэкап?', body: 'Текущие данные на этом устройстве заменятся данными из файла. Сначала можно скачать свой бэкап.', ok: 'Заменить' }))) return
               importData(raw)
               setErr(undefined)
               say('Бэкап загружен')
@@ -553,14 +590,14 @@ function Backup() {
         <button className="btn ghost block" onClick={() => file.current?.click()}>
           Загрузить бэкап
         </button>
-        {err && <p className="small" style={{ color: 'var(--ember)' }}>{err}</p>}
+        {err && <p className="small" style={{ color: 'var(--hp)' }}>{err}</p>}
       </div>
       <div className="divider" />
       <button
         className="btn ghost block"
-        style={{ color: 'var(--ember)' }}
-        onClick={() => {
-          if (confirm('Стереть все данные на этом устройстве? Это нельзя отменить.')) resetAll()
+        style={{ color: 'var(--hp)' }}
+        onClick={async () => {
+          if (await ask({ title: 'Стереть всё?', body: 'Квесты, дни, замеры и задачи на этом устройстве исчезнут. Это нельзя отменить — сначала скачай бэкап.', ok: 'Стереть всё', danger: true })) resetAll()
         }}
       >
         Стереть всё и начать заново

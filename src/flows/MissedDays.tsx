@@ -23,7 +23,7 @@ export function MissedDays({ days }: { days: DayKey[] }) {
           {days.slice(-7).map((d) => (
             <div key={d} className="row between">
               <span>{formatDayRu(d)}</span>
-              <span className="num small" style={{ color: 'var(--ember)' }}>
+              <span className="num small" style={{ color: 'var(--hp)' }}>
                 {game.days[d]?.closeHpDelta ? `${game.days[d].closeHpDelta} HP` : game.days[d]?.hpEnd === 0 ? 'в падении' : '0 HP'}
               </span>
             </div>
@@ -32,7 +32,7 @@ export function MissedDays({ days }: { days: DayKey[] }) {
           <div className="divider" />
           <div className="row between">
             <span className="muted">Всего</span>
-            <span className="num" style={{ color: 'var(--ember)' }}>
+            <span className="num" style={{ color: 'var(--hp)' }}>
               {total} HP
             </span>
           </div>
@@ -43,7 +43,7 @@ export function MissedDays({ days }: { days: DayKey[] }) {
             <span className="num hp-v">{game.hp}</span>
           </div>
           <HpBar hp={game.hp} />
-          {game.fallen && <p className="small" style={{ color: 'var(--ember)' }}>Это падение. Три идеальных дня подряд — и ты снова в игре с 50 HP.</p>}
+          {game.fallen && <p className="small" style={{ color: 'var(--hp)' }}>Это падение. Три идеальных дня подряд — и ты снова в игре с 50 HP.</p>}
         </div>
         <div className="grow" />
         <button className="btn primary block" onClick={() => setAck({ missedThrough: days[days.length - 1] })}>

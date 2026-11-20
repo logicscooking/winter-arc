@@ -178,13 +178,15 @@ describe('ретроактивная оценка пропущенных дне�
   it('снапшот плана для закрытых дней', () => {
     const data = makeData()
     confess(data, D1)
-    expect(daysNeedingSnapshot(data, nowAt(addDays(D1, 1), 10))).toEqual([D1])
-    expect(daysNeedingSnapshot(data, nowAt(addDays(D1, 1), 17))).toEqual([D1])
+    // дни разминки (20–22 ноя) тоже замораживаются
+    expect(daysNeedingSnapshot(data, nowAt(addDays(D1, 1), 10))).toEqual(['2026-11-20', '2026-11-21', '2026-11-22', D1])
+    expect(daysNeedingSnapshot(data, nowAt(addDays(D1, 1), 17))).toEqual(['2026-11-20', '2026-11-21', '2026-11-22', D1])
   })
-  it('до старта арки ничего не оценивается', () => {
+  it('до старта арки идёт разминка: день открыт, HP не тратится', () => {
     const st = computeState(makeData(), new Date(2026, 10, 20, 12))
     expect(st.hp).toBe(100)
-    expect(Object.keys(st.days)).toHaveLength(0)
+    expect(Object.keys(st.days)).toEqual(['2026-11-20'])
+    expect(st.days['2026-11-20']).toMatchObject({ warmup: true, closed: false })
   })
 })
 
@@ -282,3 +284,83 @@ describe('серии', () => {
     expect(questStreak(st, 'wake').current).toBe(6)
   })
 })
+
+describe('Разминка: дни до старта арки', () => {
+  const W1 = '2026-11-20' // день онбординга в makeData, пятница
+  const SUN = '2026-11-22'
+
+  it('до 23 ноября квесты, исповедь и тяга дают XP и ❄, HP не меняется', () => {
+    const data = makeData()
+    mark(data, W1, 'wake')
+    mark(data, W1, 'water')
+    confess(data, W1)
+    data.cravings.push({ id: 'c', at: at(W1, 14), day: W1, result: 'won', swap: 'вода' })
+    const st = computeState(data, nowAt(W1, 22))
+    expect(st.days[W1]).toMatchObject({ warmup: true, closed: true, confession: true, closeHpDelta: 0 })
+    expect(st.xp).toBe(20 + 10 + 5 + 10)
+    expect(st.shards).toBe(3 + 2 + 1 + 2)
+    expect(st.hp).toBe(100)
+    expect(st.xpByDay[W1]).toBe(45)
+  })
+
+  it('«Слился» в разминке записывается, но HP не снимает; камбэк даёт XP и ❄', () => {
+    const data = makeData()
+    data.slips.push({ id: 's', at: at(W1, 15), day: W1, what: 'reels', why: 'boredom', comebackAt: at(W1, 15, 30) })
+    data.slips.push({ id: 't', at: at(W1, 18), day: W1, what: 'cola', why: 'auto' })
+    const st = computeState(data, nowAt(W1, 19))
+    expect(st.hp).toBe(100)
+    expect(st.xpByStat.will).toBe(5)
+    expect(st.shards).toBe(2)
+  })
+
+  it('пропуски и молчание в разминке не стоят HP и не попадают в «Пропущено N дней»', () => {
+    const data = makeData()
+    const st = computeState(data, nowAt(ARC_START_DAY, 17))
+    for (const d of [W1, '2026-11-21', SUN]) expect(st.days[d]).toMatchObject({ warmup: true, closed: true, retro: false, closeHpDelta: 0 })
+    expect(st.hp).toBe(100)
+    expect(unacknowledgedMissed(st)).toEqual([])
+  })
+
+  it('воскресенье разминки не закрывает бой с боссом первой недели', () => {
+    const data = makeData()
+    perfectDays(data, W1, 3)
+    const st = computeState(data, nowAt(ARC_START_DAY, 10))
+    expect(st.bosses[1]).toMatchObject({ done: false, damage: 0 })
+    expect(st.trophies).toEqual([])
+  })
+
+  it('пропуск в последний день разминки не делает первый пропуск арки двойным', () => {
+    const data = makeData()
+    mark(data, SUN, 'wake')
+    confess(data, SUN) // phone пропущен
+    mark(data, ARC_START_DAY, 'wake')
+    confess(data, ARC_START_DAY) // phone пропущен снова
+    const st = computeState(data, nowAt(ARC_START_DAY, 22))
+    expect(st.days[ARC_START_DAY].closeHpDelta).toBe(-10)
+    expect(st.hp).toBe(90)
+  })
+
+  it('идеальные дни разминки не копят заморозки, но идут в серии и честность', () => {
+    const data = makeData({ profile: { nick: 'Т', avatar: '🐺', usualWake: '07:00', onboardDay: '2026-11-14' } })
+    perfectDays(data, '2026-11-14', 9)
+    const st = computeState(data, nowAt(SUN, 22))
+    expect(st.freezes).toBe(0)
+    expect(st.perfectRun).toBe(0)
+    expect(st.honestyStreak).toBe(9)
+    expect(questStreak(st, 'wake').current).toBe(9)
+  })
+
+  it('онбординг после старта — разминки нет, дни до онбординга не оцениваются', () => {
+    const data = makeData({ profile: { nick: 'Т', avatar: '🐺', usualWake: '07:00', onboardDay: '2026-11-25' } })
+    const st = computeState(data, nowAt('2026-11-25', 12))
+    expect(Object.values(st.days).some((r) => r.warmup)).toBe(false)
+    expect(st.days[ARC_START_DAY].closed).toBe(false)
+  })
+
+  it('закрытые дни разминки получают снимок плана', () => {
+    const data = makeData()
+    expect(daysNeedingSnapshot(data, nowAt(SUN, 17))).toEqual([W1, '2026-11-21'])
+  })
+})
+
+const ARC_START_DAY = '2026-11-23'
