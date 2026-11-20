@@ -85,6 +85,8 @@ export interface Bulb {
   on: boolean
 }
 
+const BULB_COLORS = ['#ffc94a', '#ff5a6a', '#43d57a', '#6cc6f2']
+
 /** Garland progress: one bulb per quest of the day, lit when it is done. */
 export function Garland({ bulbs, label }: { bulbs: Bulb[]; label?: string }) {
   const ref = useRef<HTMLDivElement>(null)
@@ -126,25 +128,33 @@ export function Garland({ bulbs, label }: { bulbs: Bulb[]; label?: string }) {
         </span>
       </div>
       <svg viewBox={`0 0 ${w} ${h}`} role="img" aria-label={`Выполнено ${lit} из ${n} квестов дня`}>
+        <defs>
+          {BULB_COLORS.map((c, k) => (
+            <radialGradient key={c} id={`glow-${k}`}>
+              <stop offset="0%" stopColor={c} stopOpacity="0.55" />
+              <stop offset="100%" stopColor={c} stopOpacity="0" />
+            </radialGradient>
+          ))}
+        </defs>
         <path className="wire" d={d} />
         {bulbs.map((b, i) => {
           const x = xs[i]
-          const y = top + sag * 0.25 + 1
+          const y = top + sag * 0.25 - 1
           const r = b.main ? 11 : 9
+          const c = i % 4
+          // a real string light: plastic socket clipped to the wire, a glass drop hanging from it, every other one tilted
+          const sw = r * 0.75
+          const y0 = y + 7
+          const L = r * 2.3
+          const W = r * 1.35
+          const glass = `M${x - W * 0.3},${y0} L${x + W * 0.3},${y0} C${x + W * 0.78},${y0 + L * 0.3} ${x + W * 0.5},${y0 + L * 0.82} ${x},${y0 + L} C${x - W * 0.5},${y0 + L * 0.82} ${x - W * 0.78},${y0 + L * 0.3} ${x - W * 0.3},${y0} Z`
           return (
-            <g key={b.id}>
-              <rect className="cap" x={x - 3} y={y} width={6} height={5} rx={1.2} />
-              <rect
-                className={`bulb ${b.main ? 'main' : ''} ${b.on ? `on c${i % 4}` : ''}`}
-                x={x - r * 0.8}
-                y={y + 5}
-                width={r * 1.6}
-                height={r * 2.2}
-                rx={2}
-                shapeRendering="crispEdges"
-                style={{ '--tw': `${(i % 5) * 0.35}s` } as React.CSSProperties}
-              />
-              {b.on && <rect className="shine" x={x - r * 0.5} y={y + 8} width={3} height={4} shapeRendering="crispEdges" />}
+            <g key={b.id} transform={`rotate(${i % 2 ? 12 : -12} ${x} ${y})`} style={{ '--bc': BULB_COLORS[c], '--tw': `${(i % 5) * 0.35}s` } as React.CSSProperties}>
+              {b.on && <circle className="glow" cx={x} cy={y0 + L * 0.55} r={r * 2.1} fill={`url(#glow-${c})`} />}
+              <path className={`bulb ${b.main ? 'main' : ''} ${b.on ? 'on' : ''}`} d={glass} />
+              {b.on && <ellipse className="shine" cx={x - W * 0.18} cy={y0 + L * 0.35} rx={r * 0.14} ry={r * 0.32} />}
+              <rect className="cap" x={x - sw / 2} y={y} width={sw} height={8} rx={1.5} />
+              <rect className="cap-rib" x={x - sw / 2} y={y + 3} width={sw} height={1.2} />
             </g>
           )
         })}

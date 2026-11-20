@@ -596,17 +596,17 @@ a.hud-cell:active { transform: translateY(2px); }
 .garland-head { display: flex; justify-content: space-between; align-items: baseline; padding: 0 2px; }
 .garland-head span:first-child { font-weight: 900; font-size: 0.92rem; }
 .garland svg { display: block; width: 100%; height: auto; overflow: visible; }
-.garland .wire { fill: none; stroke: var(--mist); stroke-width: 2; opacity: 0.5; }
-.garland .cap { fill: var(--mist); opacity: 0.8; }
-.garland .bulb { fill: var(--surface-2); stroke: var(--line); stroke-width: 2; transition: fill 0.35s ease, stroke 0.35s ease; transform-box: fill-box; transform-origin: 50% 0; }
-.garland .bulb.main { stroke: var(--mist); }
-.garland .bulb.on { stroke: none; animation: bulb-on 0.6s var(--ease-pop); }
-.garland .bulb.on.c0 { fill: var(--gold-bright); filter: drop-shadow(0 0 5px var(--gold-bright)); }
-.garland .bulb.on.c1 { fill: #ff5a6a; filter: drop-shadow(0 0 5px #ff5a6a); }
-.garland .bulb.on.c2 { fill: #43d57a; filter: drop-shadow(0 0 5px #43d57a); }
-.garland .bulb.on.c3 { fill: #6cc6f2; filter: drop-shadow(0 0 5px #6cc6f2); }
-.garland .shine { fill: #fff; opacity: 0.55; pointer-events: none; }
-.garland.all .bulb.on { animation: twinkle 2.4s steps(4) infinite; animation-delay: var(--tw); }
+.garland .wire { fill: none; stroke: #1f3a2a; stroke-width: 2.5; stroke-linecap: round; }
+.garland .cap { fill: #2a4a36; stroke: #16281d; stroke-width: 1; }
+.garland .cap-rib { fill: #16281d; opacity: 0.7; }
+/* unlit: dark tinted glass you can still tell the color of; lit: bright glass with a halo */
+.garland .bulb { fill: var(--bc); fill-opacity: 0.2; stroke: var(--bc); stroke-opacity: 0.45; stroke-width: 1.5; transition: fill-opacity 0.35s ease; transform-box: fill-box; transform-origin: 50% 0; }
+.garland .bulb.main { stroke-opacity: 0.75; stroke-width: 2; }
+.garland .bulb.on { fill-opacity: 1; stroke: #fff; stroke-opacity: 0.35; stroke-width: 1; animation: bulb-on 0.6s var(--ease-pop); filter: drop-shadow(0 0 4px var(--bc)); }
+.garland .glow { pointer-events: none; }
+.garland .shine { fill: #fff; opacity: 0.6; pointer-events: none; }
+.garland.all .bulb.on, .garland.all .glow { animation: twinkle 2.4s ease-in-out infinite; animation-delay: var(--tw); }
+:root[data-theme='light'] .garland .wire { stroke: #4d6b58; }
 @keyframes bulb-on { 0% { transform: scale(0.6); } 60% { transform: scale(1.2); } 100% { transform: none; } }
 @keyframes twinkle { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
 
