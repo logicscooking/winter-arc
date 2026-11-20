@@ -24,6 +24,7 @@ import { useUi } from '../store/ui'
 import { AddTask, TaskTree } from '../components/TaskTree'
 import { FlowChip, PracticeSheet, RankBadge, SkillLevelBar, Strikes, ThemeCard, skillSprite, startFlowAndGo } from '../components/skills'
 import { Px } from '../pixel/Pixel'
+import { RankChanceCard } from '../components/skillPlus'
 
 /** «Путь»: skills (progression) on top, the Deal of the day and projects below */
 export function Deal() {
@@ -134,6 +135,7 @@ function SkillCard({ skill, view, theme, xp }: { skill: Skill; view: ReturnType<
             </span>
             <Strikes n={view.strikes.strikes} />
           </span>
+          <RankChanceCard view={view} compact />
         </span>
         <RankBadge rank={view.rank} />
       </a>

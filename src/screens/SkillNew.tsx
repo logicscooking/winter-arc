@@ -8,10 +8,14 @@ import { useUi } from '../store/ui'
 import { Chips, Field, Sheet } from '../components/ui'
 import { Px } from '../pixel/Pixel'
 import { StatChip, skillSprite } from '../components/skills'
+import { AiButton, AiPreview, AiStatus } from '../components/ai'
+import { treeTask } from '../ai/prompts'
+import type { AiTree } from '../ai/prompts'
+import { useAi, useAiOn } from '../ai/useAi'
 
 /** One screen: template in 2 taps, or empty with the bridge question, or a friend's code */
 export function SkillNew({ importMode }: { importMode?: boolean }) {
-  const [pick, setPick] = useState<{ tree: TreeCode; tpl?: SkillTemplate } | null>(null)
+  const [pick, setPick] = useState<{ tree: TreeCode; tpl?: SkillTemplate; examples?: string[] } | null>(null)
   const [want, setWant] = useState('')
   const [block, setBlock] = useState('')
   const [code, setCode] = useState('')
@@ -62,6 +66,7 @@ export function SkillNew({ importMode }: { importMode?: boolean }) {
               Пустой навык
             </button>
           </section>
+          <AiTreeBuilder onImport={(tree, examples) => setPick({ tree, examples })} />
           <a className="list-btn" href="#/skill-new?import=1">
             <Px name="gift" size={26} />
             <span className="grow">
@@ -112,21 +117,82 @@ export function SkillNew({ importMode }: { importMode?: boolean }) {
         </section>
       )}
 
-      {pick && <CreateSheet tree={pick.tree} tpl={pick.tpl} bridge={{ want: want.trim(), block: block.trim() }} onClose={() => setPick(null)} />}
+      {pick && <CreateSheet tree={pick.tree} tpl={pick.tpl} examples={pick.examples} bridge={{ want: want.trim(), block: block.trim() }} onClose={() => setPick(null)} />}
     </div>
   )
 }
 
-function CreateSheet({ tree, tpl, bridge, onClose }: { tree: TreeCode; tpl?: SkillTemplate; bridge: { want: string; block: string }; onClose: () => void }) {
+/** v0.5 «Собрать дерево ИИ»: when no template fits. Only the skill title goes out */
+function AiTreeBuilder({ onImport }: { onImport: (tree: TreeCode, examples: string[]) => void }) {
+  const on = useAiOn()
+  const [title, setTitle] = useState('')
+  const [stat, setStat] = useState<StatId>('mind')
+  const { st, run, reset } = useAi<AiTree>()
+  if (!on) return null
+  const start = () => title.trim().length >= 2 && void run(treeTask(title.trim()))
+  return (
+    <section className="panel stack">
+      <h3>Шаблона нет? ИИ соберёт дерево</h3>
+      <p className="tiny muted">3–5 характеристик, узлы, что повышает и понижает, примеры «Кайфа». Уходит только название навыка.</p>
+      <div className="row" style={{ gap: 8 }}>
+        <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Например «Гитара» или «Публичные выступления»" maxLength={60} aria-label="Название навыка для ИИ" />
+        <AiButton onClick={start} disabled={title.trim().length < 2 || st.phase === 'loading'}>
+          Собрать
+        </AiButton>
+      </div>
+      <AiStatus st={st} onRetry={start} onCancel={reset} />
+      {st.phase === 'done' && (
+        <AiPreview
+          title={`Дерево «${title.trim()}»`}
+          ms={st.ms}
+          onCancel={reset}
+          applyLabel="Импортировать"
+          onApply={() => {
+            const tree: TreeCode = { v: 1, t: title.trim(), s: stat, tr: st.value.traits.map((t) => ({ t: t.t, ...(t.plus ? { p: t.plus } : {}), ...(t.minus ? { m: t.minus } : {}), n: t.nodes.map((n) => ({ t: n })) })), g: [] }
+            onImport(tree, st.value.joy)
+            reset()
+          }}
+        >
+          {st.value.traits.map((t) => (
+            <div key={t.t} className="ai-trait">
+              <b>{t.t}</b>
+              {(t.plus || t.minus) && (
+                <span className="pm">
+                  {t.plus && <span className="plus">+ {t.plus}</span>}
+                  {t.minus && <span className="minus">− {t.minus}</span>}
+                </span>
+              )}
+              <span className="small muted">{t.nodes.join(' · ')}</span>
+            </div>
+          ))}
+          {st.value.joy.length > 0 && (
+            <div className="stack" style={{ gap: 4 }}>
+              <span className="tiny muted">Примеры «Кайфа»</span>
+              {st.value.joy.map((j) => (
+                <span key={j} className="small">
+                  «{j}»
+                </span>
+              ))}
+            </div>
+          )}
+          <Chips label="Стат-покровитель" options={STATS.map((s) => ({ id: s.id, label: s.name }))} value={stat} onChange={setStat} />
+        </AiPreview>
+      )}
+    </section>
+  )
+}
+
+function CreateSheet({ tree, tpl, examples: aiExamples, bridge, onClose }: { tree: TreeCode; tpl?: SkillTemplate; examples?: string[]; bridge: { want: string; block: string }; onClose: () => void }) {
   const createSkill = useStore((s) => s.createSkill)
+  const deleteSkill = useStore((s) => s.deleteSkill)
   const say = useUi((s) => s.say)
   const [title, setTitle] = useState(tree.t)
   const [stat, setStat] = useState<StatId>(tree.s)
   const [kind, setKind] = useState<ValueKind>('joy')
-  const [value, setValue] = useState(tpl?.joy[0] ?? '')
+  const [value, setValue] = useState(tpl?.joy[0] ?? aiExamples?.find((x) => checkValue(x).ok) ?? '')
   const [touched, setTouched] = useState(false)
   const check = checkValue(value, kind)
-  const examples = tpl ? (kind === 'joy' ? tpl.joy : tpl.pain) : kind === 'joy' ? ['Закрываю ноутбук в шесть, а сделано больше, чем за весь прошлый день'] : ['Каждое воскресенье тошнит от мысли, что неделя опять прошла впустую']
+  const examples = tpl ? (kind === 'joy' ? tpl.joy : tpl.pain) : kind === 'joy' && aiExamples?.length ? aiExamples : kind === 'joy' ? ['Закрываю ноутбук в шесть, а сделано больше, чем за весь прошлый день'] : ['Каждое воскресенье тошнит от мысли, что неделя опять прошла впустую']
 
   const create = () => {
     if (!check.ok || !title.trim()) {
@@ -136,7 +202,10 @@ function CreateSheet({ tree, tpl, bridge, onClose }: { tree: TreeCode; tpl?: Ski
     const now = nowWithOffset()
     const m = materializeTree(tree, { uid, now: now.getTime(), today: gameDayOf(now), value, valueKind: kind, status: 'active', order: 0, title, stat, templateId: tpl?.id, bridge })
     const status = createSkill(m)
-    say(status === 'later' ? 'Навык в «Позже»: в фокусе уже 3' : `Навык «${m.skill.title}» в фокусе`)
+    const text = status === 'later' ? 'Навык в «Позже»: в фокусе уже 3' : `Навык «${m.skill.title}» в фокусе`
+    // an AI tree can be rolled back right away
+    if (aiExamples) say(text, () => (deleteSkill(m.skill.id), go('/skill-new')))
+    else say(text)
     onClose()
     go(`/skill/${m.skill.id}`)
   }

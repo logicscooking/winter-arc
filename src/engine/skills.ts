@@ -810,3 +810,43 @@ export function chestsFor(data: Pick<AppData, 'goals' | 'chests'>, day: DayKey):
     return { type, count, ready: !opened && count >= CHEST.need, opened }
   })
 }
+
+// ---------- v0.5 «Огонёк»: streak of a repeat goal ----------
+
+export interface RepeatStreak {
+  /** fulfilled weeks in a row, the current week counts once it is fulfilled */
+  current: number
+  /** best ever: computed from history and the stored record, whichever is higher */
+  best: number
+  /** this week already counts */
+  thisWeek: boolean
+}
+
+/**
+ * Periods are weeks. An unfulfilled week burns the streak, except: the week the goal was set up,
+ * the week still in progress, warm-up weeks (before the arc) and weeks with a frozen day — those are neutral.
+ */
+export function repeatStreak(g: Goal, today: DayKey, frozen: Set<DayKey> = new Set()): RepeatStreak {
+  const per = g.perWeek ?? 0
+  const stored = g.bestStreak ?? 0
+  if (g.type !== 'repeat' || per <= 0) return { current: 0, best: stored, thisWeek: false }
+  const days = new Set((g.checks ?? []).map((c) => c.day))
+  const first = weekStartOf(g.since ?? dayOfMs(g.createdAt))
+  const current = weekStartOf(today)
+  let run = 0
+  let best = 0
+  let thisWeek = false
+  for (let ws = first; ws <= current; ws = addDays(ws, 7)) {
+    const week = Array.from({ length: 7 }, (_, i) => addDays(ws, i))
+    const ticks = week.filter((d) => days.has(d)).length
+    if (ticks >= per) {
+      run++
+      best = Math.max(best, run)
+      if (ws === current) thisWeek = true
+      continue
+    }
+    const neutral = ws === current || ws === first || week[0] < ARC_START || week.some((d) => frozen.has(d))
+    if (!neutral) run = 0
+  }
+  return { current: run, best: Math.max(best, stored), thisWeek }
+}

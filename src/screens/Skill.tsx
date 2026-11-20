@@ -42,6 +42,9 @@ import { useUi } from '../store/ui'
 import { Chips, Field, Sheet } from '../components/ui'
 import { PracticeSheet, RankBadge, SKILL_ICONS, SkillLevelBar, StagePips, StatChip, Strikes, ThemeCard, skillSprite, startFlowAndGo, useSkillView } from '../components/skills'
 import { Px } from '../pixel/Pixel'
+import { NextStepBlock, RankChanceCard, SkillCheckBlock, SplitBlock, StreakFlame, isStuck } from '../components/skillPlus'
+import { AiButton } from '../components/ai'
+import { useAiOn } from '../ai/useAi'
 
 export function SkillScreen({ id, tab }: { id: string; tab?: string }) {
   const view = useSkillView(id)
@@ -118,10 +121,13 @@ export function SkillScreen({ id, tab }: { id: string; tab?: string }) {
         <RankBadge rank={view.rank} size="lg" />
       </section>
 
+      <RankChanceCard view={view} />
+
       <blockquote className={`value-quote ${s.valueKind === 'pain' ? 'pain' : ''}`}>
         <small>{s.valueKind === 'pain' ? 'Боль, от которой ухожу' : 'Кайф'}</small>
         {s.value}
       </blockquote>
+      <SkillCheckBlock skillId={s.id} />
 
       {s.status === 'active' ? (
         <div className="skill-actions">
@@ -475,6 +481,10 @@ function GoalNode({ goal, goals, issues, depth, onAdd }: { goal: Goal; goals: Go
   const [point, setPoint] = useState('')
   const [simpler, setSimpler] = useState('')
   const [mode, setMode] = useState<'split' | 'raise' | null>(null)
+  const [ai, setAi] = useState<'split' | 'next' | null>(null)
+  const aiOn = useAiOn()
+  const skillTitle = useStore((s) => s.data.skills?.find((x) => x.id === goal.skillId)?.title ?? '')
+  const stuck = isStuck(goal, goals, today)
   const kids = childGoals(goals, goal.id)
   const daily = goal.type === 'short' || goal.type === 'repeat'
   const done = daily ? checkedOn(goal, today) : !!goal.doneAt
@@ -507,6 +517,7 @@ function GoalNode({ goal, goals, issues, depth, onAdd }: { goal: Goal; goals: Go
               </span>
             )}
             {runs && runs.doneRun > 1 && <span className="num">серия {runs.doneRun}</span>}
+            {goal.type === 'repeat' && <StreakFlame goal={goal} />}
             {goal.type !== 'long' && isMetric(goal.title) && <span className="metric-warn">метрика?</span>}
           </span>
         </div>
@@ -522,6 +533,16 @@ function GoalNode({ goal, goals, issues, depth, onAdd }: { goal: Goal; goals: Go
       </div>
 
       {issues[goal.id] && <p className="goal-issue">{issues[goal.id]}</p>}
+
+      {aiOn && !ai && !done && (goal.type === 'long' || goal.type === 'mid') && (
+        <div className="row wrap" style={{ gap: 8, paddingLeft: 44 }}>
+          <AiButton onClick={() => setAi('split')}>Разбить</AiButton>
+          {goal.type === 'mid' && stuck && <AiButton onClick={() => setAi('next')}>Следующий шаг</AiButton>}
+        </div>
+      )}
+      {goal.type === 'mid' && stuck && !aiOn && !done && <p className="goal-issue">Завис 3+ дня: добавь краткий старт до 15 минут.</p>}
+      {ai === 'split' && <SplitBlock goal={goal} skillTitle={skillTitle} onClose={() => setAi(null)} />}
+      {ai === 'next' && <NextStepBlock goal={goal} skillTitle={skillTitle} onClose={() => setAi(null)} />}
 
       {eta && (
         <div className="eta">
@@ -596,6 +617,7 @@ function GoalNode({ goal, goals, issues, depth, onAdd }: { goal: Goal; goals: Go
               <button className="btn sm" onClick={() => setMode(needsSplit(goal, today) ? 'split' : 'raise')}>
                 {needsSplit(goal, today) ? 'Сделать проще' : 'Заменить сложнее'}
               </button>
+              {aiOn && needsSplit(goal, today) && !ai && <AiButton onClick={() => setAi('next')}>Следующий шаг</AiButton>}
               {canRaise(goal, today) && (
                 <button
                   className="btn sm ghost"

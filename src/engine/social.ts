@@ -10,6 +10,8 @@ import { COMEBACK_WINDOW_MS, isCompleted } from './quests'
 import { marksFor, planFor } from './replay'
 import type { GameState } from './replay'
 import { activeSkills, skillView } from './skills'
+import { publicDuels } from './duels'
+import type { DuelPub } from './duels'
 import { ARC_START, chapterOf, gameDayOf, weekDays } from './time'
 import type { AppData, DayKey, Outfit, SlipWhat } from './types'
 
@@ -66,6 +68,8 @@ export interface PublicStats {
   outfit?: Outfit
   /** v0.4: active skills, title and rank only. «Кайф», notes and feedback stay private */
   skills?: { t: string; r: string }[]
+  /** v0.5 duels: ids, window and own closed-quests score per day. Friends validate it with safeDuels */
+  duels?: DuelPub[]
   at: number
 }
 
@@ -112,6 +116,10 @@ export function buildPublicStats(data: AppData, game: GameState, now: Date): Pub
     boss: bossWeek ? { week: bossWeek.week, name: bossWeek.name, hp: bossWeek.hp, damage: bossWeek.damage, won: bossWeek.won } : null,
     outfit: wornOutfit(data.profile?.outfit, level, data.purchases),
     ...(activeSkills(data).length ? { skills: publicSkills(data, game) } : {}),
+    ...(() => {
+      const duels = publicDuels(data, game, now.getTime())
+      return duels.length ? { duels } : {}
+    })(),
     at: now.getTime(),
   }
 }

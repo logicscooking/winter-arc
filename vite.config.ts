@@ -7,6 +7,18 @@ const base = process.env.VITE_BASE ?? process.env.BASE ?? '/winter-arc/'
 
 export default defineConfig({
   base,
+  // dev only: the free AI tier asks pages served from localhost for a Turnstile token,
+  // so the dev server forwards AI calls without the Origin (production calls Pollinations directly)
+  server: {
+    proxy: {
+      [`${base}__ai`]: {
+        target: 'https://text.pollinations.ai',
+        changeOrigin: true,
+        rewrite: (p) => p.slice(`${base}__ai`.length),
+        configure: (proxy) => proxy.on('proxyReq', (req) => (req.removeHeader('origin'), req.removeHeader('referer'))),
+      },
+    },
+  },
   plugins: [
     react(),
     VitePWA({

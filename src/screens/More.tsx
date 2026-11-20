@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactNode } from 'react'
-import { ArrowLeft, BookOpen, Bug, ChartLine, Download, Hand, ListChecks, Ruler, ScrollText, Activity, ChevronRight, Monitor } from 'lucide-react'
+import { ArrowLeft, BookOpen, Bug, ChartLine, Download, Hand, ListChecks, Ruler, ScrollText, Activity, ChevronRight } from 'lucide-react'
 import { Px } from '../pixel/Pixel'
 import type { SpriteName } from '../pixel/sprites'
 import { AccountEntry, AccountPage } from './Account'
@@ -26,6 +26,7 @@ import { refreshClock, useGame, useNow } from '../store/hooks'
 import { useUi } from '../store/ui'
 import { MeasurementsForm } from '../components/MeasurementsForm'
 import { Field } from '../components/ui'
+import { AiSettings } from '../components/ai'
 
 /** game screens first, with their pixel icons */
 const GAME: { title: string; hint: string; icon: SpriteName; href: string }[] = [
@@ -99,6 +100,7 @@ export function More({ sub }: { sub?: string }) {
       </div>
       <AccountEntry />
       <Appearance />
+      <AiSettings />
       <div className="stack" style={{ gap: 8 }}>
         {PAGES.map((p) => (
           <a key={p.id} className="list-btn" href={p.href ?? `#/more/${p.id}`}>
@@ -117,11 +119,43 @@ export function More({ sub }: { sub?: string }) {
 
 // ---------- appearance ----------
 
-const THEMES: { id: ThemePref; label: string; icon: SpriteName | null }[] = [
-  { id: 'dark', label: 'Ночь', icon: 'moon' },
-  { id: 'light', label: 'Снег', icon: 'snowman' },
-  { id: 'auto', label: 'Авто', icon: null },
+const THEMES: { id: ThemePref; label: string; hint: string }[] = [
+  { id: 'dark', label: 'Ночь', hint: 'хвойная тьма' },
+  { id: 'light', label: 'Снег', hint: 'дневной крем' },
+  { id: 'auto', label: 'Авто', hint: 'как в системе' },
+  { id: 'polar', label: 'Полярная ночь', hint: 'глубокий синий' },
+  { id: 'aurora', label: 'Северное сияние', hint: 'бирюза и фиолет' },
+  { id: 'fir', label: 'Ёлочная', hint: 'ель, красный, золото' },
 ]
+
+/** A tiny live sample of a theme: its own tokens are scoped to the tile via data-tp */
+function ThemeSample({ id }: { id: ThemePref }) {
+  if (id === 'auto')
+    return (
+      <span className="theme-sample split" aria-hidden>
+        <span data-tp="dark" className="half">
+          <i className="s-card" />
+        </span>
+        <span data-tp="light" className="half">
+          <i className="s-card" />
+        </span>
+      </span>
+    )
+  return (
+    <span className="theme-sample" data-tp={id} aria-hidden>
+      <i className="s-card">
+        <b className="s-line" />
+        <b className="s-line short" />
+      </i>
+      <span className="s-dots">
+        <i className="s-pine" />
+        <i className="s-gold" />
+        <i className="s-hp" />
+        <i className="s-frost" />
+      </span>
+    </span>
+  )
+}
 
 function Appearance() {
   const settings = useStore((s) => s.data.settings)
@@ -131,13 +165,16 @@ function Appearance() {
   return (
     <section className="panel stack" aria-label="Оформление">
       <h3>Оформление</h3>
-      <div className="theme-pick" role="radiogroup" aria-label="Тема">
+      <div className="theme-grid" role="radiogroup" aria-label="Тема">
         {THEMES.map((t) => (
-          <button key={t.id} className="chip" role="radio" aria-checked={theme === t.id} aria-pressed={theme === t.id} onClick={() => setSettings({ theme: t.id })} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '0 8px' }}>
-            {t.icon ? <Px name={t.icon} size={20} /> : <Monitor size={16} aria-hidden />} {t.label}
+          <button key={t.id} className="theme-tile" role="radio" aria-checked={theme === t.id} onClick={() => setSettings({ theme: t.id })}>
+            <ThemeSample id={t.id} />
+            <span className="theme-name">{t.label}</span>
+            <span className="tiny muted">{t.hint}</span>
           </button>
         ))}
       </div>
+      <p className="tiny muted">Все темы бесплатные. Тема своя на каждом устройстве.</p>
       <div className="switch-row">
         <span>
           <span style={{ fontWeight: 700 }}>Падающий снег</span>

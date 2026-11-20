@@ -4,6 +4,7 @@ import { useStore } from '../store/store'
 import { go, useGame, useNow } from '../store/hooks'
 import { useUi } from '../store/ui'
 import { Chart } from '../components/Chart'
+import { Heatmap } from '../components/Heatmap'
 import { PAGES_GOAL, PAGES_MIN, WAKE_GOAL, allDays, anyXp, hpValues, pagesValues, wakeValues, window7, xpValues } from '../store/trends'
 
 export function Charts() {
@@ -66,6 +67,7 @@ export function Charts() {
         </div>
         {warmup && <p className="small muted">Разминка до 23 ноября тоже рисуется: каждая отметка — точка на графике.</p>}
       </header>
+      <Heatmap />
       <div className="cols">
         <div className="stack-lg">
           <Chart

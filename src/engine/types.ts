@@ -204,6 +204,8 @@ export interface Review {
   remove: string
   simplify: string
   at: number
+  /** v0.5 «Разбор недели» from the AI helper, applied by the user */
+  ai?: string
 }
 
 export interface Profile {
@@ -230,7 +232,8 @@ export interface Outfit {
   skin?: string
 }
 
-export type ThemePref = 'auto' | 'light' | 'dark'
+/** v0.5: three extra winter themes on top of «Ночь» (dark) and «Снег» (light) */
+export type ThemePref = 'auto' | 'light' | 'dark' | 'polar' | 'aurora' | 'fir'
 
 export interface Settings {
   debugOffsetDays: number
@@ -241,6 +244,10 @@ export interface Settings {
   snow?: boolean
   /** v0.2: what goes to the party feed (missing = on) */
   share?: Partial<Record<'slips' | 'perfect' | 'boss' | 'level' | 'book', boolean>>
+  /** v0.5 «ИИ-помощник»: off by default, turned on only after the consent screen */
+  ai?: { on: boolean; consentAt?: number }
+  /** v0.5: AI request counter of this device (kept local, never synced) */
+  aiUse?: { day: DayKey; n: number; last: number }
 }
 
 export interface Ack {
@@ -353,6 +360,8 @@ export interface Goal {
   scale?: { from: number; to: number; unit?: string; points: ScalePoint[] }
   /** manual deadline, only for things done many times */
   deadline?: DayKey
+  /** v0.5 repeat: best streak of fulfilled weeks ever seen (kept even if checks are later removed) */
+  bestStreak?: number
 }
 
 export interface FlowSession {
@@ -401,6 +410,41 @@ export interface ChestOpen {
   rarity?: Rarity
 }
 
+// ---------- v0.5 duels ----------
+
+export type DuelMetric = 'quests'
+
+/** A 3-day duel in the party. Both sides keep the same record locally; the score travels via public stats. */
+export interface Duel {
+  /** same id on both sides */
+  id: string
+  /** challenger user id */
+  by: string
+  /** opponent user id */
+  with: string
+  /** first game day of the window */
+  start: DayKey
+  days: number
+  metric: DuelMetric
+  /** when the challenge was made (ms): it expires 24 h later if not accepted */
+  createdAt: number
+  /** accepted: the opponent's moment of accepting, or when the challenger first saw it */
+  acceptedAt?: number
+  /** the opponent said no (kept so the card stays quiet) */
+  declined?: boolean
+  /** settled once, by this device: the replay gives the win reward from here */
+  result?: DuelResult
+}
+
+export interface DuelResult {
+  me: number
+  them: number
+  outcome: 'win' | 'loss' | 'draw'
+  /** game day of the settlement: the reward lands on it */
+  day: DayKey
+  at: number
+}
+
 export interface AppData {
   schemaVersion: 1
   profile?: Profile
@@ -430,4 +474,6 @@ export interface AppData {
   themes?: SeasonTheme[]
   extras?: Extra[]
   chests?: ChestOpen[]
+  /** v0.5 */
+  duels?: Duel[]
 }

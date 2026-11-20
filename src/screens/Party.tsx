@@ -16,6 +16,7 @@ import { RankBadge } from '../components/skills'
 import { RANKS } from '../engine'
 import type { Rank } from '../engine'
 import { BossSprite, PixelAvatar, Px } from '../pixel/Pixel'
+import { DuelArea, useDuelReconcile } from '../components/Duels'
 
 export function Party() {
   const account = useSocial((s) => s.account)
@@ -248,6 +249,7 @@ function PartyHome({ initialCode }: { initialCode?: string }) {
 
   const me = st.account!
   const sorted = [...members].sort((a, b) => (a.id === me.id ? -1 : b.id === me.id ? 1 : 0))
+  useDuelReconcile(members, me.id)
 
   return (
     <>
@@ -300,7 +302,7 @@ function PartyHome({ initialCode }: { initialCode?: string }) {
           </div>
           <div className="members">
             {sorted.map((m) => (
-              <MemberCard key={m.id} m={m} isMe={m.id === me.id} owner={party.owner === m.id} onNudge={() => setNudgeTo(m)} />
+              <MemberCard key={m.id} m={m} isMe={m.id === me.id} owner={party.owner === m.id} onNudge={() => setNudgeTo(m)} meId={me.id} members={members} />
             ))}
             {members.length === 0 && <div className="empty">Загружаю участников…</div>}
           </div>
@@ -447,7 +449,7 @@ function CodeCard({ party, isOwner }: { party: PartyT; isOwner: boolean }) {
 
 // ---------- member ----------
 
-function MemberCard({ m, isMe, owner, onNudge }: { m: Member; isMe: boolean; owner: boolean; onNudge: () => void }) {
+function MemberCard({ m, isMe, owner, onNudge, meId, members }: { m: Member; isMe: boolean; owner: boolean; onNudge: () => void; meId: string; members: Member[] }) {
   const today = useToday()
   const outfit = useUserOutfit(m.id)
   const s = m.stats
@@ -499,6 +501,8 @@ function MemberCard({ m, isMe, owner, onNudge }: { m: Member; isMe: boolean; own
       {s && <MemberDay s={s} fresh={fresh} />}
 
       {s?.boss && !s.warmup && <MemberBoss boss={s.boss} />}
+
+      {!isMe && <DuelArea friend={m} meId={meId} members={members} />}
 
       <div className="member-foot">
         <span className="tiny muted grow">{updated}</span>

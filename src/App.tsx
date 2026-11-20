@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { gameDayOf, replayStartOf, unacknowledgedMissed } from './engine'
+import type { ThemePref } from './engine'
 import { useStore } from './store/store'
 import { useGame, useNow, useRoute } from './store/hooks'
 import { useUi } from './store/ui'
@@ -49,15 +50,19 @@ const NAV: { path: string; label: string; icon: SpriteName; tab: boolean }[] = [
 /** sub-screens that light up a tab */
 const TAB_OF: Record<string, string> = { '/avatar': '/hero', '/charts': '/more', '/skill': '/deal', '/skill-new': '/deal', '/flow': '/deal' }
 
-/** «Полярная ночь» by default, «Снежный крем» by choice or by the system in «auto» */
-function useTheme(pref: 'auto' | 'light' | 'dark') {
+/** status bar color per theme */
+const THEME_BG: Record<string, string> = { dark: '#0f1d17', light: '#f0e8dd', polar: '#0b1530', aurora: '#0d1219', fir: '#0e2017' }
+
+/** «Ночь» by default, «Снег» by choice or by the system in «auto», plus three v0.5 winter themes */
+function useTheme(pref: ThemePref) {
   useEffect(() => {
     const root = document.documentElement
     if (pref === 'auto') delete root.dataset.theme
     else root.dataset.theme = pref
     const apply = () => {
       const light = pref === 'light' || (pref === 'auto' && window.matchMedia('(prefers-color-scheme: light)').matches)
-      document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', light ? '#f0e8dd' : '#0f1d17'))
+      const color = light ? THEME_BG.light : (THEME_BG[pref] ?? THEME_BG.dark)
+      document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', color))
     }
     apply()
     const mq = window.matchMedia('(prefers-color-scheme: dark)')

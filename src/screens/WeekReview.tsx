@@ -8,6 +8,82 @@ import { Chart } from '../components/Chart'
 import { Field } from '../components/ui'
 import { WeeklyCheck } from '../components/WeeklyCheck'
 import { cloudConfigured } from '../cloud/client'
+import { activeSkills, frozenDays, isCompleted, skillView } from '../engine'
+import type { AppData, GameState } from '../engine'
+import { weekTask } from '../ai/prompts'
+import type { WeekNumbers } from '../ai/prompts'
+import { useAi, useAiOn } from '../ai/useAi'
+import { AiButton, AiPreview, AiStatus } from '../components/ai'
+
+/** Only numbers go to the AI: quest %, perfect days, confessions count, XP, boss, numbered skills */
+export function weekNumbers(data: AppData, game: GameState, week: number): WeekNumbers {
+  const days = weekDays(week)
+  const results = days.map((d) => game.days[d]).filter(Boolean)
+  const planned = results.reduce((s, r) => s + r.plan.length, 0)
+  const closed = results.reduce((s, r) => s + r.plan.filter((p) => isCompleted(r.marks[p.id])).length, 0)
+  const b = game.bosses[week]
+  const frozen = frozenDays(game)
+  return {
+    week,
+    questsPct: planned ? Math.round((closed / planned) * 100) : 0,
+    perfectDays: results.filter((r) => r.perfect).length,
+    confessions: results.filter((r) => r.confession).length,
+    xp: results.reduce((s, r) => s + r.xp, 0),
+    bossWon: b?.done ? b.won : null,
+    skills: activeSkills(data).map((sk, i) => ({
+      n: i + 1,
+      xp: game.skillXp[sk.id] ?? 0,
+      rank: skillView(data, sk.id, game.today, frozen)?.rank ?? 'D',
+      practices: (data.practices ?? []).filter((p) => p.skillId === sk.id && p.day >= days[0] && p.day <= days[6]).length,
+    })),
+  }
+}
+
+function WeekAi({ week }: { week: number }) {
+  const on = useAiOn()
+  const data = useStore((s) => s.data)
+  const game = useGame()
+  const update = useStore((s) => s.update)
+  const say = useUi((s) => s.say)
+  const { st, run, reset } = useAi<string>()
+  const saved = data.reviews[week]?.ai
+  if (!on && !saved) return null
+  const setAi = (text: string | undefined) =>
+    update((d) => {
+      const r = (d.reviews[week] ??= { worked: '', remove: '', simplify: '', at: Date.now() })
+      if (text) r.ai = text
+      else delete r.ai
+    })
+  const start = () => void run(weekTask(weekNumbers(useStore.getState().data, game, week)))
+  return (
+    <section className="stack">
+      {saved && (
+        <div className="panel tight stack ai-saved">
+          <span className="tiny muted">Разбор недели · ИИ</span>
+          <p className="small">{saved}</p>
+        </div>
+      )}
+      {on && st.phase === 'idle' && <AiButton onClick={start}>{saved ? 'Разобрать заново' : 'Разбор недели'}</AiButton>}
+      <AiStatus st={st} onRetry={start} onCancel={reset} />
+      {st.phase === 'done' && (
+        <AiPreview
+          title="Разбор недели"
+          ms={st.ms}
+          onCancel={reset}
+          onApply={() => {
+            const prev = saved
+            setAi(st.value)
+            reset()
+            say('Разбор сохранён в обзоре', () => setAi(prev))
+          }}
+        >
+          <p className="small">{st.value}</p>
+          <p className="tiny muted">ИИ видел только числа: % квестов, идеальные дни, исповеди (сколько), XP, ранги и практики навыков без названий.</p>
+        </AiPreview>
+      )}
+    </section>
+  )
+}
 
 export function WeekReview({ week }: { week: number }) {
   const game = useGame()
@@ -79,6 +155,8 @@ export function WeekReview({ week }: { week: number }) {
         <Chart title="XP по дням" days={days} series={[{ name: 'XP', color: 'var(--c-xp)', kind: 'bar' }]} values={[days.map((d) => (game.days[d] ? game.xpByDay[d] ?? 0 : null))]} yMin={0} />
         <Chart title="HP по дням" days={days} series={[{ name: 'HP', color: 'var(--c-hp)', kind: 'line' }]} values={[days.map((d) => game.hpByDay[d] ?? null)]} yMin={0} yMax={100} />
       </div>
+
+      <WeekAi week={week} />
 
       {cloudConfigured && <WeeklyCheck week={week} />}
 

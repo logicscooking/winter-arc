@@ -28,7 +28,7 @@ export interface SyncDoc extends SyncMeta {
 }
 
 /** Settings that stay per device: theme, snow and the debug clock are not synced */
-export const LOCAL_SETTINGS = ['theme', 'snow', 'debugOffsetDays'] as const
+export const LOCAL_SETTINGS = ['theme', 'snow', 'debugOffsetDays', 'aiUse'] as const
 
 const SEP = '/'
 // v0.4 collections merge per item exactly like tasks: one atom per id, LWW by stamp, tombstone on delete
@@ -187,6 +187,7 @@ export function fromAtoms(atoms: Atoms, local: AppData): AppData {
   o.practices = (lists.practices as { at: number; id: string }[]).sort(byAt)
   o.extras = (lists.extras as { at: number; id: string }[]).sort(byAt)
   o.chests = (lists.chests as { at: number; id: string }[]).sort(byAt)
+  o.duels = (lists.duels as { createdAt: number; id: string }[]).sort((a, b) => a.createdAt - b.createdAt || byIdOnly(a, b))
   o.flows = (lists.flows as { startedAt: number; id: string }[]).sort((a, b) => a.startedAt - b.startedAt || byIdOnly(a, b))
   o.bars = (lists.bars as { id: string }[]).sort(byIdOnly)
   o.themes = (lists.themes as { id: string }[]).sort(byIdOnly)

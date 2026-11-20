@@ -47,6 +47,7 @@ import type {
   SkillStatus,
   Trait,
   Trend,
+  Duel,
 } from '../engine'
 import { MAX_ACTIVE_SKILLS, PRACTICE_LIMIT, barMin, canStartFlow, chestsFor, extraUsed, pityCount, practicesToday, rollChest } from '../engine'
 
@@ -116,6 +117,13 @@ interface Store {
   addExtra: (skillId: string, now: Date) => boolean
   setDealNode: (day: DayKey, nodeId: string | null) => void
   openChest: (type: ChestType, now: Date) => string | null
+  // ---- v0.5 ----
+  /** keeps the best streak of a repeat goal once it is beaten */
+  setBestStreak: (goalId: string, best: number) => void
+  /** adds a whole duel record (a new challenge or an accepted one) */
+  putDuel: (d: Duel) => void
+  patchDuel: (id: string, patch: Partial<Duel>) => void
+  removeDuel: (id: string) => void
   importData: (raw: unknown) => void
   resetAll: () => void
   finalize: (now: Date) => void
@@ -509,6 +517,21 @@ export const useStore = create<Store>()(
           })
           return id
         },
+        setBestStreak: (goalId, best) =>
+          update((d) => {
+            const g = d.goals?.find((x) => x.id === goalId)
+            if (g && best > (g.bestStreak ?? 0)) g.bestStreak = best
+          }),
+        putDuel: (x) =>
+          update((d) => {
+            d.duels = [...(d.duels ?? []).filter((y) => y.id !== x.id), x]
+          }),
+        patchDuel: (id, patch) =>
+          update((d) => {
+            const x = d.duels?.find((y) => y.id === id)
+            if (x) Object.assign(x, patch)
+          }),
+        removeDuel: (id) => update((d) => void (d.duels = (d.duels ?? []).filter((x) => x.id !== id))),
         importData: (raw) => set({ data: normalizeData(raw) }),
         resetAll: () => set({ data: createInitialData() }),
         finalize: (now) => {
