@@ -8,6 +8,7 @@ import { useSocial } from '../cloud/state'
 import { deviceLabel, listSnapshots, syncNow } from '../cloud/sync'
 import { AuthForm } from '../components/AuthForm'
 import { Field } from '../components/ui'
+import { HeroAva } from '../components/HeroAva'
 import { timeAgo } from './Party'
 
 function Sub({ title, children }: { title: string; children: ReactNode }) {
@@ -57,9 +58,7 @@ export function AccountEntry() {
     )
   return (
     <a className="list-btn" href="#/more/account">
-      <span className="acc-ava" aria-hidden>
-        {account.avatar}
-      </span>
+      <HeroAva userId={account.id} size={44} />
       <span className="grow">
         {account.display_name}
         <small>
@@ -120,9 +119,7 @@ function Signed() {
     <Sub title="Аккаунт">
       <section className="panel stack">
         <div className="row">
-          <span className="acc-ava lg" aria-hidden>
-            {account.avatar}
-          </span>
+          <HeroAva userId={account.id} size={56} />
           <div className="grow">
             <div style={{ fontWeight: 800 }}>{account.display_name}</div>
             <div className="small muted num">@{account.nick}</div>
@@ -145,7 +142,9 @@ function Signed() {
             Сохранить
           </button>
         </form>
-        <p className="tiny muted">Аватар берётся из профиля персонажа: {data.profile?.avatar ?? '❄️'}. Ник для входа сменить нельзя.</p>
+        <p className="tiny muted">
+          Друзья видят твоего героя из <a href="#/avatar">«Образа»</a>. Ник для входа сменить нельзя.
+        </p>
       </section>
 
       <section className="panel stack">

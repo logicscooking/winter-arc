@@ -6,6 +6,7 @@ import type { Nudge } from '../cloud/state'
 import { markNudgesSeen } from '../cloud/party'
 import { onIncomingNudge } from '../cloud/boot'
 import { go } from '../store/hooks'
+import { HeroAva } from './HeroAva'
 
 /** A friend nudged you: a banner at the top until you open the party or dismiss it */
 export function NudgeBanner({ hidden }: { hidden?: boolean }) {
@@ -18,9 +19,7 @@ export function NudgeBanner({ hidden }: { hidden?: boolean }) {
   const more = nudges.length - 1
   return (
     <div className="nudge-banner" role="status" aria-live="polite" key={n.id}>
-      <span className="nudge-ava" aria-hidden>
-        {n.from_avatar}
-      </span>
+      <HeroAva userId={n.from_user} size={40} />
       <button className="grow nudge-main" onClick={() => go('/party')}>
         <span className="nudge-title">
           <Hand size={14} aria-hidden /> {n.from_name} пнул тебя

@@ -152,25 +152,3 @@ export function Garland({ bulbs, label }: { bulbs: Bulb[]; label?: string }) {
     </div>
   )
 }
-
-/** A compact garland for party cards: same bulbs, smaller, no header. */
-export function MiniGarland({ bulbs }: { bulbs: Bulb[] }) {
-  const n = bulbs.length
-  if (!n) return <span className="tiny muted">квестов нет</span>
-  const step = 15
-  const w = step * n + 6
-  const h = 22
-  const xs = bulbs.map((_, i) => 3 + step / 2 + i * step)
-  let d = `M0,3`
-  for (let i = 0; i < xs.length; i++) d += ` Q${(xs[i] - step / 2).toFixed(1)},7 ${xs[i].toFixed(1)},4`
-  d += ` Q${(w - 2).toFixed(1)},7 ${w},3`
-  const lit = bulbs.filter((b) => b.on).length
-  return (
-    <svg className="mini-garland" viewBox={`0 0 ${w} ${h}`} width={w} height={h} role="img" aria-label={`Сделано ${lit} из ${n}`}>
-      <path className="wire" d={d} />
-      {bulbs.map((b, i) => (
-        <rect key={b.id} className={`bulb ${b.main ? 'main' : ''} ${b.on ? `on c${i % 4}` : ''}`} x={xs[i] - (b.main ? 4 : 3.4)} y={7} width={b.main ? 8 : 6.8} height={b.main ? 11 : 9.4} rx={1.5} shapeRendering="crispEdges" />
-      ))}
-    </svg>
-  )
-}

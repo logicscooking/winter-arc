@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Check, Copy, Crown, Flame, Hand, Image as ImageIcon, KeyRound, LogIn, RefreshCw, Share2, ShieldCheck, Swords, Trash2, Users, WifiOff } from 'lucide-react'
-import { NUDGES, REACTIONS, feedText, nudgeText, plural } from '../engine'
-import type { PublicStats } from '../engine'
+import { useEffect, useState, type ReactNode } from 'react'
+import { Check, Copy, Crown, Hand, Image as ImageIcon, LogIn, RefreshCw, Share2, ShieldCheck, Trash2, WifiOff } from 'lucide-react'
+import { NUDGES, REACTIONS, feedText, levelOf, nudgeText, plural } from '../engine'
+import type { Outfit, PublicStats } from '../engine'
 import { useToday } from '../store/hooks'
 import { useUi } from '../store/ui'
 import { useRoute } from '../store/hooks'
@@ -10,8 +10,9 @@ import { activePartyOf, useSocial } from '../cloud/state'
 import type { FeedEvent, Member, Party as PartyT } from '../cloud/state'
 import { createParty, deleteEvent, joinParty, leaveParty, markNudgesSeen, react, refreshParty, regenerateCode, sendNudge, setActiveParty, signedUrl } from '../cloud/party'
 import { AuthForm } from '../components/AuthForm'
-import { MiniGarland } from '../components/festive'
-import { HpBar, Sheet } from '../components/ui'
+import { HeroAva, useUserOutfit } from '../components/HeroAva'
+import { Bar, HpBar, Sheet } from '../components/ui'
+import { BossSprite, PixelAvatar, Px } from '../pixel/Pixel'
 
 export function Party() {
   const account = useSocial((s) => s.account)
@@ -23,8 +24,11 @@ export function Party() {
   if (!cloudConfigured) {
     return (
       <div className="stack-lg">
-        <h1>Пати</h1>
-        <div className="empty">Сервер для пати не настроен в этой сборке. Всё остальное работает как раньше.</div>
+        <PageHead title="Пати" />
+        <div className="panel feed-empty">
+          <PartyScene />
+          <p className="small muted">Сервер для пати не настроен в этой сборке. Всё остальное работает как раньше.</p>
+        </div>
       </div>
     )
   }
@@ -45,28 +49,58 @@ function SchemaBanner() {
   )
 }
 
+function PageHead({ kicker, title, sub }: { kicker?: string; title: string; sub?: ReactNode }) {
+  return (
+    <div>
+      {kicker && <div className="chapter-name">{kicker}</div>}
+      <h1 style={kicker ? { marginTop: 4 } : undefined}>{title}</h1>
+      {sub && (
+        <p className="muted" style={{ marginTop: 8 }}>
+          {sub}
+        </p>
+      )}
+    </div>
+  )
+}
+
+// a little camp: three heroes around the fire
+const CAMP: Outfit[] = [
+  { hat: 'ushanka', coat: 'puffer', colors: { hat: 'blue', coat: 'blue' }, hair: 'blond', skin: 'mid' },
+  { hat: 'beanie', scarf: 'scarf', colors: { hat: 'red', scarf: 'gold' }, hair: 'brown', skin: 'light' },
+  { hat: 'earmuffs', scarf: 'longscarf', colors: { hat: 'purple', scarf: 'green' }, hair: 'black', skin: 'tan' },
+]
+
+function PartyScene({ me }: { me?: Outfit }) {
+  return (
+    <div className="party-scene" aria-hidden>
+      <PixelAvatar outfit={CAMP[0]} size={58} />
+      <PixelAvatar outfit={me ?? CAMP[1]} size={70} />
+      <Px name="campfire" size={46} className="scene-fire" />
+      <PixelAvatar outfit={CAMP[2]} size={58} />
+    </div>
+  )
+}
+
 // ---------- logged out ----------
 
 function PartyIntro() {
   return (
     <div className="stack-lg">
-      <div className="stack" style={{ gap: 8 }}>
-        <h1>Пати</h1>
-        <p className="muted">Маленькая группа подотчётности: до 8 друзей, без рейтингов и посторонних.</p>
-      </div>
+      <PageHead kicker="Пати" title="Собери команду" sub="До 8 друзей, без рейтингов и посторонних. Видно уровень, HP и закрытые квесты." />
+      <PartyScene />
       <div className="cols">
         <section className="panel stack-lg">
           <div className="stack" style={{ gap: 6 }}>
-            <h2>Войти, чтобы играть с друзьями и синхронизировать</h2>
-            <p className="small muted">Только ник и пароль: ни почты, ни телефона. Аккаунт нужен лишь для пати и синхронизации телефона с Маком — без него приложение работает как прежде.</p>
+            <h2>Войти</h2>
+            <p className="small muted">Только ник и пароль: ни почты, ни телефона. Аккаунт нужен для пати и синхронизации телефона с Маком.</p>
           </div>
           <AuthForm />
         </section>
-        <section className="stack">
+        <section className="panel stack">
           <h3>Что видят друзья</h3>
           <ul className="privacy-list">
             <li>
-              <Check size={16} aria-hidden /> Уровень, HP, гирлянду дня и серии «X из 7»
+              <Check size={16} aria-hidden /> Героя, уровень, HP, квесты дня и серии «X из 7»
             </li>
             <li>
               <Check size={16} aria-hidden /> Бой с боссом недели и серию честности
@@ -75,7 +109,8 @@ function PartyIntro() {
               <Check size={16} aria-hidden /> Срывы — только категорию, и сразу камбэк ✅
             </li>
           </ul>
-          <h3 style={{ marginTop: 6 }}>Что не уходит никуда</h3>
+          <div className="divider" />
+          <h3>Что не уходит никуда</h3>
           <ul className="privacy-list off">
             <li>
               <ShieldCheck size={16} aria-hidden /> Текст исповеди, причины и заметки срывов
@@ -84,7 +119,7 @@ function PartyIntro() {
               <ShieldCheck size={16} aria-hidden /> Замеры, вес, ответы недельных обзоров
             </li>
           </ul>
-          <p className="tiny muted">Синхронизация между твоими устройствами хранит полную копию данных в облаке, но доступ к ней есть только у тебя.</p>
+          <p className="tiny muted">Синхронизация хранит полную копию данных в облаке, но доступ к ней есть только у тебя.</p>
         </section>
       </div>
     </div>
@@ -95,6 +130,7 @@ function PartyIntro() {
 
 function PartySetup({ initialCode }: { initialCode?: string }) {
   const account = useSocial((s) => s.account)!
+  const myOutfit = useUserOutfit(account.id)
   const [name, setName] = useState(`Пати ${account.display_name || account.nick}`.slice(0, 32))
   const [code, setCode] = useState(initialCode ?? '')
   const [busy, setBusy] = useState<'create' | 'join'>()
@@ -121,12 +157,16 @@ function PartySetup({ initialCode }: { initialCode?: string }) {
 
   return (
     <>
-      <div className="stack" style={{ gap: 8 }}>
-        <h1>Пати</h1>
-        <p className="muted">
-          Ты вошёл как <b>{account.display_name}</b> <span className="num">@{account.nick}</span>. Осталось собрать команду.
-        </p>
-      </div>
+      <PageHead
+        kicker="Пати"
+        title="Собери команду"
+        sub={
+          <>
+            Ты вошёл как <b style={{ color: 'var(--ink)' }}>{account.display_name}</b> <span className="num">@{account.nick}</span>
+          </>
+        }
+      />
+      <PartyScene me={myOutfit} />
       <div className="cols">
         <form
           className="panel stack"
@@ -135,11 +175,15 @@ function PartySetup({ initialCode }: { initialCode?: string }) {
             if (code.trim()) void run('join')
           }}
         >
-          <div className="row" style={{ gap: 10 }}>
-            <KeyRound size={20} color="var(--pine)" aria-hidden />
-            <h2>Вступить по коду</h2>
+          <div className="setup-head">
+            <span className="q-icon">
+              <Px name="lock" size={28} />
+            </span>
+            <div className="grow">
+              <h2>Вступить по коду</h2>
+              <p className="tiny muted">Код даст друг, который создал пати</p>
+            </div>
           </div>
-          <p className="small muted">Код вида SNOW-4821 даст друг, который создал пати.</p>
           <input className="input num code-input" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="SNOW-4821" aria-label="Код пати" autoCapitalize="characters" autoComplete="off" spellCheck={false} maxLength={12} />
           {err?.where === 'join' && <p className="err">{err.text}</p>}
           <button className="btn primary" type="submit" disabled={!code.trim() || !!busy}>
@@ -153,11 +197,15 @@ function PartySetup({ initialCode }: { initialCode?: string }) {
             if (name.trim()) void run('create')
           }}
         >
-          <div className="row" style={{ gap: 10 }}>
-            <Users size={20} color="var(--pine)" aria-hidden />
-            <h2>Создать пати</h2>
+          <div className="setup-head">
+            <span className="q-icon">
+              <Px name="campfire" size={28} />
+            </span>
+            <div className="grow">
+              <h2>Создать пати</h2>
+              <p className="tiny muted">До 8 человек, код — в мессенджер</p>
+            </div>
           </div>
-          <p className="small muted">До 8 человек. Код можно отправить в любой мессенджер.</p>
           <input className="input" value={name} onChange={(e) => setName(e.target.value)} maxLength={32} aria-label="Название пати" />
           {err?.where === 'create' && <p className="err">{err.text}</p>}
           <button className="btn" type="submit" disabled={!name.trim() || !!busy}>
@@ -202,10 +250,10 @@ function PartyHome({ initialCode }: { initialCode?: string }) {
     <>
       <div className="party-head">
         <div className="grow">
-          <h1>{party.name}</h1>
-          <p className="small muted" style={{ marginTop: 4 }}>
-            {members.length} {plural(members.length, 'участник', 'участника', 'участников')} из 8
-          </p>
+          <div className="chapter-name">
+            Пати · {members.length} из 8
+          </div>
+          <h1 style={{ marginTop: 4 }}>{party.name}</h1>
         </div>
         <button className="icon-btn" aria-label="Обновить" onClick={() => refreshParty(party.id).then(() => setErr(undefined), (e) => setErr(ruError(e)))}>
           <RefreshCw size={18} className={st.loading ? 'spin' : undefined} />
@@ -232,9 +280,7 @@ function PartyHome({ initialCode }: { initialCode?: string }) {
         <section className="nudge-list" aria-label="Тебя пнули">
           {nudges.slice(0, 4).map((n) => (
             <div key={n.id} className="nudge-row">
-              <span className="nudge-ava" aria-hidden>
-                {n.from_avatar}
-              </span>
+              <HeroAva userId={n.from_user} size={36} />
               <span className="grow">
                 <b>{n.from_name}</b> пнул: «{nudgeText(n.kind)}»
               </span>
@@ -261,10 +307,10 @@ function PartyHome({ initialCode }: { initialCode?: string }) {
           <div className="section-title" style={{ marginBottom: 0 }}>
             <h2>Лента</h2>
           </div>
-          <Feed events={feed} members={members} meId={me.id} />
-          <div className="row wrap" style={{ marginTop: 8 }}>
+          <Feed events={feed} members={members} meId={me.id} party={party} />
+          <div className="party-actions">
             <button className="btn sm ghost" onClick={() => setShowJoin(true)}>
-              Вступить в ещё одну пати
+              Ещё одна пати
             </button>
             <LeaveButton party={party} />
           </div>
@@ -336,38 +382,38 @@ function LeaveButton({ party }: { party: PartyT }) {
   )
 }
 
-function CodeCard({ party, isOwner }: { party: PartyT; isOwner: boolean }) {
+/** Share the invite (system sheet) or copy it */
+function useInvite(party: PartyT) {
   const say = useUi((s) => s.say)
-  const ask = useUi((s) => s.confirm)
   const link = `${window.location.origin}${window.location.pathname}#/party?code=${party.code}`
   const text = `Вступай в мою пати «${party.name}» в Winter Arc. Код: ${party.code}`
   const canShare = typeof navigator !== 'undefined' && !!navigator.share
+  const copy = (what: string, ok: string) =>
+    navigator.clipboard?.writeText(what).then(
+      () => say(ok),
+      () => say('Скопируй код вручную'),
+    ) ?? say('Скопируй код вручную')
+  return {
+    canShare,
+    copyCode: () => copy(party.code, 'Код скопирован'),
+    share: () => (canShare ? navigator.share({ title: 'Winter Arc', text, url: link }).catch(() => undefined) : copy(`${text}\n${link}`, 'Приглашение скопировано')),
+  }
+}
+
+function CodeCard({ party, isOwner }: { party: PartyT; isOwner: boolean }) {
+  const say = useUi((s) => s.say)
+  const ask = useUi((s) => s.confirm)
+  const inv = useInvite(party)
   return (
     <section className="panel code-card" aria-label="Код приглашения">
-      <div className="grow">
-        <span className="small muted">Код приглашения</span>
-        <div className="party-code num">{party.code}</div>
-      </div>
-      <div className="row wrap" style={{ gap: 8 }}>
-        <button
-          className="btn sm"
-          onClick={() =>
-            navigator.clipboard?.writeText(party.code).then(
-              () => say('Код скопирован'),
-              () => say('Скопируй код вручную'),
-            )
-          }
-        >
-          <Copy size={16} aria-hidden /> Копировать
-        </button>
-        {canShare && (
-          <button className="btn sm primary" onClick={() => navigator.share({ title: 'Winter Arc', text, url: link }).catch(() => undefined)}>
-            <Share2 size={16} aria-hidden /> Поделиться
-          </button>
-        )}
+      <div className="code-head">
+        <div className="grow">
+          <div className="chapter-name">Код приглашения</div>
+          <div className="party-code num">{party.code}</div>
+        </div>
         {isOwner && (
           <button
-            className="btn sm ghost"
+            className="link-btn small"
             onClick={async () => {
               if (!(await ask({ title: 'Новый код?', body: 'Старый код перестанет работать. Те, кто уже в пати, останутся.', ok: 'Сменить код' }))) return
               try {
@@ -382,6 +428,16 @@ function CodeCard({ party, isOwner }: { party: PartyT; isOwner: boolean }) {
           </button>
         )}
       </div>
+      <div className={`code-actions ${inv.canShare ? '' : 'one'}`}>
+        <button className={`btn sm ${inv.canShare ? '' : 'primary'}`} onClick={inv.copyCode}>
+          <Copy size={16} aria-hidden /> Копировать
+        </button>
+        {inv.canShare && (
+          <button className="btn sm primary" onClick={inv.share}>
+            <Share2 size={16} aria-hidden /> Поделиться
+          </button>
+        )}
+      </div>
     </section>
   )
 }
@@ -390,104 +446,122 @@ function CodeCard({ party, isOwner }: { party: PartyT; isOwner: boolean }) {
 
 function MemberCard({ m, isMe, owner, onNudge }: { m: Member; isMe: boolean; owner: boolean; onNudge: () => void }) {
   const today = useToday()
+  const outfit = useUserOutfit(m.id)
   const s = m.stats
   const fresh = s?.day === today
   const sent = useSocial((st) => st.sentNudges[m.id])
   const cooling = sent !== undefined && Date.now() - sent < 3600_000
+  const lvl = s ? levelOf(s.xp) : undefined
+  const hp = s ? (s.warmup ? 100 : s.fallen ? 0 : s.hp) : 0
+  const updated = s ? (fresh ? `обновлено ${timeAgo(m.stats_at ?? new Date(s.at).toISOString())}` : 'сегодня ещё не заходил') : 'ещё нет данных'
   return (
-    <article className={`member ${isMe ? 'me' : ''}`} aria-label={m.display_name}>
+    <article className={`member ${isMe ? 'me' : ''} ${s?.fallen && !s.warmup ? 'fallen' : ''}`} aria-label={m.display_name}>
       <div className="member-top">
-        <span className="member-ava" aria-hidden>
-          {m.avatar}
+        <span className="profile-ava member-ava">
+          <PixelAvatar outfit={outfit} size={64} title={`Герой ${m.display_name}`} />
         </span>
-        <div className="grow">
+        <div className="meters">
           <div className="member-name">
-            {m.display_name}
+            <span className="member-nick">{m.display_name}</span>
             {isMe && <span className="tag">ты</span>}
-            {owner && <Crown size={14} color="var(--gold)" aria-label="создатель пати" />}
+            {owner && <Crown size={15} color="var(--gold-mark)" aria-label="создатель пати" />}
           </div>
-          <div className="tiny muted">{s ? (fresh ? `обновлено ${timeAgo(m.stats_at ?? new Date(s.at).toISOString())}` : 'сегодня ещё не заходил') : 'ещё нет данных'}</div>
+          {s && lvl ? (
+            <>
+              <div className="member-badges">
+                <span className="lvl-badge">УР {s.level}</span>
+                <span className="streak-chip" title="Дни подряд с исповедью" aria-label={`Честность: ${s.honesty} ${plural(s.honesty, 'день', 'дня', 'дней')} подряд`}>
+                  <Px name="flame" size={16} /> честность {s.honesty}
+                </span>
+              </div>
+              <span className="meter">
+                <Px name="heart" size={18} />
+                <HpBar hp={hp} />
+                {s.warmup ? <span className="tag warm">разминка</span> : <span className="num hp-v">{s.fallen ? 'падение' : `${hp}/100`}</span>}
+              </span>
+              <span className="meter">
+                <Px name="star" size={18} />
+                <Bar value={lvl.progress} label="Опыт до следующего уровня" />
+                <span className="num">
+                  {lvl.into}/{lvl.span}
+                </span>
+              </span>
+            </>
+          ) : (
+            <span className="tiny muted">Герой ещё не прислал статы</span>
+          )}
         </div>
-        {s && (
-          <div className="member-lvl" aria-label={`Уровень ${s.level}`}>
-            <span className="num">{s.level}</span>
-            <small>ур.</small>
-          </div>
-        )}
       </div>
 
-      {s && <MemberStats s={s} fresh={fresh} />}
+      {s && <MemberDay s={s} fresh={fresh} />}
 
-      {!isMe && (
-        <button className="btn sm ghost nudge-btn" onClick={onNudge} disabled={cooling} aria-label={`Пнуть ${m.display_name}`}>
-          <Hand size={16} aria-hidden /> {cooling ? 'Пнул, жди час' : 'Пнуть'}
-        </button>
-      )}
+      {s?.boss && !s.warmup && <MemberBoss boss={s.boss} />}
+
+      <div className="member-foot">
+        <span className="tiny muted grow">{updated}</span>
+        {!isMe && (
+          <button className="btn sm" onClick={onNudge} disabled={cooling} aria-label={`Пнуть ${m.display_name}`}>
+            <Hand size={16} aria-hidden /> {cooling ? 'Пнул, жди час' : 'Пнуть'}
+          </button>
+        )}
+      </div>
     </article>
   )
 }
 
-function MemberStats({ s, fresh }: { s: PublicStats; fresh: boolean }) {
-  const bulbs = useMemo(
-    () =>
-      s.bulbs.split('').map((c, i) => ({
-        id: String(i),
-        main: c === 'M' || c === 'm',
-        on: fresh && (c === 'M' || c === 'S'),
-      })),
-    [s.bulbs, fresh],
-  )
-  const lit = bulbs.filter((b) => b.on).length
-  const bossLeft = s.boss ? Math.max(0, s.boss.hp - s.boss.damage) : 0
+function MemberDay({ s, fresh }: { s: PublicStats; fresh: boolean }) {
+  const bulbs = s.bulbs.split('')
+  const lit = fresh ? bulbs.filter((c) => c === 'M' || c === 'S').length : 0
+  if (!bulbs.length && !s.mains.length) return null
   return (
-    <div className="member-body">
-      <div className="member-row">
-        <span className="k">HP</span>
-        <div className="grow">{s.warmup ? <span className="tiny muted">разминка — HP не тратится</span> : <HpBar hp={s.hp} />}</div>
-        <span className="num small hp-v">{s.warmup ? '—' : s.fallen ? 'падение' : s.hp}</span>
-      </div>
-      <div className="member-row">
-        <span className="k">День</span>
-        <div className="grow">
-          <MiniGarland bulbs={bulbs} />
-        </div>
-        <span className="num small">
-          {fresh ? lit : 0}/{bulbs.length}
+    <div className="member-day">
+      <div className="member-day-head">
+        <Px name="quests" size={18} />
+        <span className="grow">Квесты дня</span>
+        {fresh && s.confessed && (
+          <span className="tag auto">
+            <Check size={11} aria-hidden strokeWidth={4} /> исповедь
+          </span>
+        )}
+        <span className="num">
+          {lit}/{bulbs.length}
         </span>
       </div>
+      {bulbs.length > 0 && (
+        <div className="day-seg" style={{ gridTemplateColumns: `repeat(${bulbs.length}, 1fr)` }} role="img" aria-label={`Закрыто ${lit} из ${bulbs.length}`}>
+          {bulbs.map((c, i) => (
+            <i key={i} className={`${c === 'M' || c === 'm' ? 'main' : ''} ${fresh && (c === 'M' || c === 'S') ? 'on' : ''}`} />
+          ))}
+        </div>
+      )}
       {s.mains.length > 0 && (
         <ul className="member-mains">
           {s.mains.map((q) => (
             <li key={q.t}>
               <span className="grow">{q.t}</span>
-              <span className="num">{q.n} из 7</span>
+              <span className={`num ${q.n >= 5 ? 'xp-v' : ''}`}>{q.n} из 7</span>
             </li>
           ))}
         </ul>
       )}
-      <div className="member-foot">
-        <span className="pill" title="Дни подряд с исповедью">
-          <Flame size={14} aria-hidden /> честность {s.honesty} {plural(s.honesty, 'день', 'дня', 'дней')}
-        </span>
-        {fresh && s.confessed && (
-          <span className="pill ok">
-            <Check size={14} aria-hidden /> исповедь
-          </span>
-        )}
-      </div>
-      {s.boss && !s.warmup && (
-        <div className="member-boss">
-          <div className="row between tiny">
-            <span>
-              <Swords size={13} aria-hidden /> {s.boss.name}
-            </span>
-            <span className="num muted">{s.boss.won ? 'повержен' : `${bossLeft} / ${s.boss.hp}`}</span>
-          </div>
-          <div className="boss-bar thin">
-            <i className={s.boss.won ? 'won' : ''} style={{ width: `${s.boss.hp ? (s.boss.won ? 100 : (bossLeft / s.boss.hp) * 100) : 0}%` }} />
-          </div>
+    </div>
+  )
+}
+
+function MemberBoss({ boss }: { boss: NonNullable<PublicStats['boss']> }) {
+  const left = Math.max(0, boss.hp - boss.damage)
+  return (
+    <div className="member-boss">
+      <span className="boss-mini">{boss.won ? <Px name="trophy" size={24} /> : <BossSprite name={boss.name} size={26} />}</span>
+      <div className="grow stack" style={{ gap: 5 }}>
+        <div className="row between tiny" style={{ gap: 8 }}>
+          <span className="boss-name">{boss.name}</span>
+          <span className="num muted">{boss.won ? 'повержен' : `${left}/${boss.hp}`}</span>
         </div>
-      )}
+        <div className="boss-bar thin">
+          <i className={boss.won ? 'won' : ''} style={{ width: `${boss.hp ? (boss.won ? 100 : (left / boss.hp) * 100) : 0}%` }} />
+        </div>
+      </div>
     </div>
   )
 }
@@ -532,7 +606,29 @@ function NudgeSheet({ to, onClose }: { to: Member; onClose: () => void }) {
 
 // ---------- feed ----------
 
-function Feed({ events, members, meId }: { events: FeedEvent[]; members: Member[]; meId: string }) {
+function FeedEmpty({ party, alone }: { party: PartyT; alone: boolean }) {
+  const inv = useInvite(party)
+  return (
+    <div className="panel feed-empty">
+      <div className="feed-empty-art" aria-hidden>
+        <Px name="fir" size={40} />
+        <Px name="campfire" size={56} />
+        <Px name="snowman" size={40} />
+      </div>
+      <div className="stack" style={{ gap: 4 }}>
+        <h3>Пока тихо</h3>
+        <p className="small muted">{alone ? 'Позови друзей — поделись кодом. Их дела, идеальные дни и камбэки появятся здесь.' : 'Первое закрытое дело, идеальный день или честный срыв появятся здесь.'}</p>
+      </div>
+      {alone && (
+        <button className="btn primary" onClick={inv.share}>
+          <Share2 size={16} aria-hidden /> Позвать друзей
+        </button>
+      )}
+    </div>
+  )
+}
+
+function Feed({ events, members, meId, party }: { events: FeedEvent[]; members: Member[]; meId: string; party: PartyT }) {
   const reactions = useSocial((s) => s.reactions)
   const say = useUi((s) => s.say)
   const [photo, setPhoto] = useState<string>()
@@ -543,7 +639,7 @@ function Feed({ events, members, meId }: { events: FeedEvent[]; members: Member[
   const slipKeys = new Set(events.filter((e) => e.kind === 'slip').map((e) => `${e.user_id}|${e.key}`))
   const shown = events.filter((e) => !(e.kind === 'comeback' && slipKeys.has(`${e.user_id}|${e.payload.slip}`)))
 
-  if (!shown.length) return <div className="empty">Пока тихо. Первое закрытое дело, идеальный день или честный срыв появятся здесь.</div>
+  if (!shown.length) return <FeedEmpty party={party} alone={members.length <= 1} />
 
   return (
     <>
@@ -555,9 +651,7 @@ function Feed({ events, members, meId }: { events: FeedEvent[]; members: Member[
           const mine = list.find((r) => r.user_id === meId)?.emoji
           return (
             <li key={e.id} className={`feed-item k-${e.kind} ${cb ? 'won' : ''}`}>
-              <span className="feed-ava" aria-hidden>
-                {who?.avatar ?? '❄️'}
-              </span>
+              <HeroAva userId={e.user_id} size={40} />
               <div className="grow stack" style={{ gap: 6 }}>
                 <div>
                   <span className="feed-who">{e.user_id === meId ? 'Ты' : who?.display_name ?? 'Бывший участник'}</span>

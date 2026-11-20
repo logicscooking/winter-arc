@@ -4,12 +4,13 @@
  * review answers, check-in ratings or screen-time numbers.
  */
 import { questStreak } from './analysis'
+import { wornOutfit } from './avatar'
 import { levelOf } from './levels'
 import { COMEBACK_WINDOW_MS, isCompleted } from './quests'
 import { marksFor, planFor } from './replay'
 import type { GameState } from './replay'
 import { ARC_START, chapterOf, gameDayOf, weekDays } from './time'
-import type { AppData, DayKey, SlipWhat } from './types'
+import type { AppData, DayKey, Outfit, SlipWhat } from './types'
 
 export type ShareKey = 'slips' | 'perfect' | 'boss' | 'level' | 'book'
 export const SHARE_KEYS: ShareKey[] = ['slips', 'perfect', 'boss', 'level', 'book']
@@ -60,6 +61,8 @@ export interface PublicStats {
   honesty: number
   freezes: number
   boss: { week: number; name: string; hp: number; damage: number; won: boolean } | null
+  /** worn pixel-hero look (owned gear only). Missing in snapshots from older app versions */
+  outfit?: Outfit
   at: number
 }
 
@@ -73,10 +76,11 @@ export function buildPublicStats(data: AppData, game: GameState, now: Date): Pub
     return p.role === 'main' ? (on ? 'M' : 'm') : on ? 'S' : 's'
   })
   const bossWeek = Object.values(game.bosses).sort((a, b) => b.week - a.week)[0]
+  const level = levelOf(game.xp).level
   return {
     v: 1,
     day: today,
-    level: levelOf(game.xp).level,
+    level,
     xp: game.xp,
     hp: game.hp,
     fallen: game.fallen,
@@ -93,6 +97,7 @@ export function buildPublicStats(data: AppData, game: GameState, now: Date): Pub
     honesty: game.honestyStreak,
     freezes: game.freezes,
     boss: bossWeek ? { week: bossWeek.week, name: bossWeek.name, hp: bossWeek.hp, damage: bossWeek.damage, won: bossWeek.won } : null,
+    outfit: wornOutfit(data.profile?.outfit, level, data.purchases),
     at: now.getTime(),
   }
 }

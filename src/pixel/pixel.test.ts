@@ -2,6 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { SPRITES } from './sprites'
 import { AV_BASE, AV_H, AV_LAYERS, AV_W } from './avatar-layers'
 import { PAL } from './palette'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { DEFAULT_OUTFIT, buildPublicStats, computeState, wornOutfit } from '../engine'
+import { makeData, nowAt } from '../engine/testkit'
+import { PixelAvatar } from './Pixel'
+import { safeOutfit } from './outfit'
 
 const LAYER_KEYS = new Set(['X', 'Y', 'Z', 'H', 'J', '.'])
 
@@ -24,5 +30,51 @@ describe('pixel art', () => {
         for (const ch of r) expect(LAYER_KEYS.has(ch) || ch in PAL, `${name} row ${i} char ${ch}`).toBe(true)
       })
     }
+  })
+})
+
+describe('friend outfit from public stats', () => {
+  it('missing outfit (old app) → default hero', () => {
+    expect(safeOutfit(undefined)).toEqual(DEFAULT_OUTFIT)
+    expect(safeOutfit(null)).toEqual(DEFAULT_OUTFIT)
+    expect(safeOutfit('🐺')).toEqual(DEFAULT_OUTFIT)
+    expect(safeOutfit([1, 2])).toEqual(DEFAULT_OUTFIT)
+  })
+
+  it('keeps a valid look as is', () => {
+    const o = { hat: 'ushanka', coat: 'puffer', glasses: 'shades', colors: { hat: 'blue', coat: 'purple', glasses: 'black' }, hair: 'ginger', skin: 'deep' }
+    expect(safeOutfit(o)).toEqual(o)
+    // an empty slot stays empty
+    expect(safeOutfit({ hair: 'black', skin: 'mid', colors: {} })).toEqual({ hair: 'black', skin: 'mid', colors: {} })
+  })
+
+  it('unknown ids and colors fall back to defaults', () => {
+    const o = safeOutfit({
+      hat: 'jetpack',
+      scarf: 'puffer', // wrong slot
+      coat: '__proto__',
+      mitts: { evil: true },
+      extra: 'constructor',
+      colors: { hat: 'neon', scarf: 'toString', coat: 42 },
+      hair: 'rainbow',
+      skin: 'hasOwnProperty',
+    })
+    expect(o).toEqual({ hat: 'beanie', scarf: 'scarf', colors: { hat: 'red', scarf: 'gold' }, hair: 'brown', skin: 'light' })
+    expect(safeOutfit({ hat: 'beanie', colors: 'red' }).colors).toEqual({ hat: 'red' })
+  })
+
+  it('renders any garbage without throwing', () => {
+    for (const raw of [undefined, {}, { hat: '__proto__', colors: { hat: '__proto__' }, hair: '__proto__' }, { coat: 'sweater', colors: null }]) {
+      const html = renderToStaticMarkup(createElement(PixelAvatar, { outfit: safeOutfit(raw), size: 48 }))
+      expect(html).toMatch(/^<svg/)
+    }
+  })
+
+  it('my public stats carry the worn outfit', () => {
+    const d = makeData()
+    const now = nowAt('2026-11-25', 10)
+    const s = buildPublicStats(d, computeState(d, now), now)
+    expect(s.outfit).toEqual(wornOutfit(d.profile?.outfit, s.level, d.purchases))
+    expect(safeOutfit(JSON.parse(JSON.stringify(s)).outfit)).toEqual(s.outfit)
   })
 })
