@@ -121,6 +121,8 @@ const THEMES: { id: ThemePref; label: string; hint: string }[] = [
   { id: 'polar', label: 'Полярная ночь', hint: 'глубокий синий' },
   { id: 'aurora', label: 'Северное сияние', hint: 'бирюза и фиолет' },
   { id: 'fir', label: 'Ёлочная', hint: 'ель, красный, золото' },
+  { id: 'pink', label: 'Розовая', hint: 'сакура и малина' },
+  { id: 'pinkdark', label: 'Тёмная розовая', hint: 'ночная сакура' },
 ]
 
 /** A tiny live sample of a theme: its own tokens are scoped to the tile via data-tp */

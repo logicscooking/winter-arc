@@ -34,6 +34,32 @@
   --pk-t5: #ff6474;
   box-shadow: 0 4px 0 rgba(30, 25, 19, 0.18), 0 22px 40px -24px rgba(30, 25, 19, 0.55);
 }
+/* light «Розовая»: a plum-berry game panel, same bright tier colours */
+:root[data-theme='pink'] .pk,
+[data-tp='pink'] .pk {
+  --pk-bg: #2a1330;
+  --pk-bg-2: #44204e;
+  --pk-line: rgba(255, 170, 214, 0.22);
+  --pk-t1: #8fd3ff;
+  --pk-t3: #ffcf6b;
+  --pk-t4: #ff8a4c;
+  --pk-t5: #ff6474;
+  background:
+    radial-gradient(120% 70% at 50% 0%, rgba(255, 143, 184, 0.18), transparent 60%),
+    linear-gradient(180deg, var(--pk-bg-2), var(--pk-bg));
+  box-shadow: 0 4px 0 rgba(90, 25, 60, 0.28), 0 22px 40px -24px rgba(90, 25, 60, 0.6);
+}
+/* «Тёмная розовая»: berry-plum board */
+:root[data-theme='pinkdark'] .pk,
+[data-tp='pinkdark'] .pk {
+  --pk-bg: #1f0a1f;
+  --pk-bg-2: #3b1541;
+  --pk-line: rgba(255, 140, 200, 0.22);
+  --pk-t5: #ff6a7e;
+  background:
+    radial-gradient(120% 70% at 50% 0%, rgba(255, 98, 176, 0.2), transparent 60%),
+    linear-gradient(180deg, var(--pk-bg-2), var(--pk-bg));
+}
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) .pk {
     --pk-bg: #142231;

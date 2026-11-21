@@ -2,6 +2,8 @@
  * Original pixel hero, 20×24. Base body + gear layers drawn over it.
  * Layer colors: X main, Y shade, Z highlight (swatch); H/J hair; s/S skin.
  */
+import { AV_LAYERS_MORE } from './avatar-layers-more'
+
 export const AV_W = 20
 export const AV_H = 24
 
@@ -33,6 +35,7 @@ export const AV_BASE = [
 ]
 
 export const AV_LAYERS: Record<string, string[]> = {
+  ...AV_LAYERS_MORE,
   beanie: [
     '........kZZk........',
     '......kkkZZkkk......',

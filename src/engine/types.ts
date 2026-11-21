@@ -258,8 +258,8 @@ export interface Outfit {
   skin?: string
 }
 
-/** v0.5: three extra winter themes on top of «Ночь» (dark) and «Снег» (light) */
-export type ThemePref = 'auto' | 'light' | 'dark' | 'polar' | 'aurora' | 'fir'
+/** v0.5: five extra winter themes on top of «Ночь» (dark) and «Снег» (light) */
+export type ThemePref = 'auto' | 'light' | 'dark' | 'polar' | 'aurora' | 'fir' | 'pink' | 'pinkdark'
 
 export interface Settings {
   debugOffsetDays: number

@@ -67,7 +67,7 @@ function barColor() {
 }
 
 /**
- * «Ночь» by default, «Снег» by choice or by the system in «auto», plus three v0.5 winter themes.
+ * «Ночь» by default, «Снег» by choice or by the system in «auto», plus five winter themes.
  * The status bar: the home-screen app runs with status-bar-style black-translucent (index.html), so iOS
  * draws the clock over the page itself and the top bar (padded by safe-area-inset-top) paints under it —
  * it follows the theme instantly, «auto» included. theme-color is kept in sync for Safari tabs and Android.

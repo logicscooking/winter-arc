@@ -342,6 +342,102 @@
   color-scheme: dark;
 }
 
+/* «Розовая»: soft sakura-candy pastel, raspberry actions, plum ink; light base like «Снег» */
+:root[data-theme='pink'],
+[data-tp='pink'] {
+  --bg: #fbe4ec;
+  --bg-haze: rgba(255, 143, 184, 0.26);
+  --surface: #fffafb;
+  --surface-2: #fdeef3;
+  --surface-3: #f8d9e5;
+  --line: #ecbdd0;
+  --line-soft: #f4d1de;
+  --ink: #3b1526;
+  --ink-2: #693b50;
+  --mist: #8a4f68;
+  --pine: #b91f73;
+  --pine-hover: #a01863;
+  --pine-ink: #ffffff;
+  --pine-soft: #fcdbea;
+  --pine-line: #eea3c6;
+  --hp: #c81f36;
+  --hp-soft: #fcdad8;
+  --hp-dim: #f0b0b3;
+  --gold: #8a5a08;
+  --gold-mark: #e0a02b;
+  --gold-bright: #f2b84b;
+  --gold-soft: #fbe9c4;
+  --frost: #2a69a0;
+  --frost-soft: #e1eaf8;
+  --crit: #b8421a;
+  --crit-soft: #fbdccd;
+  --st-energy: #a86f0e;
+  --st-body: #c63c48;
+  --st-mind: #7f52d0;
+  --st-will: #2a78b8;
+  --st-deal: #1f8a4c;
+  --snow: rgba(226, 120, 164, 0.62);
+  --lip: rgba(170, 60, 105, 0.2);
+  --shadow-1: 0 3px 0 var(--lip), 0 10px 20px -14px rgba(150, 40, 90, 0.4);
+  --shadow-2: 0 4px 0 var(--lip), 0 22px 40px -22px rgba(150, 40, 90, 0.5);
+  --scrim: rgba(60, 18, 36, 0.45);
+  --tabbar-bg: #fffafb;
+  --toast-action: #ff9ec8;
+  --c1: #b91f73;
+  --c2: #7f52d0;
+  --c-hp: #c81f36;
+  --c-xp: #d99a2b;
+  color-scheme: light;
+}
+
+/* «Тёмная розовая»: berry-plum night, neon-candy pink actions */
+:root[data-theme='pinkdark'],
+[data-tp='pinkdark'] {
+  --bg: #1d0b1a;
+  --bg-haze: rgba(255, 95, 174, 0.13);
+  --surface: #2d1327;
+  --surface-2: #391a33;
+  --surface-3: #49243f;
+  --line: #6a3560;
+  --line-soft: #4b2543;
+  --ink: #fdeef6;
+  --ink-2: #ebc9dc;
+  --mist: #c79bb5;
+  --pine: #ff62b0;
+  --pine-hover: #ff85c3;
+  --pine-ink: #3a0421;
+  --pine-soft: #4e1b40;
+  --pine-line: #a03e78;
+  --hp: #ff6a4d;
+  --hp-soft: #4a201c;
+  --hp-dim: #6c3029;
+  --gold: #ffd47a;
+  --gold-mark: #f2b84b;
+  --gold-bright: #ffc94d;
+  --gold-soft: #3b2f1c;
+  --frost: #a9d4ff;
+  --frost-soft: #232c58;
+  --crit: #ffb04c;
+  --crit-soft: #4a3014;
+  --st-energy: #c99228;
+  --st-body: #ff6a7e;
+  --st-mind: #b99cff;
+  --st-will: #4aa6e8;
+  --st-deal: #3fcf8a;
+  --snow: rgba(255, 205, 230, 0.7);
+  --lip: rgba(0, 0, 0, 0.42);
+  --shadow-1: 0 3px 0 var(--lip), 0 10px 22px -14px rgba(0, 0, 0, 0.75);
+  --shadow-2: 0 4px 0 var(--lip), 0 22px 44px -20px rgba(0, 0, 0, 0.85);
+  --scrim: rgba(14, 3, 12, 0.74);
+  --tabbar-bg: #260f21;
+  --toast-action: #a3185f;
+  --c1: #ff62b0;
+  --c2: #b99cff;
+  --c-hp: #ff6a4d;
+  --c-xp: #f2b84b;
+  color-scheme: dark;
+}
+
 /* v0.6 derived tokens: computed per theme scope (root or a [data-tp] preview) */
 :root,
 [data-tp] {
@@ -613,6 +709,12 @@ a.hud-cell:active { transform: translateY(2px); }
 .garland .shine { fill: #fff; opacity: 0.6; pointer-events: none; }
 .garland.all .bulb.on, .garland.all .glow { animation: twinkle 2.4s ease-in-out infinite; animation-delay: var(--tw); }
 :root[data-theme='light'] .garland .wire { stroke: #4d6b58; }
+:root[data-theme='pink'] .garland .wire { stroke: #9c5b78; }
+:root[data-theme='pink'] .garland .cap { fill: #7a3452; stroke: #4a1c32; }
+:root[data-theme='pink'] .garland .cap-rib { fill: #4a1c32; }
+:root[data-theme='pinkdark'] .garland .wire { stroke: #7a3f6b; }
+:root[data-theme='pinkdark'] .garland .cap { fill: #5a2a4c; stroke: #2a0f24; }
+:root[data-theme='pinkdark'] .garland .cap-rib { fill: #2a0f24; }
 @keyframes bulb-on { 0% { transform: scale(0.6); } 60% { transform: scale(1.2); } 100% { transform: none; } }
 @keyframes twinkle { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
 
@@ -1536,7 +1638,8 @@ details.later summary { font-weight: 900; color: var(--mist); min-height: 44px; 
 .duel-days .their { color: var(--frost); }
 
 /* --- theme picker --- */
-.theme-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.theme-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+@media (min-width: 640px) { .theme-grid { grid-template-columns: repeat(4, 1fr); } }
 .theme-tile { display: grid; gap: 4px; justify-items: start; padding: 8px; border-radius: 16px; border: var(--bw) solid var(--card-line); background: var(--surface-2); text-align: left; min-width: 0; }
 .theme-tile[aria-checked='true'] { border-color: var(--pine); box-shadow: 0 0 0 2px color-mix(in srgb, var(--pine) 35%, transparent); }
 .theme-name { font-weight: 900; font-size: 0.84rem; line-height: 1.15; }
@@ -1687,7 +1790,8 @@ h3 { font-family: var(--display); font-weight: 700; font-size: 1.08rem; letter-s
 .fat-row { display: grid; grid-template-columns: minmax(0, 1fr) 46px; gap: 8px; align-items: center; }
 .fat-row > .num { text-align: right; font-size: 0.95rem; }
 .fat-bar { display: block; height: 22px; border-radius: 99px; background: color-mix(in srgb, var(--bg) 80%, #000 6%); overflow: hidden; box-shadow: inset 0 2px 0 rgba(0, 0, 0, 0.22); }
-:root[data-theme='light'] .fat-bar { background: var(--surface-3); }
+:root[data-theme='light'] .fat-bar,
+:root[data-theme='pink'] .fat-bar { background: var(--surface-3); }
 .fat-bar > i { display: block; height: 100%; border-radius: inherit; transition: width 0.6s var(--ease-out); box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.16), inset 0 3px 0 rgba(255, 255, 255, 0.3); }
 .fat-bar.xp > i { background: var(--pine); }
 .fat-bar.gold > i { background: linear-gradient(90deg, var(--gold-bright), var(--gold-mark)); }
@@ -1875,7 +1979,8 @@ a.fchip { text-decoration: none; }
   so the light theme gets a dark band instead of its cream bar.
 */
 :root, [data-tp] { --status-bg: var(--bar-bg); }
-:root[data-theme='light'] { --status-bg: color-mix(in srgb, var(--ink) 80%, var(--mist)); }
+:root[data-theme='light'],
+:root[data-theme='pink'] { --status-bg: color-mix(in srgb, var(--ink) 80%, var(--mist)); }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) { --status-bg: color-mix(in srgb, var(--ink) 80%, var(--mist)); }
 }
@@ -1907,6 +2012,10 @@ html { scroll-padding-top: calc(var(--safe-t) + 66px + 26px); }
 @media (prefers-color-scheme: light) { :root:not([data-theme]) .tg-wire { stroke: #4d6b58; } }
 :root[data-theme='polar'] .tg-wire { stroke: #2a3c66; }
 :root[data-theme='aurora'] .tg-wire { stroke: #2a3546; }
+:root[data-theme='pink'] .tg-wire { stroke: #9c5b78; }
+:root[data-theme='pink'] .tg-cap { fill: #7a3452; stroke: #4a1c32; }
+:root[data-theme='pinkdark'] .tg-wire { stroke: #7a3f6b; }
+:root[data-theme='pinkdark'] .tg-cap { fill: #5a2a4c; stroke: #2a0f24; }
 .tg-cap { fill: #2a4a36; stroke: #16281d; stroke-width: 0.6; }
 .tg-glass { fill: var(--bc); fill-opacity: 0.32; stroke: var(--bc); stroke-opacity: 0.55; stroke-width: 0.8; }
 .tg-shine { fill: #fff; opacity: 0.5; }
