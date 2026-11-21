@@ -112,6 +112,17 @@
   text-overflow: ellipsis;
   max-height: 78px;
 }
+/* special slots («Ещё раз», «Отдых»): not tasks, striped and dashed so they never read as one */
+.pk-bin.sp-reroll { --pk-c: #c7a6ff; }
+.pk-bin.sp-rest { --pk-c: #8fe3a8; }
+.pk-bin.sp {
+  border-style: dashed;
+  border-top: 0;
+  background:
+    repeating-linear-gradient(135deg, color-mix(in srgb, var(--pk-c) 26%, transparent) 0 4px, color-mix(in srgb, var(--pk-c) 8%, transparent) 4px 8px);
+}
+.pk-bin.sp.on { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--pk-c) 44%, transparent) 0 4px, color-mix(in srgb, var(--pk-c) 16%, transparent) 4px 8px); }
+.pk-bin.sp .pk-bin-txt { font-size: 9.5px; }
 .pk-bin.on { background: linear-gradient(180deg, color-mix(in srgb, var(--pk-c) 50%, transparent), color-mix(in srgb, var(--pk-c) 18%, transparent)); border-color: var(--pk-c); }
 .pk-bin.last { box-shadow: inset 0 0 0 1px var(--pk-c), 0 0 10px -2px var(--pk-c); }
 .pk-bin.lit { animation: pk-lit 1.2s ease-out both; border-color: var(--pk-c); }
@@ -144,6 +155,9 @@
 .pk-ribbon .grow { min-width: 0; flex: 1; }
 .pk-ribbon b { display: block; font-weight: 900; font-size: 0.92rem; line-height: 1.2; color: #fff; }
 .pk-ribbon small { display: block; font-size: 0.75rem; font-weight: 800; color: var(--pk-c); }
+.pk-ribbon.sp-reroll { --pk-c: #c7a6ff; }
+.pk-ribbon.sp-rest { --pk-c: #8fe3a8; }
+.pk-ribbon.sp-burnt { --pk-c: #9aa7b8; }
 .pk-ribbon-hint { font-size: 0.78rem; font-weight: 800; line-height: 1.3; color: rgba(238, 246, 255, 0.66); }
 
 /* hud: balls, streak, sound */
@@ -208,6 +222,12 @@
 }
 .pk-jackpot span { font-family: var(--display, inherit); font-weight: 900; font-size: 1.6rem; letter-spacing: 0.08em; line-height: 1; }
 .pk-jackpot small { font-weight: 900; font-size: 0.8rem; }
+/* special result toast reuses the jackpot pop in a calm colour */
+.pk-toast.sp-reroll { background: linear-gradient(180deg, #e3d2ff, #a984f0); color: #1c0f3a; box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.85), 0 0 30px rgba(170, 130, 255, 0.7); }
+.pk-toast.sp-rest { background: linear-gradient(180deg, #c8f5d4, #5fc983); color: #0c2a17; box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.85), 0 0 30px rgba(110, 220, 150, 0.65); }
+.pk-toast.sp-burnt { background: linear-gradient(180deg, #dbe3ee, #8a98ab); color: #1a2330; box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.7), 0 0 22px rgba(150, 165, 185, 0.5); }
+.pk-toast span { font-size: 1.25rem; letter-spacing: 0.03em; text-align: center; }
+.pk-toast small { text-align: center; max-width: 220px; line-height: 1.25; }
 @keyframes pk-jack {
   0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3) rotate(-8deg); }
   15% { opacity: 1; transform: translate(-50%, -50%) scale(1.12) rotate(2deg); }
@@ -312,6 +332,8 @@
 .pk-row.t3 { --pk-c: var(--gold); }
 .pk-row.t4 { --pk-c: var(--crit); }
 .pk-row.t5 { --pk-c: var(--hp); }
+.pk-row.sp { --pk-c: #c7a6ff; cursor: default; min-height: 48px; }
+.pk-row.sp.rest { --pk-c: #5fc983; }
 .pk-row.on { background: var(--surface-2); }
 .pk-row.done { opacity: 0.72; }
 .pk-row b { display: block; font-weight: 800; }
@@ -323,6 +345,7 @@
 @media (prefers-reduced-motion: reduce) {
   .pk-card, .pk-bin, .pk-bin.lit, .pk-stage.shake { animation: none; }
   .pk-jackpot { animation: none; opacity: 1; }
+  .pk-toast { display: none; } /* the ribbon carries the same message */
   .pk-bin.lit { background: color-mix(in srgb, var(--pk-c) 45%, transparent); }
   .pk-timer-bar { transition: none; }
 }

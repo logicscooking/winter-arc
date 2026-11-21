@@ -95,6 +95,28 @@ export function sfxSlot(tier: number): void {
   tone(notes[0] / 2, t, 0.35, { type: 'sine', vol: 0.2 })
 }
 
+/** «Шар вернулся»: a quick rising whoosh and a bright ping */
+export function sfxReroll(): void {
+  if (!ctx) return
+  const t = ctx.currentTime
+  tone(330, t, 0.22, { type: 'triangle', vol: 0.26, slideTo: 880 })
+  tone(1174.7, t + 0.2, 0.3, { type: 'sine', vol: 0.3 })
+  tone(1568, t + 0.26, 0.3, { type: 'sine', vol: 0.18 })
+}
+
+/** «Отдых»: a soft low chord, no rush */
+export function sfxRest(): void {
+  if (!ctx) return
+  const t = ctx.currentTime
+  for (const [i, f] of [392, 493.9, 587.3].entries()) tone(f, t + i * 0.07, 0.7 - i * 0.08, { type: 'sine', vol: 0.26 })
+}
+
+/** Reroll cap hit: the ball is spent, a dull falling tone */
+export function sfxBurnt(): void {
+  if (!ctx) return
+  tone(300, ctx.currentTime, 0.35, { type: 'triangle', vol: 0.2, slideTo: 150 })
+}
+
 /** Jackpot fanfare on the edge slots */
 export function sfxJackpot(): void {
   if (!ctx) return

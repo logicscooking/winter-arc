@@ -84,7 +84,7 @@ export interface DayLog {
   dealNodeId?: string
   /** v0.6 «Судьба дня» Плинко: throws of the day by throw number ("0", "1") */
   plinko?: Record<string, PlinkoDrop>
-  /** v0.7 Плинко: the day's 16 slot tasks (PLINKO_POOL ids, slot 0 = left edge), laid out once at random */
+  /** v0.7 Плинко: the day's 16 slots (PLINKO_POOL ids or '@reroll' / '@rest', slot 0 = left edge), laid out once at random */
   plinkoBoard?: string[]
 }
 
@@ -104,7 +104,7 @@ export interface PlinkoDrop {
   at: number
   /** 0..slots-1, centre = easy, edges = hard */
   slot: number
-  /** PLINKO_POOL id */
+  /** PLINKO_POOL id (or a removed task's id), or '@reroll' / '@rest' for a special slot */
   taskId: string
   /** «Сделал» */
   doneAt?: number

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react'
 
-import { BOARD_SLOTS, BOARD_TIERS, PLINKO_TIERS, isJackpotSlot, levelOfSlot, type PlinkoTask } from '../engine'
+import { BOARD_SLOTS, BOARD_TIERS, PLINKO_REROLLS, PLINKO_TIERS, isJackpotSlot, isSpecial, levelOfSlot, type PlinkoSlotItem } from '../engine'
 import { SIM, SIM_ROWS, SIM_STEP, SIM_WALLS, pegX, pegY, slotX, type SimResult } from '../engine/plinkoSim'
 import { Px } from '../pixel/Pixel'
 import { SPRITES, type SpriteName } from '../pixel/sprites'
@@ -31,8 +31,16 @@ interface Landing {
   id: number
   slot: number
   jackpot: boolean
-  /** the slot's task at the moment of landing (the slot is refilled later) */
-  task?: PlinkoTask
+  /** the slot's task or special at the moment of landing (the slot is refilled later) */
+  task?: PlinkoSlotItem
+}
+
+/** the result of a special landing, shown as a toast and in the ribbon until the next throw */
+export interface PlinkoNotice {
+  id: number
+  kind: 'reroll' | 'rest' | 'burnt'
+  title: string
+  sub: string
 }
 
 export interface PlinkoHandle {
@@ -41,8 +49,12 @@ export interface PlinkoHandle {
 }
 
 interface BoardProps {
-  /** the 16 slot tasks, left to right */
-  tasks: (PlinkoTask | undefined)[]
+  /** the 16 slot tasks or specials, left to right */
+  tasks: (PlinkoSlotItem | undefined)[]
+  /** returned balls still available today (for the «Ещё раз» explanation) */
+  rerollsLeft: number
+  /** result of the last special landing */
+  notice: PlinkoNotice | null
   /** slot of today's last drop (stays lit) */
   restSlot: number | null
   /** a ball waits at the top */
@@ -55,7 +67,7 @@ interface BoardProps {
  * Plinko board: canvas for the pegs and the ball (real physics frames from engine/plinkoSim.ts),
  * DOM for the 16 task slots and the caption ribbon.
  */
-export function PlinkoBoard({ tasks, restSlot, ready, sound, ref }: BoardProps) {
+export function PlinkoBoard({ tasks, rerollsLeft, notice, restSlot, ready, sound, ref }: BoardProps) {
   const canvas = useRef<HTMLCanvasElement>(null)
   const soundRef = useRef(sound)
   useEffect(() => {
@@ -237,11 +249,14 @@ export function PlinkoBoard({ tasks, restSlot, ready, sound, ref }: BoardProps) 
     const tier = BOARD_TIERS[slot]
     setLanding({ id: Date.now(), slot, jackpot, task: tasksRef.current[slot] })
     setPicked(null)
-    if (soundRef.current) {
-      sfxSlot(tier)
-      if (jackpot) sfxJackpot()
+    // specials sound and buzz from the screen, once it knows if the ball came back
+    if (!isSpecial(tasksRef.current[slot])) {
+      if (soundRef.current) {
+        sfxSlot(tier)
+        if (jackpot) sfxJackpot()
+      }
+      buzz(jackpot ? [30, 50, 30, 50, 70] : tier >= 3 ? [18, 40, 24] : 16)
     }
-    buzz(jackpot ? [30, 50, 30, 50, 70] : tier >= 3 ? [18, 40, 24] : 16)
     if (!reduced()) {
       const n = 10 + tier * 5
       for (let i = 0; i < n; i++) {
@@ -354,11 +369,15 @@ export function PlinkoBoard({ tasks, restSlot, ready, sound, ref }: BoardProps) 
   }))
 
   // the ribbon: a picked slot shows its current task, otherwise the task the last ball landed on
-  const landed = picked === null && landing?.task && !falling
+  const landed = picked === null && landing?.task && !isSpecial(landing.task) && !falling
   const show = picked ?? (landed ? landing!.slot : null)
   const showTask = picked !== null ? tasks[picked] : landed ? landing!.task : undefined
   const tier = show !== null ? BOARD_TIERS[show] : 1
   const r = PLINKO_TIERS[tier]
+  // a special landed (nothing picked): its result stays in the ribbon until the next throw
+  const fresh = notice && landing && notice.id >= landing.id ? notice : null
+  const showNotice = picked === null && !falling && !landed && fresh && isSpecial(landing?.task) ? fresh : null
+  const rerollNow = rerollsLeft > 0 ? `Шар вернётся и не потратится. Осталось ${rerollsLeft} из ${PLINKO_REROLLS} за день` : 'Перебросы за день кончились: шар просто потратится'
 
   return (
     <div className={`pk-stage ${landing?.jackpot ? 'shake' : ''}`}>
@@ -366,13 +385,14 @@ export function PlinkoBoard({ tasks, restSlot, ready, sound, ref }: BoardProps) 
       <div className="pk-bins" style={{ paddingInline: `${((SIM.M / SIM.W) * 100).toFixed(3)}%` }} role="list" aria-label="Задания в лунках">
         {Array.from({ length: BOARD_SLOTS }, (_, k) => {
           const t = tasks[k]
+          const sp = isSpecial(t) ? t : undefined
           const lit = landing?.slot === k
           return (
             <button
               key={`${k}:${t?.id ?? ''}:${lit ? landing!.id : ''}`}
               role="listitem"
-              className={`pk-bin lv${levelOfSlot(k)} ${lit ? 'lit' : ''} ${!lit && restSlot === k && !falling ? 'last' : ''} ${show === k ? 'on' : ''}`}
-              aria-label={t ? `${t.title}, ×${PLINKO_TIERS[BOARD_TIERS[k]].mult}` : 'Лунка'}
+              className={`pk-bin lv${levelOfSlot(k)} ${sp ? `sp sp-${sp.kind}` : ''} ${lit ? 'lit' : ''} ${!lit && restSlot === k && !falling ? 'last' : ''} ${show === k ? 'on' : ''}`}
+              aria-label={sp ? `${sp.title}: ${sp.hint}` : t ? `${t.title}, ×${PLINKO_TIERS[BOARD_TIERS[k]].mult}` : 'Лунка'}
               onClick={() => setPicked(picked === k ? null : k)}
               onPointerEnter={(e) => e.pointerType === 'mouse' && setPicked(k)}
             >
@@ -384,8 +404,24 @@ export function PlinkoBoard({ tasks, restSlot, ready, sound, ref }: BoardProps) 
           )
         })}
       </div>
-      <div className={`pk-ribbon ${showTask ? `lv${levelOfSlot(show!)}` : ''}`} aria-live="polite">
-        {showTask ? (
+      <div className={`pk-ribbon ${showNotice ? `sp-${showNotice.kind}` : isSpecial(showTask) ? `sp-${showTask.kind}` : showTask ? `lv${levelOfSlot(show!)}` : ''}`} aria-live="polite">
+        {showNotice ? (
+          <>
+            <Px name={iconOf(landing!.task!.icon)} size={26} />
+            <span className="grow">
+              <b>{showNotice.title}</b>
+              <small>{showNotice.sub}</small>
+            </span>
+          </>
+        ) : isSpecial(showTask) ? (
+          <>
+            <Px name={iconOf(showTask.icon)} size={26} />
+            <span className="grow">
+              <b>{showTask.title}</b>
+              <small>{showTask.kind === 'reroll' ? rerollNow : showTask.hint}</small>
+            </span>
+          </>
+        ) : showTask ? (
           <>
             <Px name={iconOf(showTask.icon)} size={26} />
             <span className="grow">
@@ -399,9 +435,15 @@ export function PlinkoBoard({ tasks, restSlot, ready, sound, ref }: BoardProps) 
             </span>
           </>
         ) : (
-          <span className="pk-ribbon-hint">Тапни лунку — покажу задание. Центр лёгкий, края жирные по XP</span>
+          <span className="pk-ribbon-hint">Тапни лунку — покажу задание. Центр лёгкий, края жирные по XP. «Ещё раз» и «Отдых» — не задания</span>
         )}
       </div>
+      {fresh && isSpecial(landing?.task) && !falling && (
+        <div className={`pk-jackpot pk-toast sp-${fresh.kind}`} role="status" key={fresh.id}>
+          <span>{fresh.title}</span>
+          <small>{fresh.sub}</small>
+        </div>
+      )}
       {landing?.jackpot && (
         <div className="pk-jackpot" role="status" key={landing.id}>
           <span>ДЖЕКПОТ</span>

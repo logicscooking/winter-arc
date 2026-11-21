@@ -8,6 +8,10 @@
  * log (`v: 2`) and the replay trusts that record. The 16 tasks are laid out on the board at random
  * once per day (DayLog.plinkoBoard), by the tier of each position: centre easy, edges hard.
  *
+ * Two of the tier-2 slots are not tasks but specials: «Перебросить» (the ball comes back, up to
+ * PLINKO_REROLLS times a day) and «Отдых» (legal rest: +1 ❄, nothing else). Their ids live in the same
+ * plinkoBoard and the same drop log (`taskId: '@reroll' | '@rest'`), so the replay pays them like any drop.
+ *
  * v0.6 drops (risk boards of 7/9/11 slots, no `v`) keep their stored slot and are scored as before.
  */
 import { cryptoRand, type Rand } from './plinkoSim'
@@ -17,8 +21,10 @@ export type PlinkoTier = 1 | 2 | 3 | 4 | 5
 
 /** balls per game day, fixed */
 export const PLINKO_BALLS = 5
-/** highest throw count ever stored (v0.6 allowed up to 6 a day): older drops stay valid */
-export const PLINKO_MAX = 6
+/** returned balls («Перебросить») a day; later ones just spend the ball */
+export const PLINKO_REROLLS = 3
+/** highest throw count ever stored: 5 balls + 3 returned ones (v0.6 allowed 6): older drops stay valid */
+export const PLINKO_MAX = PLINKO_BALLS + PLINKO_REROLLS
 /** slots on the v0.7 board */
 export const BOARD_SLOTS = 16
 /** tier by distance from the centre: 8 levels, centre pair = 0, edge pair = 7 */
@@ -67,6 +73,49 @@ export function tierOfSlot(slot: number, risk: PlinkoRisk = 'mid'): PlinkoTier {
   return tiers[Math.max(0, Math.min(tiers.length - 1, slot))]
 }
 
+/** pseudo task ids of the special slots (a real task id never starts with «@») */
+export const REROLL_ID = '@reroll'
+export const REST_ID = '@rest'
+/** ❄ for «Отдых» */
+export const PLINKO_REST_SHARDS = 1
+
+export interface PlinkoSpecial {
+  id: typeof REROLL_ID | typeof REST_ID
+  kind: 'reroll' | 'rest'
+  title: string
+  /** 1–2 words for the narrow slot label */
+  short: string
+  /** one line: what the slot does */
+  hint: string
+  /** pixel sprite name */
+  icon: string
+}
+
+export const PLINKO_SPECIALS: Record<PlinkoSpecial['id'], PlinkoSpecial> = {
+  [REROLL_ID]: {
+    id: REROLL_ID,
+    kind: 'reroll',
+    title: 'Перебросить',
+    short: 'Ещё раз',
+    hint: `Шар вернулся: бросай снова, он не тратится. До ${PLINKO_REROLLS} раз в день, потом шар просто сгорает`,
+    icon: 'dice',
+  },
+  [REST_ID]: {
+    id: REST_ID,
+    kind: 'rest',
+    title: 'Отдых',
+    short: 'Отдых',
+    hint: `Заданий нет, отдыхай без вины: сразу +${PLINKO_REST_SHARDS} ❄. XP нет, серию не трогает`,
+    icon: 'campfire',
+  },
+}
+
+export const specialById = (id: unknown): PlinkoSpecial | undefined => (id === REROLL_ID || id === REST_ID ? PLINKO_SPECIALS[id] : undefined)
+export const isSpecialId = (id: unknown): boolean => specialById(id) !== undefined
+/** what a slot holds: a task or a special */
+export type PlinkoSlotItem = PlinkoTask | PlinkoSpecial
+export const isSpecial = (x: PlinkoSlotItem | undefined): x is PlinkoSpecial => !!x && 'kind' in x
+
 export interface PlinkoTask {
   id: string
   tier: PlinkoTier
@@ -86,7 +135,6 @@ export interface PlinkoTask {
 const DAY: [number, number] = [4, 21]
 /** evening only */
 const EVE: [number, number] = [18, 28]
-const MORNING: [number, number] = [4, 13]
 /** «вечер без экрана» makes sense only before it starts */
 const PRE21: [number, number] = [17, 21]
 
@@ -111,25 +159,6 @@ export const PLINKO_POOL: PlinkoTask[] = [
     icon: 'heart',
   },
   {
-    id: 'air',
-    tier: 1,
-    title: 'Проветрить комнату',
-    short: 'Проветрить',
-    hint: 'Окно настежь на 5 минут, сам постой рядом',
-    stat: 'energy',
-    icon: 'snowflake',
-  },
-  {
-    id: 'bed',
-    tier: 1,
-    title: 'Заправить кровать',
-    short: 'Кровать',
-    hint: 'Одеяло ровно, подушка на месте. Первая победа дня',
-    stat: 'deal',
-    icon: 'star',
-    hours: MORNING,
-  },
-  {
     id: 'stretch2',
     tier: 1,
     title: '2 минуты растяжки',
@@ -148,24 +177,6 @@ export const PLINKO_POOL: PlinkoTask[] = [
     icon: 'pen',
   },
   {
-    id: 'desk5',
-    tier: 1,
-    title: 'Убрать 5 вещей со стола',
-    short: 'Стол',
-    hint: 'Пять лишних предметов на свои места',
-    stat: 'deal',
-    icon: 'hammer',
-  },
-  {
-    id: 'notif',
-    tier: 1,
-    title: 'Выключить одно уведомление',
-    short: 'Без пушей',
-    hint: 'Найди самое назойливое приложение и заглуши его',
-    stat: 'will',
-    icon: 'phone',
-  },
-  {
     id: 'posture',
     tier: 1,
     title: 'Минута осанки',
@@ -173,6 +184,34 @@ export const PLINKO_POOL: PlinkoTask[] = [
     hint: 'Спина у стены, плечи вниз, подбородок назад. 60 секунд',
     stat: 'body',
     icon: 'shield',
+  },
+  {
+    id: 'icewash',
+    tier: 1,
+    title: 'Умыться ледяной водой',
+    short: 'Ледяная вода',
+    hint: 'Холодная вода на лицо, 30 секунд. Просыпается всё',
+    stat: 'energy',
+    icon: 'snowflake',
+  },
+  {
+    id: 'jump20',
+    tier: 1,
+    title: '20 прыжков на месте',
+    short: 'Прыжки ×20',
+    hint: 'Легко, на носках, руки вверх. Пульс должен подняться',
+    stat: 'body',
+    icon: 'run',
+    hours: DAY,
+  },
+  {
+    id: 'neck',
+    tier: 1,
+    title: 'Самомассаж шеи',
+    short: 'Шея',
+    hint: '2 минуты: большими пальцами вдоль позвоночника, затылок и плечи',
+    stat: 'body',
+    icon: 'heart',
   },
   {
     id: 'far',
@@ -224,15 +263,6 @@ export const PLINKO_POOL: PlinkoTask[] = [
     icon: 'speech',
   },
   {
-    id: 'shelf',
-    tier: 2,
-    title: 'Разобрать одну полку',
-    short: 'Полка',
-    hint: 'Или один ящик. Лишнее в пакет на выброс',
-    stat: 'deal',
-    icon: 'hammer',
-  },
-  {
     id: 'dishes',
     tier: 2,
     title: 'Помыть всю посуду',
@@ -242,15 +272,6 @@ export const PLINKO_POOL: PlinkoTask[] = [
     icon: 'water',
   },
   {
-    id: 'words5',
-    tier: 2,
-    title: '5 новых слов',
-    short: '5 слов',
-    hint: 'На языке, который учишь. Выпиши и проговори вслух',
-    stat: 'mind',
-    icon: 'brain',
-  },
-  {
     id: 'tea',
     tier: 2,
     title: 'Чай без телефона',
@@ -258,6 +279,15 @@ export const PLINKO_POOL: PlinkoTask[] = [
     hint: '10 минут: чашка, окно, свои мысли. Без кофеина после 16',
     stat: 'will',
     icon: 'coffee',
+  },
+  {
+    id: 'yoga10',
+    tier: 2,
+    title: '10 минут йоги',
+    short: 'Йога 10',
+    hint: 'Коврик, видео или свой комплекс. Дыши в каждой позе',
+    stat: 'body',
+    icon: 'moon',
   },
   {
     id: 'light10',
@@ -329,16 +359,6 @@ export const PLINKO_POOL: PlinkoTask[] = [
     hours: EVE,
   },
   {
-    id: 'call',
-    tier: 3,
-    title: 'Позвонить родным',
-    short: 'Родным',
-    hint: 'Не писать, а позвонить. Хотя бы 10 минут разговора',
-    stat: 'mind',
-    icon: 'speech',
-    hours: [9, 22],
-  },
-  {
     id: 'nosocial1h',
     tier: 3,
     title: 'Час без соцсетей',
@@ -375,6 +395,16 @@ export const PLINKO_POOL: PlinkoTask[] = [
     stat: 'body',
     icon: 'dumbbell',
     hours: [4, 23],
+  },
+  {
+    id: 'burpee30',
+    tier: 3,
+    title: '30 бёрпи подходами',
+    short: 'Бёрпи ×30',
+    hint: 'Три подхода по 10, минута отдыха между ними',
+    stat: 'body',
+    icon: 'bolt',
+    hours: DAY,
   },
   {
     id: 'debt',
@@ -419,16 +449,6 @@ export const PLINKO_POOL: PlinkoTask[] = [
     hours: [4, 23],
   },
   {
-    id: 'cook',
-    tier: 4,
-    title: 'Домашняя еда',
-    short: 'Готовка',
-    hint: 'Приготовь нормальный ужин или обед вместо доставки',
-    stat: 'body',
-    icon: 'campfire',
-    hours: [10, 21],
-  },
-  {
     id: 'read30',
     tier: 4,
     title: '30 страниц книги',
@@ -464,15 +484,6 @@ export const PLINKO_POOL: PlinkoTask[] = [
     hint: 'Напиши человеку, которому давно хотел сказать, что он для тебя сделал',
     stat: 'mind',
     icon: 'speech',
-  },
-  {
-    id: 'poem',
-    tier: 4,
-    title: 'Выучить стих',
-    short: 'Стих',
-    hint: 'Восемь строк наизусть. Расскажи вслух без подглядывания',
-    stat: 'mind',
-    icon: 'book',
   },
   {
     id: 'phonebed',
@@ -566,6 +577,116 @@ export const PLINKO_POOL: PlinkoTask[] = [
     icon: 'book',
   },
   {
+    id: 'weekplan',
+    tier: 5,
+    title: 'Разбор недели',
+    short: 'План недели',
+    hint: 'Все заметки и напоминалки в один список, план на 7 дней, лишнее вычеркнуть',
+    stat: 'deal',
+    icon: 'pen',
+  },
+  {
+    id: 'scary',
+    tier: 5,
+    title: 'Самая страшная задача месяца',
+    short: 'Страшная',
+    hint: 'То, что откладывал весь месяц. Два часа только на неё, без отвлечений',
+    stat: 'deal',
+    icon: 'flame',
+    hours: DAY,
+  },
+]
+
+/**
+ * Tasks taken out of the pool. Old drops (and today's stored board) may still carry their ids, so the
+ * replay keeps scoring them with the right stat and the history keeps their titles.
+ */
+const LEGACY_TASKS: PlinkoTask[] = [
+  {
+    id: 'air',
+    tier: 1,
+    title: 'Проветрить комнату',
+    short: 'Проветрить',
+    hint: 'Окно настежь на 5 минут, сам постой рядом',
+    stat: 'energy',
+    icon: 'snowflake',
+  },
+  {
+    id: 'bed',
+    tier: 1,
+    title: 'Заправить кровать',
+    short: 'Кровать',
+    hint: 'Одеяло ровно, подушка на месте. Первая победа дня',
+    stat: 'deal',
+    icon: 'star',
+    hours: [4, 13],
+  },
+  {
+    id: 'desk5',
+    tier: 1,
+    title: 'Убрать 5 вещей со стола',
+    short: 'Стол',
+    hint: 'Пять лишних предметов на свои места',
+    stat: 'deal',
+    icon: 'hammer',
+  },
+  {
+    id: 'notif',
+    tier: 1,
+    title: 'Выключить одно уведомление',
+    short: 'Без пушей',
+    hint: 'Найди самое назойливое приложение и заглуши его',
+    stat: 'will',
+    icon: 'phone',
+  },
+  {
+    id: 'shelf',
+    tier: 2,
+    title: 'Разобрать одну полку',
+    short: 'Полка',
+    hint: 'Или один ящик. Лишнее в пакет на выброс',
+    stat: 'deal',
+    icon: 'hammer',
+  },
+  {
+    id: 'words5',
+    tier: 2,
+    title: '5 новых слов',
+    short: '5 слов',
+    hint: 'На языке, который учишь. Выпиши и проговори вслух',
+    stat: 'mind',
+    icon: 'brain',
+  },
+  {
+    id: 'call',
+    tier: 3,
+    title: 'Позвонить родным',
+    short: 'Родным',
+    hint: 'Не писать, а позвонить. Хотя бы 10 минут разговора',
+    stat: 'mind',
+    icon: 'speech',
+    hours: [9, 22],
+  },
+  {
+    id: 'cook',
+    tier: 4,
+    title: 'Домашняя еда',
+    short: 'Готовка',
+    hint: 'Приготовь нормальный ужин или обед вместо доставки',
+    stat: 'body',
+    icon: 'campfire',
+    hours: [10, 21],
+  },
+  {
+    id: 'poem',
+    tier: 4,
+    title: 'Выучить стих',
+    short: 'Стих',
+    hint: 'Восемь строк наизусть. Расскажи вслух без подглядывания',
+    stat: 'mind',
+    icon: 'book',
+  },
+  {
     id: 'mealprep',
     tier: 5,
     title: 'Еда на два дня',
@@ -593,18 +714,12 @@ export const PLINKO_POOL: PlinkoTask[] = [
     stat: 'deal',
     icon: 'coin',
   },
-  {
-    id: 'weekplan',
-    tier: 5,
-    title: 'Разбор недели',
-    short: 'План недели',
-    hint: 'Все заметки и напоминалки в один список, план на 7 дней, лишнее вычеркнуть',
-    stat: 'deal',
-    icon: 'pen',
-  },
 ]
 
-export const plinkoTaskById = (id: string) => PLINKO_POOL.find((t) => t.id === id)
+/** a task that can drop today */
+export const poolTaskById = (id: string) => PLINKO_POOL.find((t) => t.id === id)
+/** any task ever in the pool, including removed ones: for scoring and history */
+export const plinkoTaskById = (id: string) => poolTaskById(id) ?? LEGACY_TASKS.find((t) => t.id === id)
 
 /** 0..23 clock hour → game hour 4..27 */
 const gameHour = (hour: number) => (hour < 4 ? hour + 24 : hour)
@@ -621,7 +736,10 @@ export const dropRisk = (d: Pick<PlinkoDrop, 'risk'>) => riskOf(d.risk)
 export const dropTier = (d: DropRef): PlinkoTier => (d.v === 2 ? boardTier(d.slot) : tierOfSlot(d.slot, dropRisk(d)))
 export const dropJackpot = (d: DropRef) => (d.v === 2 ? isJackpotSlot(d.slot) : d.slot === 0 || d.slot === slotsOf(dropRisk(d)) - 1)
 
-// ---------- the day's board: 16 different tasks ----------
+// ---------- the day's board: 14 different tasks and 2 specials ----------
+
+/** tier-2 positions (levels 2–3: slots 4, 5, 10, 11): the two specials land on two of them, at random */
+export const SPECIAL_SLOTS: number[] = BOARD_TIERS.map((t, k) => (t === 2 ? k : -1)).filter((k) => k >= 0)
 
 /** Fisher–Yates with crypto (or a seeded rand in tests) */
 function shuffle<T>(list: T[], rand: Rand): T[] {
@@ -643,7 +761,8 @@ function candidates(tier: PlinkoTier, hour: number, taken: Set<string>): PlinkoT
 export const isBoard = (ids: unknown): ids is string[] => Array.isArray(ids) && ids.length === BOARD_SLOTS && ids.every((x) => typeof x === 'string') && new Set(ids).size === BOARD_SLOTS
 
 /**
- * A fresh random layout for local hour `hour`: every slot gets a task of its tier, all 16 different.
+ * A fresh random layout for local hour `hour`: two random slots among SPECIAL_SLOTS hold «Перебросить»
+ * and «Отдых», every other slot gets a task of its tier, all different.
  * `avoid` (today's dropped tasks) is skipped while there is anything else.
  */
 export function layoutBoard(hour: number, rand: Rand = cryptoRand, avoid: Iterable<string> = []): string[] {
@@ -651,10 +770,16 @@ export function layoutBoard(hour: number, rand: Rand = cryptoRand, avoid: Iterab
   const taken = new Set<string>(avoid)
   const onBoard = new Set<string>()
   for (const tier of [5, 4, 3, 2, 1] as PlinkoTier[]) {
-    const slots = shuffle(
+    let slots = shuffle(
       BOARD_TIERS.map((t, k) => (t === tier ? k : -1)).filter((k) => k >= 0),
       rand,
     )
+    if (tier === 2) {
+      // the same shuffle decides the special positions: the first two of the tier-2 slots
+      out[slots[0]] = REROLL_ID
+      out[slots[1]] = REST_ID
+      slots = slots.slice(2)
+    }
     for (const k of slots) {
       let list = candidates(tier, hour, new Set([...taken, ...onBoard]))
       if (!list.length) list = candidates(tier, hour, onBoard)
@@ -669,7 +794,8 @@ export function layoutBoard(hour: number, rand: Rand = cryptoRand, avoid: Iterab
 
 /**
  * Keeps the stored layout and replaces only the slots that went stale: a task already dropped today
- * (`used`), one whose time window is over, or an unknown id. Returns null when nothing changes.
+ * (`used`), one whose time window is over, or an unknown or removed id. Specials never go stale.
+ * Boards stored before the specials existed (16 tasks) stay as they are. Returns null when nothing changes.
  */
 export function refreshBoard(ids: unknown, hour: number, used: Iterable<string> = [], rand: Rand = cryptoRand): string[] | null {
   const usedSet = new Set(used)
@@ -678,7 +804,8 @@ export function refreshBoard(ids: unknown, hour: number, used: Iterable<string> 
   let changed = false
   const h = gameHour(hour)
   for (let k = 0; k < BOARD_SLOTS; k++) {
-    const t = plinkoTaskById(out[k])
+    if (SPECIAL_SLOTS.includes(k) && isSpecialId(out[k])) continue
+    const t = poolTaskById(out[k])
     const tier = BOARD_TIERS[k]
     const stale = !t || t.tier !== tier || usedSet.has(t.id) || (t.hours && !(h >= t.hours[0] && h < t.hours[1]))
     if (!stale) continue
@@ -693,11 +820,20 @@ export function refreshBoard(ids: unknown, hour: number, used: Iterable<string> 
 /** The task in slot `slot` of the stored board, or a random fitting one if the board is missing */
 export function taskForSlot(ids: unknown, slot: number, hour: number, rand: Rand = cryptoRand): PlinkoTask {
   const tier = boardTier(slot)
-  const t = isBoard(ids) ? plinkoTaskById(ids[slot]) : undefined
+  const t = isBoard(ids) ? poolTaskById(ids[slot]) : undefined
   if (t && t.tier === tier) return t
   const list = candidates(tier, hour, new Set())
   return list[Math.floor(rand() * list.length)] ?? PLINKO_POOL.find((x) => x.tier === tier)!
 }
+
+/** What the ball lands on: the special in that slot of the stored board, otherwise its task */
+export function slotItemFor(ids: unknown, slot: number, hour: number, rand: Rand = cryptoRand): PlinkoSlotItem {
+  const sp = isBoard(ids) && SPECIAL_SLOTS.includes(slot) ? specialById(ids[slot]) : undefined
+  return sp ?? taskForSlot(ids, slot, hour, rand)
+}
+
+/** 'reroll' | 'rest' for a special landing, null for a task drop */
+export const dropSpecial = (d: Pick<PlinkoDrop, 'taskId'>): PlinkoSpecial['kind'] | null => specialById(d.taskId)?.kind ?? null
 
 export function dropDeadline(drop: Pick<PlinkoDrop, 'at' | 'slot' | 'risk' | 'v'>): number {
   return drop.at + PLINKO_TIERS[dropTier(drop)].minutes * 60_000
@@ -723,9 +859,23 @@ export function plinkoDrops(log: DayLog | undefined): PlinkoDrop[] {
     .sort((a, b) => a.n - b.n)
 }
 
-/** Balls left today: 5 a day, no bonus balls */
+/** Throw numbers whose ball came back: the first PLINKO_REROLLS «Перебросить» of the day (the rest spend the ball) */
+export function returnedThrows(log: DayLog | undefined): Set<number> {
+  const out = new Set<number>()
+  for (const d of plinkoDrops(log)) if (d.taskId === REROLL_ID && out.size < PLINKO_REROLLS) out.add(d.n)
+  return out
+}
+
+export const rerollsLeft = (log: DayLog | undefined): number => PLINKO_REROLLS - returnedThrows(log).size
+
+/** Balls spent today: every throw except the returned ones */
+export function ballsSpent(log: DayLog | undefined): number {
+  return plinkoDrops(log).length - returnedThrows(log).size
+}
+
+/** Balls left today: 5 a day, a returned ball does not count, no bonus balls */
 export function ballsLeft(log: DayLog | undefined): number {
-  return Math.max(0, PLINKO_BALLS - plinkoDrops(log).length)
+  return Math.max(0, PLINKO_BALLS - ballsSpent(log))
 }
 
 /** Next throw number of the day, or null when no balls are left */
@@ -745,9 +895,10 @@ interface Ordered {
   drop: PlinkoDrop
 }
 
-function orderedDrops(days: AppData['days']): Ordered[] {
+/** specials are left out unless asked: they are neutral for the streak (do not break it, do not grow it) */
+function orderedDrops(days: AppData['days'], withSpecials = false): Ordered[] {
   const all: Ordered[] = []
-  for (const [day, log] of Object.entries(days ?? {})) for (const drop of plinkoDrops(log)) all.push({ day, drop })
+  for (const [day, log] of Object.entries(days ?? {})) for (const drop of plinkoDrops(log)) if (withSpecials || !dropSpecial(drop)) all.push({ day, drop })
   return all.sort((a, b) => a.drop.at - b.drop.at || (a.day < b.day ? -1 : a.day > b.day ? 1 : a.drop.n - b.drop.n))
 }
 
@@ -786,14 +937,20 @@ export interface PlinkoEvent {
   at: number
   xp: number
   shards: number
-  stat: StatId
+  /** none for «Отдых»: no XP, nothing to credit */
+  stat?: StatId
 }
 
-/** Replay input: one reward per closed drop, on the drop's day */
+/** Replay input: one reward per closed drop, on the drop's day; «Отдых» pays its ❄ the moment it lands */
 export function plinkoEvents(data: Pick<AppData, 'days'>): PlinkoEvent[] {
   const out: PlinkoEvent[] = []
   const streaks = plinkoStreaks(data.days)
-  for (const { day, drop: d } of orderedDrops(data.days)) {
+  for (const { day, drop: d } of orderedDrops(data.days, true)) {
+    const sp = dropSpecial(d)
+    if (sp) {
+      if (sp === 'rest') out.push({ day, at: d.at, xp: 0, shards: PLINKO_REST_SHARDS })
+      continue
+    }
     if (d.doneAt === undefined || d.doneAt < d.at) continue
     const r = plinkoReward(d, d.doneAt, streakMult(streaks.get(dropKey(day, d.n)) ?? 0))
     out.push({

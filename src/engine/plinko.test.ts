@@ -6,10 +6,17 @@ import {
   PLINKO_BALLS,
   PLINKO_MAX,
   PLINKO_POOL,
+  PLINKO_REROLLS,
+  PLINKO_REST_SHARDS,
   PLINKO_TIERS,
+  REROLL_ID,
+  REST_ID,
+  SPECIAL_SLOTS,
   ballsLeft,
+  ballsSpent,
   boardTier,
   dropJackpot,
+  dropSpecial,
   dropStreakMult,
   dropTier,
   isBoard,
@@ -17,13 +24,20 @@ import {
   levelOfSlot,
   nextStreak,
   nextThrow,
+  isSpecialId,
   plinkoDrops,
+  plinkoEvents,
   plinkoPool,
   plinkoReward,
   plinkoStreaks,
   plinkoTaskById,
+  poolTaskById,
   refreshBoard,
+  rerollsLeft,
+  returnedThrows,
   sanitizeDrop,
+  slotItemFor,
+  specialById,
   streakMult,
   taskForSlot,
   type PlinkoTier,
@@ -41,6 +55,8 @@ const D1 = '2026-11-23'
 const TIERS: PlinkoTier[] = [1, 2, 3, 4, 5]
 /** slots per tier on the 16-slot board */
 const NEED: Record<PlinkoTier, number> = { 1: 4, 2: 4, 3: 4, 4: 2, 5: 2 }
+/** tasks per tier on a board: two of the four tier-2 slots hold specials */
+const NEED_TASKS: Record<PlinkoTier, number> = { ...NEED, 2: 2 }
 
 let seq = 1
 /** a drop the way the screen records it: physics picks the slot, the day's board picks the task */
@@ -48,8 +64,10 @@ function throwAt(data: AppData, day: DayKey, n: number, h: number, m = 0, slot?:
   const when = localAt(day, h, m)
   const l = log(data, day)
   l.plinkoBoard ??= layoutBoard(h, seededRand(seq++))
-  const s = slot ?? rollDrop(seededRand(seq++)).slot
-  const task = taskForSlot(l.plinkoBoard, s, h)
+  // a task drop: a special slot is skipped unless the slot is given
+  let s = slot ?? rollDrop(seededRand(seq++)).slot
+  while (slot === undefined && isSpecialId(l.plinkoBoard[s])) s = rollDrop(seededRand(seq++)).slot
+  const task = slotItemFor(l.plinkoBoard, s, h)
   const drop: PlinkoDrop = {
     n,
     at: when.getTime(),
@@ -57,6 +75,16 @@ function throwAt(data: AppData, day: DayKey, n: number, h: number, m = 0, slot?:
     taskId: task.id,
     v: 2,
   }
+  ;(l.plinko ??= {})[String(n)] = drop
+  return drop
+}
+
+/** a special landing, the way the screen records it */
+function specialAt(data: AppData, day: DayKey, n: number, h: number, id: typeof REROLL_ID | typeof REST_ID, m = 0): PlinkoDrop {
+  const l = log(data, day)
+  l.plinkoBoard ??= layoutBoard(h, seededRand(seq++))
+  const slot = l.plinkoBoard.indexOf(id)
+  const drop: PlinkoDrop = { n, at: localAt(day, h, m).getTime(), slot, taskId: id, v: 2 }
   ;(l.plinko ??= {})[String(n)] = drop
   return drop
 }
@@ -197,12 +225,13 @@ describe('Плинко v0.7: физика', () => {
 })
 
 describe('Плинко v0.7: раскладка заданий дня', () => {
-  it('16 разных заданий, каждое под тир своей лунки и под час', () => {
+  it('14 разных заданий и 2 особые лунки, каждое задание под тир своей лунки и под час', () => {
     for (let h = 0; h < 24; h++) {
       for (let s = 0; s < 6; s++) {
         const b = layoutBoard(h, seededRand(h * 100 + s))
         expect(isBoard(b)).toBe(true)
         for (let k = 0; k < 16; k++) {
+          if (isSpecialId(b[k])) continue
           const t = plinkoTaskById(b[k])!
           expect(t.tier).toBe(BOARD_TIERS[k])
           expect(plinkoPool(t.tier, h).map((x) => x.id)).toContain(t.id)
@@ -230,15 +259,17 @@ describe('Плинко v0.7: раскладка заданий дня', () => {
     // a morning board in the evening: morning-only tasks are swapped out
     const morning = layoutBoard(7, seededRand(8))
     const eve = refreshBoard(morning, 22, [], seededRand(9)) ?? morning
-    for (let k = 0; k < 16; k++) expect(plinkoPool(BOARD_TIERS[k], 22).map((x) => x.id)).toContain(eve[k])
+    for (let k = 0; k < 16; k++) if (!isSpecialId(eve[k])) expect(plinkoPool(BOARD_TIERS[k], 22).map((x) => x.id)).toContain(eve[k])
     // broken → a fresh one
     expect(isBoard(refreshBoard(['water'], 12))).toBe(true)
   })
 
   it('задание лунки берётся из доски дня', () => {
     const b = layoutBoard(12, seededRand(11))
-    for (let k = 0; k < 16; k++) expect(taskForSlot(b, k, 12).id).toBe(b[k])
+    for (let k = 0; k < 16; k++) expect(slotItemFor(b, k, 12).id).toBe(b[k])
+    for (let k = 0; k < 16; k++) if (!isSpecialId(b[k])) expect(taskForSlot(b, k, 12).id).toBe(b[k])
     expect(taskForSlot(undefined, 0, 12).tier).toBe(5)
+    expect(isSpecialId(slotItemFor(undefined, SPECIAL_SLOTS[0], 12).id)).toBe(false) // no board: a task, never a special
   })
 
   it('пул: в любой час хватает на 16 разных заданий; id уникальны, иконки есть, подпись короткая', () => {
@@ -247,7 +278,7 @@ describe('Плинко v0.7: раскладка заданий дня', () => {
       expect(n).toBeGreaterThanOrEqual(6)
       expect(n).toBeLessThanOrEqual(12)
     }
-    for (let h = 0; h < 24; h++) for (const t of TIERS) expect(plinkoPool(t, h).length).toBeGreaterThanOrEqual(NEED[t])
+    for (let h = 0; h < 24; h++) for (const t of TIERS) expect(plinkoPool(t, h).length).toBeGreaterThanOrEqual(NEED_TASKS[t])
     expect(new Set(PLINKO_POOL.map((x) => x.id)).size).toBe(PLINKO_POOL.length)
     for (const x of PLINKO_POOL) {
       expect(x.hint.length).toBeGreaterThan(5)
@@ -258,7 +289,7 @@ describe('Плинко v0.7: раскладка заданий дня', () => {
   })
 
   it('после 21:00 нет бодрящего, утром нет вечернего', () => {
-    const energizing = ['cold', 'workout30', 'squats100', 'walk30', 'walk60', 'focus60', 'stairs', 'light10', 'noscreen']
+    const energizing = ['cold', 'workout30', 'squats100', 'walk30', 'walk60', 'focus60', 'stairs', 'light10', 'noscreen', 'jump20', 'burpee30', 'scary']
     for (const h of [21, 22, 23, 0, 1, 2, 3]) {
       const ids = TIERS.flatMap((t) => plinkoPool(t, h).map((x) => x.id))
       for (const id of energizing) expect(ids).not.toContain(id)
@@ -267,7 +298,7 @@ describe('Плинко v0.7: раскладка заданий дня', () => {
     for (const h of [5, 7, 9, 11]) {
       const ids = TIERS.flatMap((t) => plinkoPool(t, h).map((x) => x.id))
       for (const id of evening) expect(ids).not.toContain(id)
-      expect(ids).toContain('bed')
+      expect(ids).toContain('light10')
     }
   })
 })
@@ -339,6 +370,220 @@ describe('Плинко: награда только после «Сделал»,
   })
 })
 
+describe('Плинко: удалённые задания и старые доски', () => {
+  const REMOVED: Record<string, string> = {
+    air: 'energy',
+    bed: 'deal',
+    desk5: 'deal',
+    notif: 'will',
+    shelf: 'deal',
+    words5: 'mind',
+    call: 'mind',
+    cook: 'body',
+    poem: 'mind',
+    mealprep: 'body',
+    letter: 'mind',
+    budget: 'deal',
+  }
+
+  it('убраны из пула, но по id ещё находятся (история, статы)', () => {
+    for (const [id, stat] of Object.entries(REMOVED)) {
+      expect(poolTaskById(id)).toBeUndefined()
+      expect(PLINKO_POOL.find((x) => x.id === id)).toBeUndefined()
+      expect(plinkoTaskById(id)?.stat).toBe(stat)
+      expect(plinkoTaskById(id)?.title.length).toBeGreaterThan(3)
+    }
+    for (let h = 0; h < 24; h++) for (let t = 1; t <= 5; t++) for (const x of plinkoPool(t as PlinkoTier, h)) expect(REMOVED[x.id]).toBeUndefined()
+  })
+
+  it('старый бросок с удалённым id: награда по тиру лунки, XP в стат задания', () => {
+    for (const [id, stat] of Object.entries(REMOVED)) {
+      const data = makeData()
+      const base = computeState(data, nowAt(D1, 22))
+      // v0.7 drop in a tier-3 slot, and a v0.6 drop in the centre of the «low» board
+      const drops: PlinkoDrop[] = [
+        { n: 0, at: at(D1, 9), slot: 3, taskId: id, v: 2, doneAt: at(D1, 9, 5) },
+        { n: 1, at: at(D1, 12), slot: 3, taskId: id, risk: 'low', doneAt: at(D1, 12, 5) },
+      ]
+      log(data, D1).plinko = Object.fromEntries(drops.map((d) => [String(d.n), d]))
+      const st = computeState(data, nowAt(D1, 22))
+      const t0 = PLINKO_TIERS[dropTier(drops[0])]
+      const t1 = PLINKO_TIERS[dropTier(drops[1])]
+      expect(st.xp - base.xp).toBe(t0.xp + Math.round(t1.xp * 1.2))
+      expect(st.xpByStat[stat as 'body'] - base.xpByStat[stat as 'body']).toBe(t0.xp + Math.round(t1.xp * 1.2))
+      expect(st.shards - base.shards).toBe(t0.shards + t1.shards)
+    }
+  })
+
+  it('доска дня со старым заданием остаётся валидной, а при обновлении оно заменяется', () => {
+    const b = layoutBoard(10, seededRand(21))
+    const k = b.findIndex((id, i) => !isSpecialId(id) && BOARD_TIERS[i] === 1)
+    const old = b.slice()
+    old[k] = 'air'
+    expect(isBoard(old)).toBe(true)
+    const fresh = refreshBoard(old, 10, [], seededRand(5))!
+    expect(fresh).not.toBeNull()
+    expect(fresh[k]).not.toBe('air')
+    expect(poolTaskById(fresh[k])?.tier).toBe(1)
+    for (let i = 0; i < 16; i++) if (i !== k) expect(fresh[i]).toBe(old[i])
+    // and a drop on it falls back to a live task of the tier, never to a removed one
+    expect(taskForSlot(old, k, 10, seededRand(6)).id).not.toBe('air')
+  })
+})
+
+describe('Плинко: особые лунки «Ещё раз» и «Отдых»', () => {
+  it('две особые лунки на двух разных случайных позициях среди тир-2 (слоты 4, 5, 10, 11)', () => {
+    expect(SPECIAL_SLOTS).toEqual([4, 5, 10, 11])
+    for (const k of SPECIAL_SLOTS) expect(boardTier(k)).toBe(2)
+    const pairs = new Set<string>()
+    for (let seed = 0; seed < 300; seed++) {
+      const b = layoutBoard(seed % 24, seededRand(seed))
+      expect(isBoard(b)).toBe(true)
+      const re = b.indexOf(REROLL_ID)
+      const rest = b.indexOf(REST_ID)
+      expect(SPECIAL_SLOTS).toContain(re)
+      expect(SPECIAL_SLOTS).toContain(rest)
+      expect(re).not.toBe(rest)
+      expect(b.filter(isSpecialId)).toHaveLength(2)
+      // the other 14 are real tasks of their tier, different from each other
+      const tasks = b.filter((_, k) => k !== re && k !== rest)
+      expect(new Set(tasks).size).toBe(14)
+      for (const [k, id] of b.entries()) if (k !== re && k !== rest) expect(poolTaskById(id)?.tier).toBe(BOARD_TIERS[k])
+      pairs.add(`${re}:${rest}`)
+    }
+    // every ordered pair of distinct tier-2 slots shows up
+    expect(pairs.size).toBe(12)
+  })
+
+  it('старая доска из 16 заданий остаётся валидной и не меняется', () => {
+    const old: string[] = []
+    const used = new Set<string>()
+    for (let k = 0; k < 16; k++) {
+      const t = PLINKO_POOL.find((x) => x.tier === BOARD_TIERS[k] && !x.hours && !used.has(x.id))!
+      used.add(t.id)
+      old.push(t.id)
+    }
+    expect(isBoard(old)).toBe(true)
+    expect(refreshBoard(old, 12, [], seededRand(1))).toBeNull()
+    const d = makeData()
+    log(d, D1).plinkoBoard = old
+    expect(normalizeData(JSON.parse(JSON.stringify(d))).days[D1].plinkoBoard).toEqual(old)
+    // its slots still hand out tasks
+    for (let k = 0; k < 16; k++) expect(slotItemFor(old, k, 12).id).toBe(old[k])
+  })
+
+  it('особая лунка: тап → описание, taskId из доски; без доски задание, не особая', () => {
+    const b = layoutBoard(12, seededRand(2))
+    const re = b.indexOf(REROLL_ID)
+    expect(specialById(REROLL_ID)).toMatchObject({ kind: 'reroll', short: 'Ещё раз', title: 'Перебросить' })
+    expect(specialById(REST_ID)).toMatchObject({ kind: 'rest', short: 'Отдых', title: 'Отдых' })
+    expect(Object.keys(SPRITES)).toContain(specialById(REROLL_ID)!.icon)
+    expect(Object.keys(SPRITES)).toContain(specialById(REST_ID)!.icon)
+    expect(slotItemFor(b, re, 12)).toBe(specialById(REROLL_ID))
+    expect(specialById('water')).toBeUndefined()
+    expect(dropSpecial({ taskId: REROLL_ID })).toBe('reroll')
+    expect(dropSpecial({ taskId: REST_ID })).toBe('rest')
+    expect(dropSpecial({ taskId: 'water' })).toBeNull()
+    // a special is kept on refresh (not «used up», not out of hours)
+    expect(refreshBoard(b, 12, [REROLL_ID, REST_ID], seededRand(3))).toBeNull()
+    // a special that strayed outside the tier-2 slots is replaced by a task
+    const bad = b.slice()
+    const other = bad.findIndex((_, k) => !SPECIAL_SLOTS.includes(k) && BOARD_TIERS[k] === 1)
+    const home = b.indexOf(REST_ID)
+    bad[home] = b[other]
+    bad[other] = REST_ID
+    const fixed = refreshBoard(bad, 12, [], seededRand(4))!
+    expect(fixed).not.toBeNull()
+    expect(poolTaskById(fixed[other])?.tier).toBe(1)
+  })
+
+  it('«Ещё раз»: шар не тратится, не даёт ни XP, ни ❄, серию не трогает', () => {
+    const data = makeData()
+    const base = computeState(data, nowAt(D1, 22))
+    expect(ballsLeft(data.days[D1])).toBe(5)
+    specialAt(data, D1, 0, 9, REROLL_ID)
+    expect(ballsLeft(data.days[D1])).toBe(5)
+    expect(ballsSpent(data.days[D1])).toBe(0)
+    expect(rerollsLeft(data.days[D1])).toBe(PLINKO_REROLLS - 1)
+    expect(nextThrow(data.days[D1])).toBe(1)
+    throwAt(data, D1, 1, 9, 5)
+    expect(ballsLeft(data.days[D1])).toBe(4)
+    expect(plinkoEvents(data)).toEqual([])
+    const st = computeState(data, nowAt(D1, 22))
+    expect(st.xp).toBe(base.xp)
+    expect(st.shards).toBe(base.shards)
+  })
+
+  it('лимит возвратов: 3 в день, четвёртый «Ещё раз» просто тратит шар', () => {
+    const data = makeData()
+    let n = 0
+    for (let i = 0; i < PLINKO_REROLLS; i++) {
+      specialAt(data, D1, n++, 9, REROLL_ID, i)
+      expect(returnedThrows(data.days[D1]).size).toBe(i + 1)
+      expect(ballsLeft(data.days[D1])).toBe(5)
+    }
+    expect(rerollsLeft(data.days[D1])).toBe(0)
+    // the cap is reached: the next one spends the ball like an empty landing
+    specialAt(data, D1, n++, 10, REROLL_ID)
+    expect(returnedThrows(data.days[D1]).size).toBe(PLINKO_REROLLS)
+    expect(ballsLeft(data.days[D1])).toBe(4)
+    expect(plinkoEvents(data)).toEqual([])
+    // all 5 balls can still be used, and the day holds 3 returned + 5 spent throws
+    while (nextThrow(data.days[D1]) !== null) throwAt(data, D1, n++, 11)
+    expect(ballsLeft(data.days[D1])).toBe(0)
+    expect(n).toBe(PLINKO_MAX)
+    expect(plinkoDrops(data.days[D1])).toHaveLength(PLINKO_MAX)
+    expect(nextThrow(data.days[D1])).toBeNull()
+    // survives normalisation and a JSON round-trip
+    const back = normalizeData(JSON.parse(JSON.stringify(data)))
+    expect(plinkoDrops(back.days[D1])).toHaveLength(PLINKO_MAX)
+    expect(ballsLeft(back.days[D1])).toBe(0)
+  })
+
+  it('«Отдых»: ровно +1 ❄ и ничего больше, сразу и по replay; без XP и статов', () => {
+    const data = makeData()
+    const base = computeState(data, nowAt(D1, 22))
+    const rest = specialAt(data, D1, 0, 10, REST_ID)
+    // no doneAt, no card: the replay pays on the drop itself
+    expect(rest.doneAt).toBeUndefined()
+    expect(plinkoEvents(data)).toEqual([{ day: D1, at: rest.at, xp: 0, shards: PLINKO_REST_SHARDS }])
+    const st = computeState(data, nowAt(D1, 22))
+    expect(PLINKO_REST_SHARDS).toBe(1)
+    expect(st.shards - base.shards).toBe(1)
+    expect(st.xp).toBe(base.xp)
+    expect(st.xpByStat).toEqual(base.xpByStat)
+    expect(st.hp).toBe(base.hp)
+    // it spends a ball
+    expect(ballsLeft(data.days[D1])).toBe(4)
+    // determinism: the same log gives the same result, however many times it is replayed
+    expect(computeState(structuredClone(data), nowAt(D1, 22)).shards).toBe(st.shards)
+    // a stray doneAt does not pay twice
+    rest.doneAt = rest.at + 1000
+    expect(computeState(data, nowAt(D1, 22)).shards).toBe(st.shards)
+    // paid on the drop's own day, not before
+    expect(computeState(data, nowAt(addDays(D1, -1), 22)).shards).toBe(computeState(makeData(), nowAt(addDays(D1, -1), 22)).shards)
+  })
+
+  it('обе особые нейтральны для серии: ни ломают, ни растят', () => {
+    const data = makeData()
+    const a = throwAt(data, D1, 0, 9)
+    a.doneAt = a.at + 60_000
+    specialAt(data, D1, 1, 9, REROLL_ID, 10)
+    specialAt(data, D1, 2, 9, REST_ID, 20)
+    expect(nextStreak(data.days, at(D1, 10))).toBe(1) // still one task in a row
+    const b = throwAt(data, D1, 3, 9, 30)
+    expect(dropStreakMult(data.days, D1, 3)).toBe(1.2) // the specials did not reset it
+    b.doneAt = b.at + 60_000
+    expect(plinkoStreaks(data.days).get(`${D1}:3`)).toBe(1)
+    expect(nextStreak(data.days, at(D1, 11))).toBe(2) // and did not count as a step
+    // a missed task still resets, specials or not
+    const c = throwAt(data, D1, 4, 10)
+    specialAt(data, D1, 5, 10, REST_ID, 5)
+    expect(nextStreak(data.days, at(D1, 18))).toBe(0)
+    expect(c.doneAt).toBeUndefined()
+  })
+})
+
 describe('Плинко: 5 шаров в день', () => {
   it('ровно 5 шаров, бонусов нет; завтра снова 5', () => {
     const data = makeData()
@@ -357,22 +602,24 @@ describe('Плинко: 5 шаров в день', () => {
     expect(ballsLeft(data.days[addDays(D1, 1)])).toBe(5)
   })
 
-  it('старый день с 6 бросками остаётся целым; седьмой выбрасывается', () => {
+  it('старый день с 6 бросками остаётся целым; сверх лимита (5 шаров + 3 возврата) выбрасывается', () => {
     const data = makeData()
-    for (let n = 0; n < PLINKO_MAX; n++)
+    for (let n = 0; n < 6; n++)
       log(data, D1).plinko = {
         ...log(data, D1).plinko,
         [n]: { n, at: at(D1, 9 + n), slot: 4, taskId: 'water' },
       }
-    log(data, D1).plinko!['6'] = {
-      n: 6,
+    log(data, D1).plinko![String(PLINKO_MAX)] = {
+      n: PLINKO_MAX,
       at: at(D1, 20),
       slot: 0,
       taskId: 'focus60',
     }
-    expect(plinkoDrops(data.days[D1])).toHaveLength(PLINKO_MAX)
+    expect(PLINKO_MAX).toBe(PLINKO_BALLS + PLINKO_REROLLS)
+    expect(plinkoDrops(data.days[D1])).toHaveLength(6)
     expect(ballsLeft(data.days[D1])).toBe(0)
-    expect(normalizeData(data).days[D1].plinko?.['6']).toBeUndefined()
+    expect(normalizeData(data).days[D1].plinko?.[String(PLINKO_MAX)]).toBeUndefined()
+    expect(Object.keys(normalizeData(data).days[D1].plinko!)).toHaveLength(6)
   })
 })
 

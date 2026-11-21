@@ -3,11 +3,15 @@ import { Volume2, VolumeX } from 'lucide-react'
 
 import {
   PLINKO_BALLS,
+  PLINKO_REROLLS,
+  PLINKO_REST_SHARDS,
   PLINKO_TIERS,
   ballsLeft,
+  ballsSpent,
   doneInTime,
   dropDeadline,
   dropJackpot,
+  dropSpecial,
   dropStreakMult,
   dropTier,
   gameDayOf,
@@ -16,18 +20,22 @@ import {
   plinkoDrops,
   plinkoReward,
   plinkoTaskById,
+  poolTaskById,
   refreshBoard,
+  rerollsLeft,
+  returnedThrows,
+  slotItemFor,
+  specialById,
   statName,
   streakMult,
-  taskForSlot,
 } from '../engine'
 import type { PlinkoDrop } from '../engine'
 import { rollDrop } from '../engine/plinkoSim'
 import { useStore } from '../store/store'
 import { nowWithOffset, reward, useFx, useGame, useNow } from '../store/hooks'
-import { PlinkoBoard, PlinkoCard, formatLeft, type PlinkoHandle } from '../components/Plinko'
+import { PlinkoBoard, PlinkoCard, formatLeft, type PlinkoHandle, type PlinkoNotice } from '../components/Plinko'
 import { Santa } from '../components/Santa'
-import { buzz, sfxDone, unlockAudio } from '../components/plinkoFx'
+import { buzz, sfxBurnt, sfxDone, sfxReroll, sfxRest, unlockAudio } from '../components/plinkoFx'
 import { Px } from '../pixel/Pixel'
 import { SPRITES, type SpriteName } from '../pixel/sprites'
 
@@ -37,6 +45,7 @@ const fmtMult = (m: number) => `×${String(m).replace('.', ',')}`
 /**
  * «Судьба дня»: Плинко. 16 slots, each with its own task laid out for the day; the ball falls by real
  * physics from a crypto-random start. Centre — easy, edges — hard and fat in XP. 5 balls a day.
+ * Two tier-2 slots are specials: «Ещё раз» (the ball comes back, up to 3 a day) and «Отдых» (+1 ❄ for nothing).
  * The reward comes only after «Сделал»; a task closed in time grows the streak (an XP multiplier).
  */
 export function Destiny() {
@@ -56,7 +65,9 @@ export function Destiny() {
   const left = ballsLeft(log)
   const sound = data.settings.sound ?? true
   const layout = log?.plinkoBoard
-  const tasks = Array.from({ length: 16 }, (_, k) => (layout?.[k] ? plinkoTaskById(layout[k]) : undefined))
+  const tasks = Array.from({ length: 16 }, (_, k) => (layout?.[k] ? (specialById(layout[k]) ?? poolTaskById(layout[k])) : undefined))
+  const spent = ballsSpent(log)
+  const returned = returnedThrows(log)
 
   const board = useRef<PlinkoHandle>(null)
   const [falling, setFalling] = useState<number | null>(null)
@@ -65,6 +76,7 @@ export function Destiny() {
   /** the board stays as is while a ball falls and lands */
   const [hold, setHold] = useState(false)
   const [cheer, setCheer] = useState(0)
+  const [notice, setNotice] = useState<PlinkoNotice | null>(null)
   const usedKey = drops.map((d) => d.taskId).join()
 
   // the day's layout: made once at random, then only stale slots (dropped or out of hours) change
@@ -75,7 +87,7 @@ export function Destiny() {
   }, [today, hold, falling, layout, usedKey, setPlinkoBoard])
 
   const nowMs = nowWithOffset().getTime()
-  const ticking = drops.some((d) => d.doneAt === undefined && nowMs < dropDeadline(d))
+  const ticking = drops.some((d) => !dropSpecial(d) && d.doneAt === undefined && nowMs < dropDeadline(d))
   useEffect(() => {
     if (!ticking) return
     const t = setInterval(() => tick((n) => n + 1), 1000)
@@ -93,7 +105,7 @@ export function Destiny() {
     const when = nowWithOffset()
     // real physics from crypto-random initial conditions; the slot is what the simulation gives
     const sim = rollDrop()
-    const task = taskForSlot(layout, sim.slot, when.getHours())
+    const task = slotItemFor(layout, sim.slot, when.getHours())
     const drop: PlinkoDrop = {
       n: next,
       at: when.getTime(),
@@ -101,14 +113,38 @@ export function Destiny() {
       taskId: task.id,
       v: 2,
     }
+    // the cap is read before this throw is stored: the first PLINKO_REROLLS «Ещё раз» of the day bring the ball back
+    const comesBack = rerollsLeft(log) > 0
     setHold(true)
+    setNotice(null)
     addPlinkoDrop(today, drop)
     setOpen(null)
     setFalling(next)
     buzz(8)
     await board.current?.drop(sim)
     setFalling(null)
-    setOpen(next)
+    const kind = dropSpecial(drop)
+    if (kind) {
+      // a special has no card: just the result, and the ❄ of «Отдых» is paid by the replay of this drop
+      setOpen(null)
+      if (kind === 'rest') {
+        setNotice({ id: Date.now(), kind, title: `Отдых: +${PLINKO_REST_SHARDS} ❄`, sub: 'Без задания и без вины. Серия не тронута' })
+        reward(document.querySelector('.pk-stage'), { shards: PLINKO_REST_SHARDS })
+        if (sound) sfxRest()
+        buzz([20, 40, 20])
+      } else if (comesBack) {
+        const more = rerollsLeft(log) - 1 // this one is used up
+        setNotice({ id: Date.now(), kind, title: 'Шар вернулся!', sub: more > 0 ? `Бросай снова. Ещё перебросов: ${more}` : 'Бросай снова. Перебросы на сегодня кончились' })
+        if (sound) sfxReroll()
+        buzz([14, 30, 14, 30, 30])
+      } else {
+        setNotice({ id: Date.now(), kind: 'burnt', title: 'Перебросов нет', sub: `${PLINKO_REROLLS} из ${PLINKO_REROLLS} уже были: шар потрачен` })
+        if (sound) sfxBurnt()
+        buzz(30)
+      }
+    } else {
+      setOpen(next)
+    }
     if (dropJackpot(drop)) setCheer(Date.now())
     window.setTimeout(() => setHold(false), 1800)
   }
@@ -160,7 +196,7 @@ export function Destiny() {
             </button>
           </div>
 
-          <PlinkoBoard ref={board} tasks={tasks} sound={sound} ready={!locked && next !== null} restSlot={last?.v === 2 ? last.slot : null} />
+          <PlinkoBoard ref={board} tasks={tasks} rerollsLeft={rerollsLeft(log)} notice={notice} sound={sound} ready={!locked && next !== null} restSlot={last?.v === 2 ? last.slot : null} />
           <div className="pk-actions">
             {locked ? (
               <p className="small pk-note">День закрыт исповедью. Шар ждёт завтра.</p>
@@ -182,10 +218,22 @@ export function Destiny() {
           <h2 className="pk-h">
             Задания дня{' '}
             <span className="muted small num">
-              шаров {drops.length}/{PLINKO_BALLS}
+              шаров {spent}/{PLINKO_BALLS}
             </span>
           </h2>
           {visible.map((d) => {
+            const sp = specialById(d.taskId)
+            if (sp)
+              return (
+                <div key={d.n} className={`pk-row sp ${sp.kind} ${sp.kind === 'rest' ? 'done' : ''}`}>
+                  <Px name={iconOf(sp.icon)} size={30} />
+                  <span className="grow">
+                    <b>{sp.title}</b>
+                    <small className="muted">{sp.kind === 'rest' ? `+${PLINKO_REST_SHARDS} ❄, без XP, серия не тронута` : returned.has(d.n) ? 'Шар вернулся, не потрачен' : 'Перебросов не осталось, шар потрачен'}</small>
+                  </span>
+                  <span className="pk-row-state num">{sp.kind === 'rest' ? `✓ +${PLINKO_REST_SHARDS} ❄` : returned.has(d.n) ? '↺' : '✕'}</span>
+                </div>
+              )
             const task = plinkoTaskById(d.taskId)
             const tier = dropTier(d)
             const left = dropDeadline(d) - nowMs
