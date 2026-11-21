@@ -5,6 +5,7 @@ import type { Rarity, ShopKind } from '../engine'
 import { useStore } from '../store/store'
 import { nowWithOffset, reward, useGame, useNow } from '../store/hooks'
 import { useUi } from '../store/ui'
+import { Help } from '../components/ui'
 import { PixelAvatar, Px, REWARD_ICONS, SHOP_SPRITE } from '../pixel/Pixel'
 import type { SpriteName } from '../pixel/sprites'
 
@@ -59,13 +60,15 @@ export function Shop() {
           <small>Мои осколки</small>
           <span className="num">{game.shards}</span>
         </div>
-        <small style={{ textAlign: 'right', maxWidth: 130 }}>За квесты, исповедь, камбэк, босса и Судьбу дня</small>
+        <small style={{ textAlign: 'right', maxWidth: 130 }}>
+          Откуда ❄ <Help title="Откуда осколки" text="За квесты, исповедь, камбэк, победу над боссом и Судьбу дня." />
+        </small>
       </div>
 
       {game.fallen && (
         <div className="panel row" style={{ borderColor: 'var(--hp)' }}>
           <Lock color="var(--hp)" aria-hidden />
-          <p className="small grow">Во время падения награды недоступны. Три идеальных дня — и магазин снова открыт.</p>
+          <p className="small grow">Падение: магазин откроют 3 идеальных дня.</p>
         </div>
       )}
 
@@ -87,7 +90,9 @@ export function Shop() {
         <section className="stack">
           {tab === 'dopamine' && (
             <>
-              <p className="small muted">Разрешённый дофамин: награда за дело, а не фон. Сахар из магазина идёт «в слоте» — без урона.</p>
+              <p className="small muted">
+                Награда за дело, а не фон <Help title="Дофамин" text={['Разрешённый дофамин: награда за дело, а не фон.', 'Сахар из магазина идёт «в слоте» — без урона. Цены растут с главой.']} />
+              </p>
               <div className="tile-grid">
                 {SHOP_ITEMS.map((it) => {
                   const p = priceFor(it.basePrice, ch)
@@ -111,7 +116,7 @@ export function Shop() {
 
           {tab === 'custom' && (
             <>
-              <p className="small muted">Реальная вещь — кино, кроссовки, ужин. Цена в осколках — сколько она для тебя стоит.</p>
+              <p className="small muted">Кино, кроссовки, ужин — по своей цене в ❄.</p>
               <div className="tile-grid">
                 <button className="tile add-tile" onClick={() => setAdding(true)} aria-expanded={adding}>
                   <span className="tile-art">
@@ -193,7 +198,7 @@ export function Shop() {
 
           {tab === 'avatar' && (
             <>
-              <p className="small muted">Снаряжение за осколки. Остальное открывается уровнем — смотри в «Образе».</p>
+              <p className="small muted">Остальное открывает уровень — в «Образе».</p>
               <div className="tile-grid">
                 {shopGear.map((g) => {
                   const owned = ownsGear(g, level, data.purchases)
@@ -238,7 +243,7 @@ export function Shop() {
         <section className="stack">
           <h2>История покупок</h2>
           {history.length === 0 ? (
-            <div className="empty">Покупок пока нет. Осколки дают за квесты, исповедь, камбэк и победу над боссом.</div>
+            <div className="empty">Покупок пока нет.</div>
           ) : (
             <div className="panel kv small">
               {history.map((p) => (

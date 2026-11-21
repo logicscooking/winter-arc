@@ -180,7 +180,7 @@ export function Destiny() {
 
   return (
     <div className="stack-lg">
-      <p className="small muted page-sub">Не знаешь, чем заняться? Шар выберет маленькое полезное дело. {PLINKO_BALLS} шаров в день.</p>
+      <p className="small muted page-sub">Шар выберет маленькое полезное дело · {PLINKO_BALLS} в день</p>
 
       <div className="pk-wrap">
         <Santa falling={falling !== null} sound={sound} cheer={cheer} />

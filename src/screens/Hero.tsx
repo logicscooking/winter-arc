@@ -213,7 +213,7 @@ export function Hero() {
             <Px name="campfire" size={28} />
             <span className="grow">
               Пати
-              <small>Друзья, лента, «пнуть». Дневник и замеры остаются только у тебя</small>
+              <small>Друзья, дуэли, деньги</small>
             </span>
             <ChevronRight size={18} color="var(--mist)" aria-hidden />
           </a>

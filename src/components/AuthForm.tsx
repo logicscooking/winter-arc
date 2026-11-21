@@ -71,7 +71,7 @@ export function AuthForm({ initial = 'signup', onDone }: { initial?: Mode; onDon
           aria-invalid={!!nickErr}
         />
       </Field>
-      {nickErr ? <p className="err">{nickErr}</p> : mode === 'signup' && <p className="tiny muted" style={{ marginTop: -6 }}>Латиница, цифры и _, от 3 до 20 символов. Друзья его не видят — им показывается имя.</p>}
+      {nickErr ? <p className="err">{nickErr}</p> : mode === 'signup' && <p className="tiny muted" style={{ marginTop: -6 }}>Латиница, цифры и _, 3–20 символов. Друзья видят имя, не ник.</p>}
 
       <Field label="Пароль">
         <div className="pass-wrap">

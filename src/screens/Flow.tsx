@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Check, Plus } from 'lucide-react'
-import { FLOW, PRACTICE_LIMIT, activeSkills, canStartFlow, checkedOn, flowEnd, gameDayOf, goalsOf, liveFlow, practicesToday, flowWindows } from '../engine'
+import { FLOW, PRACTICE_LIMIT, activeSkills, canStartFlow, checkedOn, flowEnd, gameDayOf, goalsOf, liveFlow, planFor, practicesToday, flowWindows, questXp, taskXp } from '../engine'
 import type { FlowSession } from '../engine'
 import { useStore } from '../store/store'
-import { go, nowWithOffset, refreshClock, useGame, useNow, useRoute } from '../store/hooks'
+import { go, nowWithOffset, refreshClock, reward, useGame, useNow, useRoute } from '../store/hooks'
 import { useUi } from '../store/ui'
-import { Ring, formatMMSS } from '../components/ui'
+import { Help, Ring, formatMMSS } from '../components/ui'
 import { PracticeSheet, skillSprite } from '../components/skills'
 import { Px } from '../pixel/Pixel'
 
@@ -44,7 +44,7 @@ export function Flow() {
               </h2>
             </div>
           </div>
-          <p className="small muted">{Math.round((flowEnd(summary) - summary.startedAt) / 60_000)} мин в потоке. Практики и задачи внутри дали ×2.</p>
+          <p className="small muted">{Math.round((flowEnd(summary) - summary.startedAt) / 60_000)} мин в потоке, всё внутри — ×2.</p>
           {capped && summary.id === capped.id && (
             <button className="btn block" onClick={() => (stopFlow(capped.id, new Date(flowEnd(capped))), go(`/flow?done=${capped.id}`))}>
               Понял, перерыв
@@ -53,7 +53,10 @@ export function Flow() {
         </section>
       )}
 
-      <p className="small muted page-sub">Таймер глубокой работы. Всё, что закроешь внутри, даёт ×2 XP.</p>
+      <p className="small muted page-sub">
+        Всё, что закроешь внутри, — ×2 XP{' '}
+        <Help title="Поток" text={[`Таймер глубокой работы. Практики навыка, задачи и Дело дня, закрытые внутри, дают ×${FLOW.mult} XP.`, `До ${FLOW.maxMin} минут, потом мягкий стоп и перерыв ${FLOW.breakMin} минут. ${FLOW.perDay} потока в день, после 22:00 не стартует — сон важнее.`, 'Обычно поток включают прямо из навыка или из Дела дня.']} />
+      </p>
       <div className="flow-rules">
         <span>
           <b className="num">{FLOW.maxMin}</b> мин максимум
@@ -109,6 +112,7 @@ export function Flow() {
 function LiveFlow({ flow, onStop }: { flow: FlowSession; onStop: () => void }) {
   const data = useStore((s) => s.data)
   const toggleGoal = useStore((s) => s.toggleGoal)
+  const toggleTask = useStore((s) => s.toggleTask)
   const game = useGame()
   const now = useNow()
   const today = gameDayOf(now)
@@ -120,12 +124,17 @@ function LiveFlow({ flow, onStop }: { flow: FlowSession; onStop: () => void }) {
   const nodes = (data.nodes ?? []).filter((n) => n.skillId === flow.skillId)
   const shorts = skill ? goalsOf(data, skill.id).filter((g) => g.type === 'short' || g.type === 'mid') : []
   const stats = game.flowStats[flow.id]
+  // the Deal of the day closes right here: tasks closed inside the flow count ×2
+  const dealId = data.days[today]?.dealTaskId
+  const deal = dealId ? data.tasks.find((t) => t.id === dealId) : undefined
+  const dealPlan = planFor(data, today).find((p) => p.id === 'deal')
+  const locked = !!data.days[today]?.confession
   // re-render every second for the clock
   useTick(() => force((x) => x + 1))
   return (
     <div className="stack-lg flow-live">
       <div className="center stack" style={{ gap: 4 }}>
-        <span className="tiny muted">Поток{skill ? ` · ${skill.title}` : ''}</span>
+        <span className="tiny muted">Поток · {skill ? skill.title : deal ? 'Дело дня' : 'глубокая работа'}</span>
         <span className="reward-chip gold" style={{ alignSelf: 'center' }}>
           <Px name="play" size={20} /> ×2 XP
         </span>
@@ -141,6 +150,23 @@ function LiveFlow({ flow, onStop }: { flow: FlowSession; onStop: () => void }) {
       <button className="btn block danger" onClick={onStop}>
         Стоп
       </button>
+      {deal && !locked && (
+        <section className="stack" style={{ gap: 8 }}>
+          <h3>Дело дня</h3>
+          <button
+            className={`flow-node goal ${deal.doneAt ? 'done' : ''}`}
+            onClick={(e) => {
+              if (!deal.doneAt) reward(e.currentTarget, { xp: taskXp(data.tasks, deal) + (dealPlan ? questXp(dealPlan.role, dealPlan.base, 'done') : 0), shards: dealPlan ? (dealPlan.role === 'main' ? 3 : 2) : 0 })
+              toggleTask(deal.id, nowWithOffset())
+            }}
+          >
+            <Check size={16} />
+            <span className="grow" style={{ textAlign: 'left' }}>
+              {deal.title}
+            </span>
+          </button>
+        </section>
+      )}
       {skill && nodes.length > 0 && (
         <section className="stack" style={{ gap: 8 }}>
           <h3>Практика в потоке</h3>

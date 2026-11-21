@@ -185,7 +185,7 @@ export function PlanDay() {
           </p>
 
           {blocks.length === 0 ? (
-            <div className="empty">Пока пусто. Расставь главные квесты по часам — так «потом» не наступит.</div>
+            <div className="empty">Расставь главные квесты по часам.</div>
           ) : (
             <div className="block-list">
               {blocks.map((b) => (

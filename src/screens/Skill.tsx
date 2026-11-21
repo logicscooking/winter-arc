@@ -41,8 +41,8 @@ import { SkillTreeView } from '../components/SkillTreeView'
 import { useStore } from '../store/store'
 import { go, nowWithOffset, reward, useNow } from '../store/hooks'
 import { useUi } from '../store/ui'
-import { Chips, Field, Sheet } from '../components/ui'
-import { PracticeSheet, RankBadge, SKILL_ICONS, SkillLevelBar, StagePips, StatChip, Strikes, ThemeCard, skillSprite, startFlowAndGo, useSkillView } from '../components/skills'
+import { Chips, Field, Help, Sheet } from '../components/ui'
+import { FlowButton, FlowPill, PracticeSheet, RankBadge, SKILL_ICONS, SkillLevelBar, StagePips, StatChip, Strikes, ThemeCard, skillSprite, startFlowAndGo, useSkillView } from '../components/skills'
 import { Px } from '../pixel/Pixel'
 import { NextStepBlock, RankChanceCard, SkillCheckBlock, SplitBlock, StreakFlame, isStuck } from '../components/skillPlus'
 import { AiButton } from '../components/ai'
@@ -92,6 +92,7 @@ export function SkillScreen({ id, tab }: { id: string; tab?: string }) {
           </>
         }
       />
+      <FlowPill />
 
       <section className="skill-head">
         <span className="skill-head-ico">
@@ -128,9 +129,7 @@ export function SkillScreen({ id, tab }: { id: string; tab?: string }) {
 
       {s.status === 'active' ? (
         <div className="skill-actions">
-          <button className="btn primary" onClick={() => startFlowAndGo(undefined, s.id)}>
-            <Px name="play" size={20} /> Поток
-          </button>
+          <FlowButton skillId={s.id} />
           <button className="btn ghost" onClick={() => setCant(true)}>
             Не могу начать
           </button>
@@ -198,7 +197,9 @@ function TreeTab({ traits, skillId }: { traits: TraitView[]; skillId: string }) 
   return (
     <section className="stack-lg">
       <div className="row between">
-        <p className="tiny muted grow">Навык → характеристики → узлы. Качаешь конкретный узел.</p>
+        <p className="tiny muted grow">
+          Качаешь конкретный узел <Help title="Как устроен навык" text={['Навык → характеристики → узлы. Узел — конкретное действие, его и качаешь практикой.', 'Практика с одной строкой обратной связи двигает ступень узла: знакомство → практика → уверенно → мастер.']} />
+        </p>
         <button className="btn sm ghost" onClick={() => setInsight(true)} disabled={!traits.length}>
           <Plus size={16} /> Инсайт
         </button>
@@ -308,11 +309,11 @@ function NodeRow({ node, prog, onPractice }: { node: SkillNode; prog: TraitView[
           <Plus size={16} /> практика
         </button>
       </div>
-      {prog.needsFeedback && <p className="node-hint">Ступень ждёт обратной связи: отзыв нужен хотя бы у половины практик ({prog.feedback}/{prog.count}).</p>}
+      {prog.needsFeedback && <p className="node-hint">Ступень ждёт отзывов: {prog.feedback}/{prog.count}, нужно у половины практик.</p>}
       {needsPivot(node, prog) && (
         <div className="pivot-card">
           <b>3 раза без прогресса</b>
-          <p className="small">Привычка говорит «делай как всегда», игра говорит «ищи другой путь».</p>
+          <p className="small">Ищи другой путь.</p>
           <form
             className="row"
             style={{ gap: 8 }}
@@ -362,7 +363,7 @@ function InsightSheet({ skillId, traits, onClose }: { skillId: string; traits: T
   return (
     <Sheet title="Инсайт в дерево" onClose={onClose}>
       <div className="stack-lg">
-        <p className="small muted">Новое из ролика или книги кладёшь на нужную ветку — и его можно качать.</p>
+        <p className="small muted">Новое из ролика или книги — на нужную ветку.</p>
         <Field label="Что узнал (узел)">
           <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Например «Называть цену и молчать»" autoFocus />
         </Field>
@@ -469,7 +470,7 @@ function GoalsTab({ skillId }: { skillId: string }) {
           ))}
         </div>
       )}
-      {!goals.length && <div className="empty">Цели — действия, а не метрики. Начни с краткой: минимальный старт на 15 минут.</div>}
+      {!goals.length && <div className="empty">Начни с краткой цели на 15 минут.</div>}
       <button className="btn block" onClick={() => setAdd({})}>
         <Plus size={18} /> Цель
       </button>
@@ -725,7 +726,7 @@ function GoalSheet({ skillId, preset, onClose }: { skillId: string; preset: { ty
               <input className="input num" inputMode="decimal" value={to} onChange={(e) => setTo(e.target.value)} placeholder="цель" aria-label="Цель" />
               <input className="input" value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="км, кг…" aria-label="Единица" />
             </div>
-            <p className="tiny muted">Шкала может идти вниз (вес) или вверх (км, подписчики). Жёсткого дедлайна нет: только ожидаемый срок.</p>
+            <p className="tiny muted">Вниз (вес) или вверх (км, подписчики), без жёсткого дедлайна.</p>
           </div>
         )}
         <button className="btn primary block" disabled={!title.trim() || !scaleOk} onClick={save}>
@@ -824,7 +825,7 @@ function ShareSheet({ code, title, onClose }: { code: string; title: string; onC
   return (
     <Sheet title="Поделиться деревом" onClose={onClose}>
       <div className="stack-lg">
-        <p className="small muted">В коде только структура: характеристики, узлы и цели. Практики, отзывы и «Кайф» остаются у тебя.</p>
+        <p className="small muted">Только структура дерева, без практик и отзывов.</p>
         <textarea className="textarea code-text" readOnly value={code} onFocus={(e) => e.currentTarget.select()} />
         <div className="grid-2">
           <button

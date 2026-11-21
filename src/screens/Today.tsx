@@ -30,14 +30,15 @@ import { useUi } from '../store/ui'
 import { BossCard, Hud } from '../components/Hud'
 import { QuestRow } from '../components/QuestRow'
 import { AddTask, TaskTree } from '../components/TaskTree'
-import { Hint, formatMMSS } from '../components/ui'
+import { Help, formatMMSS } from '../components/ui'
 import { Garland } from '../components/festive'
 import { Spark } from '../components/Spark'
 import { PAGES_GOAL, WAKE_GOAL, pagesValues, wakeValues, window7 } from '../store/trends'
 import { BAR_LADDERS, BAR_STEP_BONUS, barStep, barSuggestion } from '../engine'
-import { FlowChip, ThemeCard } from '../components/skills'
+import { ThemeCard } from '../components/skills'
 import { MoneySheet } from '../components/Money'
 import { buildProgram, programMinutes } from '../morning/program'
+import { useWhySeen } from './Why'
 import '../morning/morning.css'
 
 export function Today() {
@@ -214,11 +215,13 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
       <Hud game={game} mainsDone={doneMain} mainsTotal={mains.length} />
       <div className="cols">
         <div className="stack-lg">
+          <WhyCard />
           {game.fallen && (
             <section className="panel" style={{ borderColor: 'var(--hp)' }}>
               <h3 style={{ color: 'var(--hp)' }}>Падение</h3>
               <p className="small" style={{ marginTop: 6 }}>
-                Квест «Восстановление»: 3 идеальных дня подряд вернут 50 HP. Сейчас {game.recovery} из 3. Магазин закрыт до восстановления.
+                3 идеальных дня подряд вернут 50 HP: {game.recovery} из 3{' '}
+                <Help title="Падение" text={['HP на нуле. Квест «Восстановление»: 3 идеальных дня подряд вернут 50 HP.', 'Пока не восстановишься, магазин наград закрыт.']} />
               </p>
             </section>
           )}
@@ -268,7 +271,6 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
           )}
 
           <MorningCard />
-          <FlowChip />
           <BarOffers />
           <ThemeCard compact />
 
@@ -291,15 +293,12 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
             </button>
           </div>
 
-          <Hint id="quests" title="Как отмечать квесты" art={['quests', 'star']}>
-            Квадрат справа — выполнено. Тап по названию — мини-версия или пропуск. Ошибся — внизу будет «Отменить».
-          </Hint>
-
           {filter !== 'side' && (
             <section>
               <div className="section-title">
                 <h2>
                   <Px name="shield" size={24} /> Главные квесты <span className="count-pill num">{doneMain}/{mains.length}</span>
+                  <Help title="Как отмечать квесты" text={['Квадрат справа — выполнено. Тап по названию — мини-версия или пропуск.', 'Ошибся — внизу появится «Отменить».', 'Сделал — XP и ❄. Пропустил главный — минус HP при закрытии дня.']} />
                 </h2>
               </div>
               <div className="quests">{mains.map(renderQuest)}</div>
@@ -347,7 +346,8 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
                 <h3>Энергия на нуле уже две недели</h3>
               </div>
               <p className="small" style={{ color: 'var(--ink-2)' }}>
-                Это может быть не лень, а зима и усталость. Свет по утрам, витамин D по анализу, врач, разговор с кем-то близким. HP за это не снимается.
+                Может, это не лень, а зима. HP за это не снимается.{' '}
+                <Help title="Энергия на нуле" text="Это может быть не лень, а зима и усталость. Свет по утрам, витамин D по анализу, врач, разговор с кем-то близким." />
               </p>
             </section>
           )}
@@ -385,6 +385,27 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
           {dial ? <X size={28} strokeWidth={3} /> : <Plus size={30} strokeWidth={3} />}
         </button>
       </div>
+    </div>
+  )
+}
+
+/** «Зачем мы здесь» once per device: gone after the memo is opened or ✕ */
+function WhyCard() {
+  const [seen, dismiss] = useWhySeen()
+  if (seen) return null
+  return (
+    <div className="why-card">
+      <a className="why-card-main" href="#/more/why">
+        <Px name="wolf" size={36} />
+        <span className="grow">
+          <b>Зачем мы здесь</b>
+          <small>1 минута · главное про арку</small>
+        </span>
+        <ChevronRight size={20} aria-hidden />
+      </a>
+      <button className="banner-x" onClick={dismiss} aria-label="Скрыть">
+        <X size={18} strokeWidth={3} />
+      </button>
     </div>
   )
 }
@@ -554,7 +575,7 @@ function BarOffers() {
               </div>
             </div>
             <p className="small" style={{ margin: '8px 0 12px' }}>
-              {kind === 'up' ? '5 раз подряд норма выполнена. Игра = прогрессия.' : 'Две недели только мини и пропуски. Опустить — не провал.'} {ladder.steps[to].name}: <b>{ladder.steps[to].norm}</b>, XP квеста +{Math.round(to * BAR_STEP_BONUS * 100)}%.
+              {kind === 'up' ? '5 раз подряд норма.' : 'Две недели мини и пропуски.'} {ladder.steps[to].name}: <b>{ladder.steps[to].norm}</b>, XP квеста +{Math.round(to * BAR_STEP_BONUS * 100)}%.
               {markedToday ? ' С завтрашнего дня.' : ''}
             </p>
             <div className="grid-2">

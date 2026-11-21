@@ -142,7 +142,7 @@ export function BossCard({ game }: { game: GameState }) {
           </span>
           <h3 className="grow">Первый босс: {bossOf(1)}</h3>
         </div>
-        <p className="small muted">Бой начнётся 23 ноября. Главные квесты и Дело будут снимать ему HP.</p>
+        <p className="small muted">Бой с 23 ноября: бьют главные квесты и Дело.</p>
       </section>
     )
   }
@@ -166,7 +166,7 @@ export function BossCard({ game }: { game: GameState }) {
       <div className="boss-bar" role="progressbar" aria-label="HP босса" aria-valuemin={0} aria-valuemax={b.hp} aria-valuenow={left}>
         <i className={b.won ? 'won' : ''} style={{ width: `${pct * 100}%` }} />
       </div>
-      <p className="tiny muted">{b.won ? 'Босс повержен. Добивай неделю ради XP.' : `Урон наносят главные квесты и Дело. Нанесено ${b.damage}.`}</p>
+      <p className="tiny muted">{b.won ? 'Повержен. Добивай неделю ради XP.' : `Бьют главные квесты и Дело · урон ${b.damage}`}</p>
     </section>
   )
 }

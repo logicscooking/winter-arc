@@ -54,6 +54,7 @@ export function TopBar({ title, left, right, titleClass }: { title: ReactNode; l
 }
 
 const MORE_TITLES: Record<string, string> = {
+  why: 'Зачем мы здесь',
   quests: 'Квесты',
   measurements: 'Замеры',
   triggers: 'Триггеры',
@@ -71,7 +72,7 @@ export function RouteTopBar({ top, sub, query }: { top: string; sub?: string; qu
   const shop = <BarBtn icon="gift" label={`Магазин наград, осколков: ${game.shards}`} href="#/shop" badge={game.shards} />
   switch (top) {
     case 'deal':
-      return <TopBar title="Путь" left={<BarBtn icon="play" label="Поток: таймер глубокой работы" href="#/flow" />} right={<BarBtn icon="dial" label="План дня" href="#/plan" />} />
+      return <TopBar title="Путь" left={shop} right={<BarBtn icon="dial" label="План дня" href="#/plan" />} />
     case 'party':
       return <TopBar title="Пати" left={shop} right={<BarBtn icon="hero" label="Персонаж" href="#/hero" />} />
     case 'hero':

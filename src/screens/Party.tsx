@@ -1,23 +1,29 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Check, Copy, Crown, Hand, Image as ImageIcon, LogIn, RefreshCw, Share2, ShieldCheck, Trash2, WifiOff } from 'lucide-react'
-import { NUDGES, REACTIONS, feedText, levelOf, nudgeText, plural } from '../engine'
+import { DUEL, NUDGES, REACTIONS, feedText, incomingChallenges, levelOf, nudgeText, plural } from '../engine'
 import type { Outfit, PublicStats } from '../engine'
 import { useToday } from '../store/hooks'
 import { useUi } from '../store/ui'
-import { useRoute } from '../store/hooks'
+import { go, useNow, useRoute } from '../store/hooks'
+import { useStore } from '../store/store'
 import { cloudConfigured, ruError } from '../cloud/client'
 import { activePartyOf, useSocial } from '../cloud/state'
 import type { FeedEvent, Member, Party as PartyT } from '../cloud/state'
 import { createParty, deleteEvent, joinParty, leaveParty, markNudgesSeen, react, refreshParty, regenerateCode, sendNudge, setActiveParty, signedUrl } from '../cloud/party'
 import { AuthForm } from '../components/AuthForm'
 import { HeroAva, useUserOutfit } from '../components/HeroAva'
-import { Bar, HpBar, Sheet } from '../components/ui'
+import { Bar, Help, HpBar, Sheet } from '../components/ui'
 import { RankBadge } from '../components/skills'
 import { RANKS } from '../engine'
 import type { Rank } from '../engine'
 import { BossSprite, PixelAvatar, Px } from '../pixel/Pixel'
-import { DuelArea, useDuelReconcile } from '../components/Duels'
-import { MoneyBoard } from '../components/Money'
+import type { SpriteName } from '../pixel/sprites'
+import { DuelArea, useDuelReconcile, useTheirDuels } from '../components/Duels'
+import { MoneyBoard, MoneyCard } from '../components/Money'
+
+/** the three sections of «Пати»: friends, duels, money; the old #/duels and #/money land here too */
+export type PartyTab = 'friends' | 'duels' | 'money'
+export const partyTabOf = (v: string | null | undefined): PartyTab => (v === 'duels' || v === 'money' ? v : 'friends')
 
 export function Party() {
   const account = useSocial((s) => s.account)
@@ -25,25 +31,159 @@ export function Party() {
   const schemaMissing = useSocial((s) => s.schemaMissing)
   const route = useRoute()
   const code = route.query.get('code') ?? undefined
+  const tab = code ? 'friends' : partyTabOf(route.query.get('tab'))
 
-  if (!cloudConfigured) {
-    return (
-      <div className="stack-lg">
-        <PageHead title="Пати" />
-        <div className="panel feed-empty">
-          <PartyScene />
-          <p className="small muted">Сервер для пати не настроен в этой сборке. Всё остальное работает как раньше.</p>
-        </div>
+  let body: ReactNode
+  if (tab === 'money') body = <MoneyTab />
+  else if (!cloudConfigured)
+    body = (
+      <div className="panel feed-empty">
+        <PartyScene />
+        <p className="small muted">Сервер для пати не настроен в этой сборке.</p>
       </div>
     )
-  }
-  if (!account) return <PartyIntro />
+  else if (!account) body = tab === 'duels' ? <NeedParty what="Дуэли" /> : <PartyIntro />
+  else if (!parties.length) body = tab === 'duels' ? <NeedParty what="Дуэли" /> : <PartySetup initialCode={code} />
+  else body = tab === 'duels' ? <DuelsTab /> : <PartyHome initialCode={code} />
+
   return (
     <div className="stack-lg">
-      {schemaMissing && <SchemaBanner />}
-      {parties.length === 0 ? <PartySetup initialCode={code} /> : <PartyHome initialCode={code} />}
+      {schemaMissing && account && <SchemaBanner />}
+      <PartyTabs tab={tab} />
+      {account && parties.length > 0 && <DuelSync />}
+      {body}
     </div>
   )
+}
+
+function PartyTabs({ tab }: { tab: PartyTab }) {
+  const incoming = useIncomingCount()
+  const tabs: [PartyTab, string, SpriteName][] = [
+    ['friends', 'Друзья', 'campfire'],
+    ['duels', 'Дуэли', 'shield'],
+    ['money', 'Деньги', 'coin'],
+  ]
+  return (
+    <div className="seg-switch party-tabs" role="tablist" aria-label="Разделы пати">
+      {tabs.map(([id, label, icon]) => (
+        <button key={id} role="tab" aria-selected={tab === id} aria-pressed={tab === id} onClick={() => go(id === 'friends' ? '/party' : `/party?tab=${id}`)}>
+          <Px name={icon} size={20} />
+          {label}
+          {id === 'duels' && incoming > 0 && (
+            <span className="badge inline" aria-label={`${incoming} ${plural(incoming, 'вызов', 'вызова', 'вызовов')}`}>
+              {incoming}
+            </span>
+          )}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/** the active party's members, refreshed once when a section opens */
+function usePartyMembers() {
+  const st = useSocial()
+  const party = st.account ? activePartyOf(st) : undefined
+  const [err, setErr] = useState<string>()
+  const id = party?.id
+  useEffect(() => {
+    if (!id) return
+    refreshParty(id).then(
+      () => setErr(undefined),
+      (e) => setErr(ruError(e)),
+    )
+  }, [id])
+  return { party, members: party ? (st.members[party.id] ?? []) : [], me: st.account, err, setErr }
+}
+
+/** incoming duel challenges across the party: the badge on «Дуэли» */
+function useIncomingCount() {
+  const st = useSocial()
+  const duels = useStore((s) => s.data.duels)
+  const party = st.account ? activePartyOf(st) : undefined
+  const members = party ? (st.members[party.id] ?? []) : []
+  const theirsOf = useTheirDuels(members)
+  const now = useNow().getTime()
+  if (!st.account) return 0
+  const meId = st.account.id
+  return members.filter((m) => m.id !== meId).reduce((n, m) => n + incomingChallenges(m.id, theirsOf(m.id) ?? [], duels, meId, now).length, 0)
+}
+
+/** settles finished duels whichever section is open */
+function DuelSync() {
+  const st = useSocial()
+  const party = activePartyOf(st)
+  const members = party ? (st.members[party.id] ?? []) : []
+  useDuelReconcile(members, st.account?.id ?? '')
+  return null
+}
+
+function NeedParty({ what }: { what: string }) {
+  const account = useSocial((s) => s.account)
+  return (
+    <div className="empty">
+      <Px name="shield" size={44} />
+      <p>{what} — с друзьями из пати.</p>
+      <a className="btn primary" href="#/party">
+        {account ? 'Собрать пати' : 'Войти'}
+      </a>
+    </div>
+  )
+}
+
+// ---------- duels ----------
+
+function DuelsTab() {
+  const { party, members, me } = usePartyMembers()
+  if (!party || !me) return null
+  const friends = members.filter((m) => m.id !== me.id)
+  return (
+    <section className="stack" aria-label="Дуэли">
+      <div className="section-title" style={{ marginBottom: 0 }}>
+        <h2>
+          Дуэли
+          <Help
+            title="Дуэли"
+            text={[
+              `3 дня с завтрашнего: кто закроет больше квестов дня. У друга 24 часа, чтобы принять.`,
+              `Каждый считает своё, итог — по обоим. Победа: +${DUEL.xp} XP и +${DUEL.shards} ❄. Одновременно — до ${DUEL.maxActive} дуэлей.`,
+            ]}
+          />
+        </h2>
+        <span className="small muted">{party.name}</span>
+      </div>
+      {friends.length === 0 && <div className="empty">{members.length ? 'Позови друга — и вызывай.' : 'Загружаю участников…'}</div>}
+      {friends.map((m) => (
+        <article key={m.id} className="panel tight duel-friend" aria-label={m.display_name}>
+          <div className="row" style={{ gap: 10 }}>
+            <HeroAva userId={m.id} size={40} />
+            <b className="grow member-nick">{m.display_name}</b>
+            {m.stats && <span className="lvl-badge">УР {m.stats.level}</span>}
+          </div>
+          <DuelArea friend={m} meId={me.id} members={members} />
+        </article>
+      ))}
+    </section>
+  )
+}
+
+// ---------- money ----------
+
+function MoneyTab() {
+  const account = useSocial((s) => s.account)
+  const parties = useSocial((s) => s.parties)
+  return (
+    <div className="cols">
+      <MoneyCard />
+      {cloudConfigured && account && parties.length > 0 ? <PartyBoard /> : null}
+    </div>
+  )
+}
+
+function PartyBoard() {
+  const { party, members, me } = usePartyMembers()
+  if (!party || !me) return null
+  return <MoneyBoard members={members} meId={me.id} />
 }
 
 function SchemaBanner() {
@@ -91,42 +231,37 @@ function PartyScene({ me }: { me?: Outfit }) {
 function PartyIntro() {
   return (
     <div className="stack-lg">
-      <PageHead kicker="Пати" title="Собери команду" sub="До 8 друзей, без рейтингов и посторонних. Видно уровень, HP и закрытые квесты." />
+      <PageHead kicker="Пати" title="Собери команду" sub="До 8 друзей: уровень, HP и квесты друг друга." />
       <PartyScene />
-      <div className="cols">
-        <section className="panel stack-lg">
-          <div className="stack" style={{ gap: 6 }}>
-            <h2>Войти</h2>
-            <p className="small muted">Только ник и пароль: ни почты, ни телефона. Аккаунт нужен для пати и синхронизации телефона с Маком.</p>
-          </div>
-          <AuthForm />
-        </section>
-        <section className="panel stack">
-          <h3>Что видят друзья</h3>
-          <ul className="privacy-list">
-            <li>
-              <Check size={16} aria-hidden /> Героя, уровень, HP, квесты дня и серии «X из 7»
-            </li>
-            <li>
-              <Check size={16} aria-hidden /> Бой с боссом недели и серию честности
-            </li>
-            <li>
-              <Check size={16} aria-hidden /> Срывы — только категорию, и сразу камбэк ✅
-            </li>
-          </ul>
-          <div className="divider" />
-          <h3>Что не уходит никуда</h3>
-          <ul className="privacy-list off">
-            <li>
-              <ShieldCheck size={16} aria-hidden /> Текст исповеди, причины и заметки срывов
-            </li>
-            <li>
-              <ShieldCheck size={16} aria-hidden /> Замеры, вес, ответы недельных обзоров
-            </li>
-          </ul>
-          <p className="tiny muted">Синхронизация хранит полную копию данных в облаке, но доступ к ней есть только у тебя.</p>
-        </section>
-      </div>
+      <section className="panel stack-lg">
+        <div className="row between" style={{ gap: 8 }}>
+          <h2>Войти</h2>
+          <Help title="Что видят друзья">
+            <ul className="privacy-list">
+              <li>
+                <Check size={16} aria-hidden /> Героя, уровень, HP, квесты дня и серии «X из 7»
+              </li>
+              <li>
+                <Check size={16} aria-hidden /> Бой с боссом недели и серию честности
+              </li>
+              <li>
+                <Check size={16} aria-hidden /> Срывы — только категорию, и сразу камбэк ✅
+              </li>
+            </ul>
+            <h3>Что не уходит никуда</h3>
+            <ul className="privacy-list off">
+              <li>
+                <ShieldCheck size={16} aria-hidden /> Текст исповеди, причины и заметки срывов
+              </li>
+              <li>
+                <ShieldCheck size={16} aria-hidden /> Замеры, вес, ответы недельных обзоров
+              </li>
+            </ul>
+            <p>Аккаунт — только ник и пароль, без почты и телефона. Он же синхронизирует телефон с Маком: полная копия данных в облаке, доступ только у тебя.</p>
+          </Help>
+        </div>
+        <AuthForm />
+      </section>
     </div>
   )
 }
@@ -226,20 +361,12 @@ function PartySetup({ initialCode }: { initialCode?: string }) {
 
 function PartyHome({ initialCode }: { initialCode?: string }) {
   const st = useSocial()
+  const { members, err, setErr } = usePartyMembers()
   const party = activePartyOf(st)!
-  const members = st.members[party.id] ?? []
   const feed = st.feed[party.id] ?? []
   const nudges = st.nudges
   const [nudgeTo, setNudgeTo] = useState<Member>()
   const [showJoin, setShowJoin] = useState(!!initialCode)
-  const [err, setErr] = useState<string>()
-
-  useEffect(() => {
-    refreshParty(party.id).then(
-      () => setErr(undefined),
-      (e) => setErr(ruError(e)),
-    )
-  }, [party.id])
 
   // opening the party means the nudges are seen
   useEffect(() => {
@@ -250,7 +377,6 @@ function PartyHome({ initialCode }: { initialCode?: string }) {
 
   const me = st.account!
   const sorted = [...members].sort((a, b) => (a.id === me.id ? -1 : b.id === me.id ? 1 : 0))
-  useDuelReconcile(members, me.id)
 
   return (
     <>
@@ -303,11 +429,10 @@ function PartyHome({ initialCode }: { initialCode?: string }) {
           </div>
           <div className="members">
             {sorted.map((m) => (
-              <MemberCard key={m.id} m={m} isMe={m.id === me.id} owner={party.owner === m.id} onNudge={() => setNudgeTo(m)} meId={me.id} members={members} />
+              <MemberCard key={m.id} m={m} isMe={m.id === me.id} owner={party.owner === m.id} onNudge={() => setNudgeTo(m)} />
             ))}
             {members.length === 0 && <div className="empty">Загружаю участников…</div>}
           </div>
-          <MoneyBoard members={members} meId={me.id} />
           <CodeCard party={party} isOwner={party.owner === me.id} />
         </section>
         <section className="stack">
@@ -357,7 +482,7 @@ function PartySetupInline({ initialCode, onDone }: { initialCode?: string; onDon
         }
       }}
     >
-      <p className="small muted">Можно состоять максимум в 3 пати. События ленты уходят во все.</p>
+      <p className="small muted">До 3 пати, лента уходит во все.</p>
       <input className="input num code-input" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="SNOW-4821" aria-label="Код пати" autoCapitalize="characters" autoComplete="off" spellCheck={false} maxLength={12} />
       {err && <p className="err">{err}</p>}
       <button className="btn primary" type="submit" disabled={!code.trim() || busy}>
@@ -451,7 +576,7 @@ function CodeCard({ party, isOwner }: { party: PartyT; isOwner: boolean }) {
 
 // ---------- member ----------
 
-function MemberCard({ m, isMe, owner, onNudge, meId, members }: { m: Member; isMe: boolean; owner: boolean; onNudge: () => void; meId: string; members: Member[] }) {
+function MemberCard({ m, isMe, owner, onNudge }: { m: Member; isMe: boolean; owner: boolean; onNudge: () => void }) {
   const today = useToday()
   const outfit = useUserOutfit(m.id)
   const s = m.stats
@@ -503,8 +628,6 @@ function MemberCard({ m, isMe, owner, onNudge, meId, members }: { m: Member; isM
       {s && <MemberDay s={s} fresh={fresh} />}
 
       {s?.boss && !s.warmup && <MemberBoss boss={s.boss} />}
-
-      {!isMe && <DuelArea friend={m} meId={meId} members={members} />}
 
       <div className="member-foot">
         <span className="tiny muted grow">{updated}</span>
@@ -592,7 +715,7 @@ function NudgeSheet({ to, onClose }: { to: Member; onClose: () => void }) {
   return (
     <Sheet title={`Пнуть: ${to.display_name}`} onClose={onClose}>
       <div className="stack">
-        <p className="small muted">Он увидит это в приложении. Одного друга можно пнуть раз в час.</p>
+        <p className="small muted">Одного друга — раз в час.</p>
         <div className="nudge-presets">
           {NUDGES.map((n) => (
             <button
@@ -636,7 +759,7 @@ function FeedEmpty({ party, alone }: { party: PartyT; alone: boolean }) {
       </div>
       <div className="stack" style={{ gap: 4 }}>
         <h3>Пока тихо</h3>
-        <p className="small muted">{alone ? 'Позови друзей — поделись кодом. Их дела, идеальные дни и камбэки появятся здесь.' : 'Первое закрытое дело, идеальный день или честный срыв появятся здесь.'}</p>
+        <p className="small muted">{alone ? 'Позови друзей — поделись кодом.' : 'Здесь появятся дела, идеальные дни и камбэки.'}</p>
       </div>
       {alone && (
         <button className="btn primary" onClick={inv.share}>
@@ -758,8 +881,8 @@ export function PartyLoginLink() {
     <a className="list-btn" href="#/party">
       <LogIn aria-hidden />
       <span className="grow">
-        Войти, чтобы играть с друзьями и синхронизировать
-        <small>Пати, лента, «пнуть», телефон ↔ Мак</small>
+        Войти, чтобы играть с друзьями
+        <small>Пати и синхронизация</small>
       </span>
     </a>
   )

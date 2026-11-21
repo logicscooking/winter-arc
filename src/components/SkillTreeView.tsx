@@ -416,12 +416,12 @@ function NodeSheet({ node, prog, onClose, onPractice }: { node: SkillNode; prog:
             <small>{prog.stage >= 4 ? 'мастер' : `до «${STAGE_NAMES[prog.stage + 1]}»`}</small>
           </span>
         </div>
-        {prog.needsFeedback && <p className="node-hint">Ступень ждёт обратной связи: отзыв нужен хотя бы у половины практик ({prog.feedback}/{prog.count}).</p>}
+        {prog.needsFeedback && <p className="node-hint">Ступень ждёт отзывов: {prog.feedback}/{prog.count}, нужно у половины практик.</p>}
         {node.how && <p className="small card-calm">Как качать: {node.how}</p>}
         {needsPivot(node, prog) && (
           <div className="pivot-card">
             <b>3 раза без прогресса</b>
-            <p className="small">Привычка говорит «делай как всегда», игра говорит «ищи другой путь».</p>
+            <p className="small">Ищи другой путь.</p>
             <form
               className="row"
               style={{ gap: 8 }}
@@ -510,7 +510,7 @@ function TraitInfo({ tv, onClose, onNode, onEdit, onAdd }: { tv: TraitView; onCl
               </span>
             </button>
           ))}
-          {!tv.nodes.length && <p className="small muted">Пока без узлов. Узел — конкретное действие, которое можно качать.</p>}
+          {!tv.nodes.length && <p className="small muted">Пока без узлов.</p>}
         </div>
         <div className="grid-2">
           <button className="btn ghost" onClick={onEdit}>

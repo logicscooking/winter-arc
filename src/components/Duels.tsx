@@ -138,14 +138,13 @@ function DuelPlate({ d, game, theirs, name, now, meId }: { d: Duel; game: GameSt
               </span>
             ))}
           </div>
-          <span className="tiny muted">Закрытые квесты дня. Каждый считает своё, итог — по обоим.</span>
         </>
       )}
     </div>
   )
 }
 
-/** Everything about duels inside a friend's card */
+/** Everything about duels with one friend: a row in Пати → Дуэли */
 export function DuelArea({ friend, meId, members }: { friend: Member; meId: string; members: Member[] }) {
   const duels = useStore((s) => s.data.duels)
   const putDuel = useStore((s) => s.putDuel)
@@ -175,7 +174,7 @@ export function DuelArea({ friend, meId, members }: { friend: Member; meId: stri
     if (!ok) return
     const t = nowWithOffset()
     putDuel(newDuel(`${meId.slice(0, 8)}-${uid()}`, meId, friend.id, gameDayOf(t), t.getTime()))
-    say(`Вызов отправлен: ${name} увидит его в пати`)
+    say(`Вызов отправлен: ${name} увидит его в «Дуэлях»`)
     push()
   }
 

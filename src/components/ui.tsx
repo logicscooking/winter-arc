@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Brain, Dumbbell, Hammer, Shield, X, Zap, type LucideIcon } from 'lucide-react'
 import { Px } from '../pixel/Pixel'
@@ -46,6 +46,7 @@ export function HpBar({ hp }: { hp: number }) {
 }
 
 export function Sheet({ title, onClose, children, wide }: { title?: ReactNode; onClose: () => void; children: ReactNode; wide?: boolean }) {
+  const box = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', k)
@@ -56,10 +57,16 @@ export function Sheet({ title, onClose, children, wide }: { title?: ReactNode; o
       document.body.style.overflow = prev
     }
   }, [onClose])
+  // focus moves into the dialog (unless a field already took it with autoFocus) and goes back on close
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null
+    if (box.current && !box.current.contains(document.activeElement)) box.current.focus({ preventScroll: true })
+    return () => opener?.focus?.({ preventScroll: true })
+  }, [])
   // portal: a sheet opened inside .page (its own stacking context) must still cover the tab bar
   return createPortal(
     <div className="sheet-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="sheet" role="dialog" aria-modal="true" style={wide ? { maxWidth: 680 } : undefined}>
+      <div ref={box} tabIndex={-1} className="sheet" role="dialog" aria-modal="true" aria-label={typeof title === 'string' ? title : undefined} style={wide ? { maxWidth: 680 } : undefined}>
         <div className="sheet-grip" />
         <div className="sheet-head">
           <h2>{title}</h2>
@@ -257,5 +264,42 @@ export function Hint({ id, title = 'Подсказка', art = ['owl'], children
     <Banner icon="star" title={title} art={art} onClose={dismiss}>
       {children}
     </Banner>
+  )
+}
+
+/**
+ * «?»: the details behind a one-line text. A small round button next to a title or a line,
+ * the explanation opens in a compact sheet (Esc, tap outside or ✕ closes it)
+ */
+export function Help({ title, text, children, label }: { title: string; text?: string | string[]; children?: ReactNode; label?: string }) {
+  const [open, setOpen] = useState(false)
+  const lines = text === undefined ? [] : Array.isArray(text) ? text : [text]
+  return (
+    <>
+      <button
+        type="button"
+        className="help-btn"
+        aria-label={label ?? `Подробнее: ${title}`}
+        aria-haspopup="dialog"
+        onClick={(e) => {
+          // the button often sits inside a link or a summary row
+          e.preventDefault()
+          e.stopPropagation()
+          setOpen(true)
+        }}
+      >
+        ?
+      </button>
+      {open && (
+        <Sheet title={title} onClose={() => setOpen(false)}>
+          <div className="help-body">
+            {lines.map((l) => (
+              <p key={l}>{l}</p>
+            ))}
+            {children}
+          </div>
+        </Sheet>
+      )}
+    </>
   )
 }

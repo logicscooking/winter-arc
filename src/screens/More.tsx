@@ -25,30 +25,31 @@ import { useStore } from '../store/store'
 import { refreshClock, useGame, useNow } from '../store/hooks'
 import { useUi } from '../store/ui'
 import { MeasurementsForm } from '../components/MeasurementsForm'
-import { Field } from '../components/ui'
+import { Field, Help } from '../components/ui'
 import { AiSettings } from '../components/ai'
 import { setTopGarlandPref, useTopGarlandPref } from '../components/festive'
 import { FinalPicker } from './Morning'
+import { Why } from './Why'
 
 /** game screens first, with their pixel icons */
 const GAME: { title: string; hint: string; icon: SpriteName; href: string }[] = [
-  { title: 'Магазин', hint: 'Дофамин, свои награды, снаряжение за ❄', icon: 'shard', href: '#/shop' },
-  { title: 'Утренняя инвестиция', hint: 'Зарядка под спокойную музыку, раз в день', icon: 'sun', href: '#/morning' },
-  { title: 'Судьба дня', hint: 'Шар Плинко выберет дело и запустит таймер', icon: 'plinko', href: '#/destiny' },
-  { title: 'План дня', hint: 'Кольцо суток: квесты по часам', icon: 'dial', href: '#/plan' },
-  { title: 'Образ', hint: 'Шапки, шарфы, пуховики, очки', icon: 'hero', href: '#/avatar' },
+  { title: 'Магазин', hint: 'Награды за ❄', icon: 'shard', href: '#/shop' },
+  { title: 'Утренняя инвестиция', hint: 'Зарядка, раз в день', icon: 'sun', href: '#/morning' },
+  { title: 'Судьба дня', hint: 'Плинко выберет дело', icon: 'plinko', href: '#/destiny' },
+  { title: 'План дня', hint: 'Квесты по часам', icon: 'dial', href: '#/plan' },
+  { title: 'Образ', hint: 'Одежда героя', icon: 'hero', href: '#/avatar' },
 ]
 
 const PAGES: { id: string; title: string; hint: string; icon: typeof ListChecks; href?: string }[] = [
-  { id: 'charts', title: 'Графики', hint: 'Подъём, сон, рилсы, страницы, HP', icon: ChartLine, href: '#/charts' },
-  { id: 'quests', title: 'Квесты', hint: 'Редактор, роли по главам, мини-версии', icon: ListChecks },
+  { id: 'charts', title: 'Графики', hint: 'Подъём, сон, страницы, HP', icon: ChartLine, href: '#/charts' },
+  { id: 'quests', title: 'Квесты', hint: 'Редактор квестов', icon: ListChecks },
   { id: 'measurements', title: 'Замеры', hint: 'Старт и финал', icon: Ruler },
-  { id: 'triggers', title: 'Триггеры', hint: 'Когда и почему срываешься', icon: Activity },
-  { id: 'reviews', title: 'Обзоры недель', hint: 'Бои с боссами и ответы', icon: ScrollText },
-  { id: 'books', title: 'Книги', hint: 'Текущая книга и прочитанные', icon: BookOpen },
-  { id: 'pause', title: 'Пауза перед рилсами', hint: 'Как настроить в «Командах»', icon: Hand },
-  { id: 'backup', title: 'Бэкап', hint: 'Экспорт и импорт JSON', icon: Download },
-  { id: 'debug', title: 'Отладка', hint: 'Сдвиг даты «сегодня»', icon: Bug },
+  { id: 'triggers', title: 'Триггеры', hint: 'Когда срываешься', icon: Activity },
+  { id: 'reviews', title: 'Обзоры недель', hint: 'Боссы и ответы', icon: ScrollText },
+  { id: 'books', title: 'Книги', hint: 'Что читаю', icon: BookOpen },
+  { id: 'pause', title: 'Пауза перед рилсами', hint: 'Настройка «Команд»', icon: Hand },
+  { id: 'backup', title: 'Бэкап', hint: 'Экспорт и импорт', icon: Download },
+  { id: 'debug', title: 'Отладка', hint: 'Сдвиг даты', icon: Bug },
 ]
 
 /** the title lives in the top bar; `title` stays for the accessible region name */
@@ -80,9 +81,19 @@ export function More({ sub }: { sub?: string }) {
       return <Debug />
     case 'account':
       return <AccountPage />
+    case 'why':
+      return <Why />
   }
   return (
     <div className="stack-lg">
+      <a className="list-btn why-entry" href="#/more/why">
+        <Px name="wolf" size={34} />
+        <span className="grow">
+          Зачем мы здесь
+          <small>Цель арки · 1 минута</small>
+        </span>
+        <ChevronRight size={18} color="var(--mist)" aria-hidden />
+      </a>
       <div className="stack" style={{ gap: 8 }}>
         {GAME.map((p) => (
           <a key={p.href} className="list-btn" href={p.href}>
@@ -165,7 +176,17 @@ function Appearance() {
   const garland = useTopGarlandPref()
   return (
     <section className="panel stack" aria-label="Оформление">
-      <h3>Оформление</h3>
+      <h3 className="row" style={{ gap: 6 }}>
+        Оформление
+        <Help
+          title="Оформление"
+          text={[
+            'Все темы бесплатные. Тема, гирлянда и музыка — свои на каждом устройстве.',
+            'Снег выключается сам, если в системе включено «Уменьшить движение».',
+            'Беззвучный режим телефона сайт не видит: выключи звук здесь.',
+          ]}
+        />
+      </h3>
       <div className="theme-grid" role="radiogroup" aria-label="Тема">
         {THEMES.map((t) => (
           <button key={t.id} className="theme-tile" role="radio" aria-checked={theme === t.id} onClick={() => setSettings({ theme: t.id })}>
@@ -175,22 +196,15 @@ function Appearance() {
           </button>
         ))}
       </div>
-      <p className="tiny muted">Все темы бесплатные. Тема своя на каждом устройстве.</p>
       <div className="switch-row">
         <span>
           <span style={{ fontWeight: 700 }}>Падающий снег</span>
-          <span className="tiny muted" style={{ display: 'block' }}>
-            Выключается сам, если в системе «Уменьшить движение»
-          </span>
         </span>
         <button className="switch" role="switch" aria-checked={snow} aria-label="Падающий снег" onClick={() => setSettings({ snow: !snow })} />
       </div>
       <div className="switch-row">
         <span>
           <span style={{ fontWeight: 700 }}>Гирлянда сверху</span>
-          <span className="tiny muted" style={{ display: 'block' }}>
-            Тихо мерцает под шапкой на всех экранах. Только на этом устройстве
-          </span>
         </span>
         <button className="switch" role="switch" aria-checked={garland} aria-label="Гирлянда сверху" onClick={() => setTopGarlandPref(!garland)} />
       </div>
@@ -198,7 +212,7 @@ function Appearance() {
         <span>
           <span style={{ fontWeight: 700 }}>Звук</span>
           <span className="tiny muted" style={{ display: 'block' }}>
-            Щелчки и звон в Плинко и тики таймера зарядки. Беззвучный режим телефона сайт не видит
+            Плинко и таймер зарядки
           </span>
         </span>
         <button className="switch" role="switch" aria-checked={settings.sound ?? true} aria-label="Звук" onClick={() => setSettings({ sound: !(settings.sound ?? true) })} />
@@ -216,13 +230,13 @@ function MorningSettings() {
       <h3>Утренняя инвестиция</h3>
       <FinalPicker value={settings.morningFinal} onChange={(f) => setSettings({ morningFinal: f })} />
       <p className="tiny muted" style={{ marginTop: -4 }}>
-        Мужчины: 20 приседаний + 20 отжиманий. Женщины: 20 приседаний + 5 отжиманий, с колен ок
+        М: 20 приседаний + 20 отжиманий · Ж: 20 + 5, с колен ок
       </p>
       <div className="switch-row">
         <span>
           <span style={{ fontWeight: 700 }}>Музыка</span>
           <span className="tiny muted" style={{ display: 'block' }}>
-            Спокойный эмбиент во время зарядки. Только на этом устройстве
+            Спокойный эмбиент во время зарядки
           </span>
         </span>
         <button className="switch" role="switch" aria-checked={music} aria-label="Музыка в зарядке" onClick={() => setSettings({ morningMusic: !music })} />
@@ -327,7 +341,10 @@ function QuestsEditor() {
   const mains = CHAPTERS.map((c) => quests.filter((q) => q.enabled && q.roles[c.id] === 'main').length)
   return (
     <Sub title="Квесты">
-      <p className="small muted">Не больше 5 главных в день: лишние автоматически станут побочными. Квест, который был главным в прошлой главе, а теперь побочный, получает метку «база» и XP ×0.5.</p>
+      <p className="small muted">
+        До 5 главных в день{' '}
+        <Help title="Главные и побочные" text={['Не больше 5 главных в день: лишние автоматически станут побочными.', 'Квест, который был главным в прошлой главе, а теперь побочный, получает метку «база» и XP ×0.5.', 'Новый квест работает с сегодняшнего дня — прошлые дни не пересчитываются.']} />
+      </p>
       <div className="row wrap" style={{ gap: 8 }}>
         {CHAPTERS.map((c, i) => (
           <span key={c.id} className={`tag ${mains[i] > 5 ? 'ember' : ''}`}>
@@ -356,7 +373,6 @@ function QuestsEditor() {
           Добавить
         </button>
       </form>
-      <p className="tiny muted">Новый квест работает с сегодняшнего дня — прошлые дни не пересчитываются.</p>
     </Sub>
   )
 }
@@ -402,7 +418,7 @@ function TriggersPage() {
     <Sub title="Твои триггеры">
       {!r.enough ? (
         <div className="empty">
-          Нужно хотя бы {TRIGGERS_MIN} записей «Слился», сейчас {r.total}. Чем честнее лог, тем точнее картина.
+          Нужно {TRIGGERS_MIN} записей «Слился», сейчас {r.total}.
         </div>
       ) : (
         <>
@@ -438,7 +454,7 @@ function TriggersPage() {
       )}
       <section className="stack">
         <h2>Лог срывов</h2>
-        {slips.length === 0 && <div className="empty">Пусто. Это либо сила, либо нечестность — ты знаешь, что из двух.</div>}
+        {slips.length === 0 && <div className="empty">Пусто.</div>}
         <div className="panel kv small" style={{ display: slips.length ? 'grid' : 'none' }}>
           {[...slips]
             .sort((a, b) => b.at - a.at)
@@ -606,7 +622,10 @@ function PauseHelp() {
   ]
   return (
     <Sub title="Пауза перед рилсами">
-      <p className="muted">Ничего не блокируется. При открытии Instagram сначала откроется Winter Arc: остаток лимита и 10 секунд вдоха. Дальше решаешь сам.</p>
+      <p className="muted">
+        10 секунд вдоха перед Instagram{' '}
+        <Help title="Пауза перед рилсами" text={['Ничего не блокируется. При открытии Instagram сначала откроется Winter Arc: остаток лимита и 10 секунд вдоха. Дальше решаешь сам.', 'Лучше всего работает, когда Winter Arc добавлен на экран «Домой».']} />
+      </p>
       <ol className="stack" style={{ paddingLeft: 22, margin: 0 }}>
         {steps.map((s) => (
           <li key={s}>{s}</li>
@@ -633,7 +652,6 @@ function PauseHelp() {
           </a>
         </div>
       </div>
-      <p className="tiny muted">Лучше всего работает, когда Winter Arc добавлен на экран «Домой».</p>
     </Sub>
   )
 }
@@ -660,7 +678,10 @@ function Backup() {
 
   return (
     <Sub title="Бэкап">
-      <p className="muted">Данные живут на этом устройстве{' '}(а с аккаунтом — ещё и в твоей личной облачной копии). Раз в неделю сохраняй файл — например, в «Файлы» или облако.</p>
+      <p className="muted">
+        Раз в неделю сохраняй файл{' '}
+        <Help title="Бэкап" text={['Данные живут на этом устройстве, а с аккаунтом — ещё и в твоей личной облачной копии.', 'Раз в неделю сохраняй файл — например, в «Файлы» или облако.']} />
+      </p>
       <button className="btn primary block" onClick={exportJson}>
         <Download size={18} /> Скачать бэкап JSON
       </button>
@@ -727,7 +748,10 @@ function Debug() {
   ]
   return (
     <Sub title="Отладка">
-      <p className="small muted">Сдвигает «сегодня» на N дней, чтобы проверить главы и финал. Дни между реальной и сдвинутой датой оцениваются как обычно — после проверки верни сдвиг в 0 или сделай бэкап.</p>
+      <p className="small muted">
+        Сдвиг «сегодня» на N дней{' '}
+        <Help title="Отладка" text={['Сдвигает «сегодня» на N дней, чтобы проверить главы и финал.', 'Дни между реальной и сдвинутой датой оцениваются как обычно — после проверки верни сдвиг в 0 или сделай бэкап.']} />
+      </p>
       <Field label="Сдвиг, дней">
         <input
           className="input num"

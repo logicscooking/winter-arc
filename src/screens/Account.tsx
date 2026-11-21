@@ -7,7 +7,7 @@ import { cloudConfigured, ruError } from '../cloud/client'
 import { useSocial } from '../cloud/state'
 import { deviceLabel, listSnapshots, syncNow } from '../cloud/sync'
 import { AuthForm } from '../components/AuthForm'
-import { Field } from '../components/ui'
+import { Field, Help } from '../components/ui'
 import { HeroAva } from '../components/HeroAva'
 import { timeAgo } from './Party'
 import { MoneyShareRow } from '../components/Money'
@@ -46,8 +46,8 @@ export function AccountEntry() {
       <a className="list-btn accent" href="#/more/account">
         <LogIn aria-hidden />
         <span className="grow">
-          Войти, чтобы играть с друзьями и синхронизировать
-          <small>Пати, лента, «пнуть», телефон ↔ Мак. Только ник и пароль</small>
+          Войти: друзья и синхронизация
+          <small>Только ник и пароль</small>
         </span>
         <ChevronRight size={18} color="var(--mist)" aria-hidden />
       </a>
@@ -77,7 +77,7 @@ export function AccountPage() {
   if (!account)
     return (
       <Sub title="Аккаунт">
-        <p className="muted">Аккаунт нужен для пати и для синхронизации телефона с Маком. Без него всё работает как раньше, данные остаются на устройстве.</p>
+        <p className="muted">Для пати и синхронизации. Без него всё работает.</p>
         <section className="panel">
           <AuthForm />
         </section>
@@ -171,13 +171,16 @@ function Signed() {
           </div>
         ))}
         <MoneyShareRow />
-        <p className="tiny muted">Уровень, HP, гирлянда дня и серии видны участникам пати всегда. Исповеди, замеры, причины срывов и заметки не уходят никогда.</p>
+        <p className="tiny muted">
+          Уровень, HP и серии видны пати всегда{' '}
+          <Help title="Что видит пати" text={['Уровень, HP, гирлянда дня и серии видны участникам пати всегда.', 'Исповеди, замеры, причины срывов и заметки не уходят никогда.']} />
+        </p>
       </section>
 
       {snaps.length > 0 && (
         <section className="stack">
           <h2>Снимки до синхронизации</h2>
-          <p className="small muted">Перед тем как данные с другого устройства что-то заменили, здесь сохранилась прежняя версия. Хранятся 3 последних.</p>
+          <p className="small muted">Прежние версии до замены с другого устройства, 3 последних.</p>
           {snaps.map((s) => (
             <div key={s.at} className="panel tight row between">
               <div className="row">

@@ -22,6 +22,7 @@ import { Finale } from './screens/Finale'
 import { Party as PartyScreen } from './screens/Party'
 import { NudgeBanner } from './components/NudgeBanner'
 import { RouteTopBar } from './components/TopBar'
+import { FlowPill } from './components/skills'
 import { useSocial } from './cloud/state'
 import { bootCloud } from './cloud/boot'
 import { MissedDays } from './flows/MissedDays'
@@ -50,7 +51,7 @@ const NAV: { path: string; label: string; icon: SpriteName; tab: boolean }[] = [
   { path: '/more', label: 'Ещё', icon: 'chest', tab: true },
 ]
 /** sub-screens that light up a tab */
-const TAB_OF: Record<string, string> = { '/morning': '/today', '/avatar': '/hero', '/charts': '/more', '/skill': '/deal', '/skill-new': '/deal', '/flow': '/deal' }
+const TAB_OF: Record<string, string> = { '/morning': '/today', '/avatar': '/hero', '/charts': '/more', '/skill': '/deal', '/skill-new': '/deal', '/flow': '/deal', '/duels': '/party', '/money': '/party' }
 
 /** the theme's top bar color as #rrggbb: the tokens are color-mix()es, so let the browser resolve them */
 function barColor() {
@@ -156,6 +157,11 @@ function Shell({ top }: { top: string }) {
   const data = useStore((s) => s.data)
   const profile = data.profile!
 
+  // duels and money live inside «Пати» now: old links land in the right section
+  useEffect(() => {
+    if (top === 'duels' || top === 'money') location.replace(`#/party?tab=${top}`)
+  }, [top])
+
   let screen
   switch (top) {
     case 'deal':
@@ -189,6 +195,8 @@ function Shell({ top }: { top: string }) {
       screen = <Finale />
       break
     case 'party':
+    case 'duels':
+    case 'money':
       screen = <PartyScreen />
       break
     case 'avatar':
@@ -229,6 +237,8 @@ function Shell({ top }: { top: string }) {
       </nav>
       <main className="page">
         <RouteTopBar top={top} sub={route.parts[1]} query={route.query} />
+        {/* the running flow stays in sight everywhere; «Навык» draws its own top bar and the pill under it */}
+        {!['flow', 'morning', 'skill', 'review'].includes(top) && <FlowPill />}
         {screen}
       </main>
       <nav className="tabbar" aria-label="Разделы">

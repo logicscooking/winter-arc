@@ -23,10 +23,11 @@ import { useStore } from '../store/store'
 import { nowWithOffset, reward, useGame, useNow } from '../store/hooks'
 import { useUi } from '../store/ui'
 import { AddTask, TaskTree } from '../components/TaskTree'
-import { FlowChip, PracticeSheet, RankBadge, SkillLevelBar, Strikes, ThemeCard, skillSprite, startFlowAndGo } from '../components/skills'
+import { FlowButton, PracticeSheet, RankBadge, SkillLevelBar, Strikes, ThemeCard, skillSprite, startFlowAndGo } from '../components/skills'
 import { Px } from '../pixel/Pixel'
 import { RankChanceCard } from '../components/skillPlus'
-import { MoneyCard, MoneySheet } from '../components/Money'
+import { MoneySheet } from '../components/Money'
+import { Help } from '../components/ui'
 import { SkillTreeMini } from '../components/SkillTreeView'
 
 /** «Путь»: skills (progression) on top, the Deal of the day and projects below */
@@ -42,9 +43,6 @@ export function Deal() {
 
   return (
     <div className="stack-lg">
-      <p className="small muted page-sub">Квесты держат уровень. Навыки растут: практика → обратная связь → ступень.</p>
-      <FlowChip />
-
       <div className="filter-row" role="group" aria-label="Что показать">
         {(
           [
@@ -66,7 +64,16 @@ export function Deal() {
         <div className="stack-lg" hidden={filter === 'deal'}>
           <section className="stack">
             <div className="section-title">
-              <h2>Навыки</h2>
+              <h2>
+                Навыки
+                <Help
+                  title="Навыки"
+                  text={[
+                    'Квесты держат уровень, навыки растут: практика → обратная связь → ступень.',
+                    `В фокусе до ${MAX_ACTIVE_SKILLS} навыков, остальные ждут в «Позже». ▶ на карточке — поток на этот навык, XP ×2.`,
+                  ]}
+                />
+              </h2>
               <span className="num small muted">
                 {active.length}/{MAX_ACTIVE_SKILLS} в фокусе
               </span>
@@ -74,7 +81,10 @@ export function Deal() {
             {active.length === 0 && (
               <div className="empty skill-empty">
                 <Px name="fir" size={44} />
-                <p>Навык — это то, чего пока нет, а не талант. Значит, понятно, как качать. Первый ставится в 2 тапа.</p>
+                <p>Первый навык — в 2 тапа.</p>
+                <a className="btn primary" href="#/skill-new">
+                  <Plus size={18} strokeWidth={3} aria-hidden /> Навык
+                </a>
               </div>
             )}
             <div className="skill-list">
@@ -82,7 +92,7 @@ export function Deal() {
                 <SkillCard key={s.id} skill={s} theme={theme === s.id} view={skillView(data, s.id, today, frozen)} xp={game.skillXp[s.id] ?? 0} />
               ))}
             </div>
-            {active.length >= MAX_ACTIVE_SKILLS && <p className="tiny muted">3 в фокусе — максимум. Новый навык встанет в «Позже».</p>}
+            {active.length >= MAX_ACTIVE_SKILLS && <p className="tiny muted">3 в фокусе — максимум.</p>}
             {later.length > 0 && (
               <details className="later">
                 <summary>Позже · {later.length}</summary>
@@ -114,7 +124,6 @@ export function Deal() {
             </div>
             <Projects />
           </section>
-          <MoneyCard />
         </div>
       </div>
       <DealFab />
@@ -209,8 +218,11 @@ function Chests() {
   return (
     <section className="stack">
       <div className="section-title">
-        <h2>Сундуки дня</h2>
-        <span className="small muted">{CHEST.need} цели типа → сундук</span>
+        <h2>
+          Сундуки дня
+          <Help title="Сундуки дня" text={[`${CHEST.need} закрытые цели одного типа за день открывают сундук этого типа.`, 'Внутри — одна из твоих наград магазина с редкостью: обычная, редкая или легендарная.']} />
+        </h2>
+        <span className="small muted">{CHEST.need} цели → сундук</span>
       </div>
       <div className="chest-row">
         {list.map((c) => (
@@ -232,7 +244,7 @@ function Chests() {
       </div>
       {!hasPrizes && (
         <a className="tiny muted" href="#/shop">
-          Призы — твои награды из магазина с редкостью. Добавь редкость →
+          Призы — твои награды с редкостью →
         </a>
       )}
     </section>
@@ -263,30 +275,40 @@ function DealOfDay() {
       <div className="row" style={{ alignItems: 'flex-start' }}>
         <Crosshair color="var(--gold)" aria-hidden style={{ marginTop: 2 }} />
         <div className="grow stack" style={{ gap: 6 }}>
-          <span className="small muted">Дело дня</span>
+          <span className="small muted row" style={{ gap: 6 }}>
+            Дело дня
+            <Help
+              title="Дело дня"
+              text={[
+                'Один шаг к деньгам на сегодня: задача проекта или узел навыка. Прицел у задачи или узла делает его Делом дня.',
+                `Закрыл — XP Дела${dealPlan ? ` и квест «Дело дня» (+${questXp(dealPlan.role, dealPlan.base, 'done')} XP)` : ''}. Подзадачи по +${XP.subtask} XP. Практика на узле тоже закрывает квест.`,
+                'Включи поток — всё, что закроешь внутри, даёт ×2 XP. До 90 минут, 3 потока в день, не после 22:00.',
+              ]}
+            />
+          </span>
           {node && nodeSkill && (
-            <>
-              <h2>
-                Сегодня качаю: {nodeSkill.title} → {node.title}
-              </h2>
-              <p className="tiny muted">Практика на узле закроет квест «Дело дня».</p>
-            </>
+            <h2>
+              {nodeSkill.title} → {node.title}
+            </h2>
           )}
           {deal ? (
             <>
               <h2>{deal.title}</h2>
               {parent && <span className="small muted">{parent.title}</span>}
-              <p className="tiny muted">
-                Закрыл — +{taskXp(data.tasks, deal)} XP Дела{dealPlan ? ` и квест «Дело дня» (+${questXp(dealPlan.role, dealPlan.base, 'done')} XP)` : ''}. Подзадачи по +{XP.subtask} XP. В потоке ×2.
-              </p>
+              <span className="tiny muted num">+{taskXp(data.tasks, deal)} XP</span>
             </>
           ) : (
-            !node && <p>{open ? 'Не выбрано. Нажми прицел у задачи ниже или у узла навыка.' : projects.length ? 'Добавь задачу в проект кнопкой «+», потом нажми прицел.' : 'Проект ниже или узел навыка: прицел — и это Дело дня.'}</p>
+            !node && <p>{open ? 'Нажми прицел у задачи или узла навыка.' : projects.length ? 'Добавь задачу в проект и нажми прицел.' : 'Создай проект ниже или выбери узел навыка.'}</p>
           )}
         </div>
       </div>
+      {(deal || node) && !locked && (!deal?.doneAt || !!node) && (
+        <div style={{ marginTop: 12 }}>
+          <FlowButton skillId={nodeSkill?.id} className="btn primary block" />
+        </div>
+      )}
       {node && !locked && (
-        <div className="grid-2" style={{ marginTop: 12 }}>
+        <div className="grid-2" style={{ marginTop: 10 }}>
           <button className={`btn ${nodeDone ? 'ghost' : 'amber'}`} onClick={() => setPractice(true)}>
             <Plus size={18} /> {nodeDone ? 'Ещё практика' : 'Практика'}
           </button>
@@ -298,18 +320,13 @@ function DealOfDay() {
       {deal && !locked && (
         <button
           className={`btn block ${deal.doneAt ? 'ghost' : 'amber'}`}
-          style={{ marginTop: 12 }}
+          style={{ marginTop: 10 }}
           onClick={(e) => {
             if (!deal.doneAt) reward(e.currentTarget, { xp: taskXp(data.tasks, deal) + (dealPlan ? questXp(dealPlan.role, dealPlan.base, 'done') : 0), shards: dealPlan ? (dealPlan.role === 'main' ? 3 : 2) : 0 })
             toggle(deal.id, nowWithOffset())
           }}
         >
           <Check size={18} /> {deal.doneAt ? 'Закрыто. Вернуть?' : 'Закрыть Дело дня'}
-        </button>
-      )}
-      {(deal || node) && !locked && (
-        <button className="btn ghost block" style={{ marginTop: 10 }} onClick={() => startFlowAndGo(undefined, nodeSkill?.id)}>
-          <Px name="play" size={20} /> Поток на Дело дня
         </button>
       )}
       {practice && node && <PracticeSheet nodeId={node.id} onClose={() => setPractice(false)} />}
@@ -324,7 +341,7 @@ function Projects() {
   const dealId = data.days[today]?.dealTaskId
   return (
     <>
-      {projects.length === 0 && <div className="empty">Проект — это то, что двигает тебя к деньгам или мечте. Например «Портфолио» или «Канал».</div>}
+      {projects.length === 0 && <div className="empty">Проект двигает к деньгам: «Портфолио», «Канал».</div>}
       <TaskTree scope="deal" roots={projects} pickDay={today} dealId={dealId} locked={false} />
       <div id="add-project">
         <AddTask scope="deal" parentId={null} placeholder="Новый проект" />

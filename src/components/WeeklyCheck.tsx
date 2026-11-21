@@ -5,6 +5,7 @@ import { useSocial } from '../cloud/state'
 import { compressImage } from '../cloud/image'
 import { uploadCheck } from '../cloud/party'
 import { useUi } from '../store/ui'
+import { Help } from './ui'
 
 /** «Воскресная сверка»: the Screen Time weekly report goes to the party, next to the confessions */
 export function WeeklyCheck({ week }: { week: number }) {
@@ -32,7 +33,8 @@ export function WeeklyCheck({ week }: { week: number }) {
         )}
       </div>
       <p className="small muted">
-        Скрин недельного отчёта «Экранного времени»: Настройки → Экранное время → «Все действия» → «Неделя». Пати увидит его рядом с твоими исповедями. 10 секунд — и врать бессмысленно.
+        Скрин «Экранного времени» за неделю{' '}
+        <Help title="Воскресная сверка" text={['Настройки → Экранное время → «Все действия» → «Неделя». Сделай скрин и загрузи сюда.', 'Пати увидит его рядом с твоими исповедями. 10 секунд — и врать бессмысленно.']} />
       </p>
       {!account || parties.length === 0 ? (
         <a className="list-btn" href="#/party">

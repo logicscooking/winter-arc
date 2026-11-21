@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   CHAPTERS,
   FLOW,
@@ -27,7 +27,7 @@ import { SPRITES } from '../pixel/sprites'
 import { useStore } from '../store/store'
 import { go, nowWithOffset, refreshClock, reward, useFx, useGame, useNow } from '../store/hooks'
 import { useUi } from '../store/ui'
-import { Bar, Sheet, formatMMSS } from './ui'
+import { Bar, Help, Sheet, formatMMSS } from './ui'
 
 export function skillSprite(s: Pick<Skill, 'icon' | 'stat'>): SpriteName {
   return s.icon && s.icon in SPRITES ? (s.icon as SpriteName) : STAT_SPRITE[s.stat]
@@ -149,7 +149,11 @@ export function PracticeSheet({ nodeId, onClose }: { nodeId: string; onClose: ()
           <span>Одна строка обратной связи</span>
           <input className="input" value={note} maxLength={200} onChange={(e) => setNote(e.target.value)} placeholder="Что получилось лучше / что сломалось" autoFocus />
         </label>
-        {!full && <p className="tiny muted">Без строки засчитается половина XP, и ступень узла не растёт, пока отзыв меньше чем у половины практик.</p>}
+        {!full && (
+          <p className="tiny muted">
+            Без строки — половина XP <Help title="Обратная связь" text="Без строки отзыва практика даёт половину XP. Ступень узла растёт, только когда отзыв есть хотя бы у половины его практик." />
+          </p>
+        )}
         <button className="btn primary block" disabled={used >= PRACTICE_LIMIT} onClick={(e) => save(e.currentTarget)}>
           {used >= PRACTICE_LIMIT ? `Лимит ${PRACTICE_LIMIT} в день на узел` : full ? `Записать практику +${xp} XP` : `Записать без отзыва · +${xp} XP`}
         </button>
@@ -199,7 +203,7 @@ export function ThemeCard({ compact }: { compact?: boolean }) {
           </div>
         </div>
         <p className="small">
-          Босс главы — <b>{due.boss}</b>. Выбери навык-тему заранее: его практики дадут ×1,5 XP всю главу.
+          Босс — <b>{due.boss}</b>. Навык-тема даст ×1,5 XP всю главу.
         </p>
         {chooser(due.next)}
       </section>
@@ -228,21 +232,60 @@ export function ThemeCard({ compact }: { compact?: boolean }) {
 
 // ---------- flow ----------
 
-export function FlowChip() {
+/** The running flow on every screen, under the top bar: what it is for, time left, tap opens it, «Стоп» ends it */
+export function FlowPill() {
   const data = useStore((s) => s.data)
-  const now = useNow()
+  const stopFlow = useStore((s) => s.stopFlow)
+  const [, force] = useState(0)
+  const now = nowWithOffset()
   const f = liveFlow(data, now)
+  const id = f?.id
+  // a second-by-second clock only while a flow runs
+  useEffect(() => {
+    if (!id) return
+    const t = setInterval(() => force((x) => x + 1), 1000)
+    return () => clearInterval(t)
+  }, [id])
   if (!f) return null
   const cap = Math.min(f.minutes ?? FLOW.maxMin, FLOW.maxMin) * 60_000
   const skill = data.skills?.find((s) => s.id === f.skillId)
+  const what = skill?.title ?? (data.days[gameDayOf(now)]?.dealTaskId ? 'Дело дня' : 'глубокая работа')
   return (
-    <a className="flow-chip" href="#/flow">
-      <Px name="play" size={22} />
-      <span className="grow">
-        Поток идёт{skill ? `: ${skill.title}` : ''}
-        <small>×2 XP · осталось {formatMMSS(f.startedAt + cap - now.getTime())}</small>
-      </span>
-    </a>
+    <div className="flow-pill" role="status">
+      <a className="flow-pill-main" href="#/flow" aria-label={`Поток: ${what}, осталось ${formatMMSS(f.startedAt + cap - now.getTime())}. Открыть`}>
+        <Px name="play" size={20} />
+        <span className="grow flow-pill-what">{what}</span>
+        <b className="num">{formatMMSS(f.startedAt + cap - now.getTime())}</b>
+        <span className="flow-pill-x num">×{FLOW.mult}</span>
+      </a>
+      <button
+        className="flow-pill-stop"
+        onClick={() => {
+          stopFlow(f.id, nowWithOffset())
+          refreshClock()
+          go(`/flow?done=${f.id}`)
+        }}
+      >
+        Стоп
+      </button>
+    </div>
+  )
+}
+
+/** ▶ «Поток» for a skill or the Deal of the day; while a flow runs it opens it instead */
+export function FlowButton({ skillId, label = 'Поток', className = 'btn primary' }: { skillId?: string; label?: string; className?: string }) {
+  const live = useStore((s) => liveFlow(s.data, nowWithOffset()))
+  useNow()
+  if (live)
+    return (
+      <a className={`${className} flow-on`} href="#/flow">
+        <Px name="play" size={20} /> Поток идёт
+      </a>
+    )
+  return (
+    <button className={className} onClick={() => startFlowAndGo(undefined, skillId)}>
+      <Px name="play" size={20} /> {label} <span className="flow-x num">×{FLOW.mult} XP</span>
+    </button>
   )
 }
 

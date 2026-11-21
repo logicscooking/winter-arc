@@ -1516,8 +1516,6 @@ details.later summary { font-weight: 900; color: var(--mist); min-height: 44px; 
 .icon-pick button[aria-pressed='true'] { border-color: var(--pine); background: var(--pine-soft); }
 .preview { padding-top: 8px; border-top: 2px solid var(--line-soft); }
 
-.flow-chip { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; padding: 10px 14px; border-radius: 18px; background: var(--gold-soft); border: 2px solid var(--gold-mark); color: var(--ink); font-weight: 900; text-decoration: none; }
-.flow-chip small { display: block; font-weight: 800; color: var(--gold); font-size: 0.78rem; }
 .flow-rules { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .flow-rules span { display: grid; justify-items: center; text-align: center; gap: 2px; padding: 10px 6px; border-radius: 14px; background: var(--surface); border: var(--bw) solid var(--card-line); font-size: 0.78rem; font-weight: 800; color: var(--mist); }
 .flow-rules b { font-size: 1.2rem; color: var(--ink); }
@@ -1927,8 +1925,6 @@ h3 { font-family: var(--display); font-weight: 700; font-size: 1.08rem; letter-s
 .tile b, .tile-name { font-family: var(--display); }
 .wallet { border-radius: var(--r-lg); }
 .wallet small { font-family: var(--display); font-weight: 700; }
-.flow-chip { border-radius: var(--r-lg); font-family: var(--display); font-weight: 700; border-width: var(--bw); }
-.flow-chip small { font-family: var(--text); }
 .flow-rules span { border-radius: 18px; }
 .flow-node { border-radius: 18px; }
 .block-row, .pick { border-radius: 18px; }
@@ -2044,3 +2040,89 @@ input[type='time'].input::-webkit-date-and-time-value, input[type='date'].input:
 body:has(.top-garland:not(.is-off)) .topbar { margin-bottom: 26px; }
 /* «План дня» on a 375px phone: quest names get a third line instead of an ellipsis */
 #plan-add .pick span { -webkit-line-clamp: 3; line-clamp: 3; }
+
+/* ---------- v8 «чистка»: «?» help, Пати sections, the flow pill, «Зачем мы здесь» ---------- */
+
+/* «?»: a small round button next to a title or a one-line text, the details open in a sheet */
+.help-btn {
+  position: relative; display: inline-grid; place-items: center; flex: none; vertical-align: 0.12em;
+  width: 24px; height: 24px; margin-left: 6px; border-radius: 50%;
+  border: 2px solid var(--card-line-hi); background: var(--surface); color: var(--mist);
+  font-family: var(--display); font-weight: 900; font-size: 0.8rem; line-height: 1;
+  transition: color 0.15s ease, border-color 0.15s ease, transform 0.12s var(--ease-out);
+}
+.help-btn::after { content: ''; position: absolute; inset: -10px; }
+.help-btn:hover { color: var(--ink); border-color: var(--pine-line); }
+.help-btn:active { transform: scale(0.9); }
+h2 .help-btn, h3 .help-btn { vertical-align: 0.18em; }
+.row > .help-btn { margin-left: 0; }
+.help-body { display: grid; gap: 10px; color: var(--ink-2); font-size: 0.98rem; line-height: 1.45; font-weight: 600; }
+.help-body p { margin: 0; }
+.help-body h3 { color: var(--ink); margin-top: 4px; }
+.sheet:focus { outline: none; }
+
+/* Пати: three sections in one segmented switch */
+.party-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+.party-tabs button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 6px; min-height: 46px; position: relative; }
+.party-tabs .px { flex: none; }
+.party-tabs button[aria-pressed='false'] .px { filter: grayscale(0.7); opacity: 0.7; }
+.badge.inline {
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 6px;
+  background: var(--hp); color: #fff; font-family: var(--num-sm); font-size: 0.72rem; font-weight: 700; line-height: 18px; text-align: center;
+}
+.duel-friend { display: grid; gap: 10px; }
+.duel-friend .duel-area:empty { display: none; }
+@media (max-width: 380px) { .party-tabs button { font-size: 0.86rem; gap: 4px; } }
+
+/* the running flow: under the top bar on every screen, tap opens it, «Стоп» ends it */
+.flow-pill {
+  display: flex; align-items: stretch; margin: -6px 0 16px; border-radius: 99px; overflow: hidden;
+  background: var(--gold-soft); border: var(--bw) solid var(--gold-mark); box-shadow: var(--shadow-1);
+}
+.flow-pill-main {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 8px 12px 8px 14px;
+  color: var(--ink); text-decoration: none; font-family: var(--display); font-weight: 800; min-height: 46px;
+}
+.flow-pill-what { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.flow-pill-main b { font-size: 1.02rem; }
+.flow-pill-x { font-size: 0.78rem; font-weight: 800; color: var(--gold); }
+.flow-pill-stop {
+  flex: none; padding: 0 16px; font-family: var(--display); font-weight: 800; font-size: 0.92rem;
+  color: var(--hp); border-left: var(--bw) solid var(--gold-mark); background: var(--surface);
+}
+.flow-pill-stop:hover { background: var(--surface-2); }
+.flow-x { font-size: 0.8rem; opacity: 0.8; font-weight: 800; }
+a.btn.flow-on { background: var(--gold-soft); color: var(--ink); border: var(--bw) solid var(--gold-mark); box-shadow: none; text-decoration: none; }
+
+/* «Зачем мы здесь»: the entry in «Ещё», the one-time card on «Сегодня», the memo */
+.why-entry { border-color: var(--gold-mark); background: color-mix(in srgb, var(--gold-soft) 55%, var(--surface)); min-height: 72px; }
+.why-entry .grow { font-family: var(--display); font-weight: 800; font-size: 1.08rem; }
+.why-card {
+  position: relative; border-radius: var(--r-lg); border: var(--bw) solid var(--gold-mark);
+  background: color-mix(in srgb, var(--gold-soft) 55%, var(--surface)); box-shadow: var(--shadow-1);
+}
+.why-card-main { display: flex; align-items: center; gap: 12px; padding: 12px 48px 12px 14px; color: var(--ink); text-decoration: none; min-height: 68px; }
+.why-card-main b { display: block; font-family: var(--display); font-weight: 800; font-size: 1.08rem; }
+.why-card-main small { display: block; color: var(--mist); font-weight: 800; font-size: 0.82rem; }
+.why-card-main > svg { color: var(--mist); flex: none; }
+.why-card .banner-x { top: 50%; transform: translateY(-50%); }
+.why-card-main .px { filter: drop-shadow(0 3px 0 var(--lip)); flex: none; }
+
+.why-hero { display: grid; justify-items: center; gap: 14px; text-align: center; padding: 4px 6px 0; }
+.why-art { display: flex; align-items: flex-end; gap: 4px; }
+.why-art .px { filter: drop-shadow(0 3px 0 var(--lip)); }
+.why-lede { font-family: var(--display); font-weight: 700; font-size: 1.12rem; line-height: 1.4; margin: 0; max-width: 34ch; }
+.why-goal { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: center; border-color: var(--gold-mark); }
+.why-goal p { margin: 0; }
+.why-goal-main { font-family: var(--display); font-weight: 800; font-size: 1.16rem; line-height: 1.3; }
+.why-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.why-list li {
+  display: grid; grid-template-columns: 22px 30px 1fr; gap: 10px; align-items: center;
+  padding: 10px 14px 10px 10px; border-radius: var(--r-md); background: var(--surface);
+  border: var(--bw) solid var(--card-line); line-height: 1.38; font-weight: 600; color: var(--ink-2);
+}
+.why-list li b { color: var(--ink); font-family: var(--display); font-weight: 800; }
+.why-num { color: var(--mist); font-weight: 800; text-align: center; }
+.why-rule { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: center; border-color: var(--pine-line); }
+.why-rule p { margin: 0; line-height: 1.42; color: var(--ink-2); font-weight: 600; }
+.why-rule b { color: var(--ink); font-family: var(--display); font-weight: 800; display: block; margin-bottom: 2px; }

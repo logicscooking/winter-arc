@@ -22,7 +22,7 @@ import { useStore } from '../store/store'
 import { nowWithOffset, reward, useNow } from '../store/hooks'
 import { useUi } from '../store/ui'
 import type { Member } from '../cloud/state'
-import { Field, Sheet } from './ui'
+import { Field, Help, Sheet } from './ui'
 import { HeroAva } from './HeroAva'
 import { Px } from '../pixel/Pixel'
 import './money.css'
@@ -136,7 +136,7 @@ export function MoneySheet({ onClose }: { onClose: () => void }) {
             </button>
           </div>
           {own && <input className="input" value={source} maxLength={MONEY_SOURCE_MAX} onChange={(e) => setSource(e.target.value)} placeholder="Заказ, клиент, подработка" autoFocus />}
-          {!projects.length && <span className="tiny muted">Проекты из «Дела» появятся здесь. Можно без источника.</span>}
+          {!projects.length && <span className="tiny muted">Можно без источника.</span>}
         </div>
 
         <div className="field">
@@ -162,9 +162,8 @@ export function MoneySheet({ onClose }: { onClose: () => void }) {
           {xp > 0 && <span className="money-xp num">+{xp} XP</span>}
         </button>
         <p className="tiny muted center">
-          {amount && xp === 0 && dayHas
-            ? 'Награда за этот день уже есть: сумма дня растёт, XP — по порядку суммы.'
-            : 'XP в «Дело» — раз в день, по порядку суммы дня. Фармить незачем.'}
+          {amount && xp === 0 && dayHas ? 'XP за этот день уже есть.' : 'XP — раз в день, по сумме дня.'}{' '}
+          <Help title="XP за заработок" text={['XP в «Дело» — раз в день, по порядку суммы дня: 100 ₽ — 5 XP, 1 000 ₽ — 10, 10 000 ₽ — 15, от 100 000 ₽ — 20.', 'Записи за день складываются. XP добавится, только когда сумма дня перейдёт на новый порядок. Фармить незачем.']} />
         </p>
       </form>
     </Sheet>
@@ -181,7 +180,7 @@ export function MoneyShareRow() {
       <span>
         <span style={{ fontWeight: 700 }}>Показывать заработок в пати</span>
         <span className="tiny muted" style={{ display: 'block' }}>
-          Только суммы за неделю и арку. Записи, источники и заметки не уходят никогда
+          Только суммы, без записей и заметок
         </span>
       </span>
       <button className="switch" role="switch" aria-checked={on} aria-label="Показывать заработок в пати" onClick={() => setSettings({ moneyShare: !on })} />
@@ -189,7 +188,7 @@ export function MoneyShareRow() {
   )
 }
 
-// ---------- «Путь»: totals and entries ----------
+// ---------- Пати → Деньги: totals and entries ----------
 
 export function MoneyCard() {
   const data = useStore((s) => s.data)
@@ -204,10 +203,7 @@ export function MoneyCard() {
   return (
     <section>
       <div className="section-title">
-        <h2>Заработано</h2>
-        <a className="small muted" href="#/party">
-          лидерборд →
-        </a>
+        <h2>Мой заработок</h2>
       </div>
       <div className="panel money-card stack">
         <div className="money-totals">
@@ -224,7 +220,7 @@ export function MoneyCard() {
           <Plus size={18} strokeWidth={3} /> Заработал
         </button>
         {list.length === 0 ? (
-          <p className="small muted">Свой проект и свои деньги — лекарство от «потом поживу». Первые 500 ₽ тоже считаются.</p>
+          <p className="small muted">Первые 500 ₽ тоже считаются.</p>
         ) : (
           <ul className="money-list">
             {shown.map((x) => (
@@ -274,7 +270,6 @@ export function MoneyBoard({ members, meId }: { members: Member[]; meId: string 
   const setSettings = useStore((s) => s.setSettings)
   const today = gameDayOf(useNow())
   const [period, setPeriod] = useState<MoneyPeriod>('week')
-  const [add, setAdd] = useState(false)
   const on = moneyShareOn(data)
   const mine = moneyTotals(data, today)
   const entries = members.map((m) =>
@@ -290,7 +285,7 @@ export function MoneyBoard({ members, meId }: { members: Member[]; meId: string 
       <div className="row between wrap" style={{ gap: 8 }}>
         <span className="row" style={{ gap: 8 }}>
           <Px name="coin" size={26} />
-          <h3>Заработано</h3>
+          <h3>Лидерборд</h3>
         </span>
         <div className="seg-switch" role="group" aria-label="Период">
           <button aria-pressed={period === 'week'} onClick={() => setPeriod('week')}>
@@ -329,15 +324,10 @@ export function MoneyBoard({ members, meId }: { members: Member[]; meId: string 
             </li>
           ))}
       </ol>
-      {quiet > 0 && <p className="tiny muted">Ещё {quiet} в пати не показывают заработок.</p>}
       <p className="tiny muted">
-        {period === 'week' ? 'С понедельника.' : today < ARC_START ? 'Вся арка, разминка тоже считается.' : 'С разминки и до конца арки.'} Друзья видят только сумму.
+        {period === 'week' ? 'С понедельника' : 'Вся арка с разминкой'}
+        {quiet > 0 ? ` · ещё ${quiet} скрывают` : ''} · друзья видят только сумму
       </p>
-      <button className="btn ghost block" onClick={() => setAdd(true)}>
-        <Plus size={18} strokeWidth={3} /> Заработал
-      </button>
-      <MoneyShareRow />
-      {add && <MoneySheet onClose={() => setAdd(false)} />}
     </section>
   )
 }

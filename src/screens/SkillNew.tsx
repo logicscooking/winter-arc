@@ -26,7 +26,7 @@ export function SkillNew({ importMode }: { importMode?: boolean }) {
   return (
     <div className="stack-lg">
       <header>
-        <p className="small muted page-sub">Думай навыками, а не целями: результат — следствие навыка. {active >= MAX_ACTIVE_SKILLS && 'В фокусе уже 3 — новый встанет в «Позже».'}</p>
+        <p className="small muted page-sub">Результат — следствие навыка.{active >= MAX_ACTIVE_SKILLS && ' В фокусе уже 3 — новый встанет в «Позже».'}</p>
       </header>
 
       {!importMode && (
@@ -129,7 +129,7 @@ function AiTreeBuilder({ onImport }: { onImport: (tree: TreeCode, examples: stri
   return (
     <section className="panel stack">
       <h3>Шаблона нет? ИИ соберёт дерево</h3>
-      <p className="tiny muted">3–5 характеристик, узлы, что повышает и понижает, примеры «Кайфа». Уходит только название навыка.</p>
+      <p className="tiny muted">ИИ видит только название навыка.</p>
       <div className="row" style={{ gap: 8 }}>
         <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Например «Гитара» или «Публичные выступления»" maxLength={60} aria-label="Название навыка для ИИ" />
         <AiButton onClick={start} disabled={title.trim().length < 2 || st.phase === 'loading'}>
