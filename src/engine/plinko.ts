@@ -330,16 +330,6 @@ export const PLINKO_POOL: PlinkoTask[] = [
     icon: 'snowflake',
   },
   {
-    id: 'clean15',
-    tier: 3,
-    title: '15 минут уборки',
-    short: 'Уборка',
-    hint: 'Таймер и одна зона: пол, кухня или ванная',
-    stat: 'deal',
-    icon: 'hammer',
-    hours: [4, 22],
-  },
-  {
     id: 'plank',
     tier: 3,
     title: 'Планка 2 × 1 мин',
@@ -602,6 +592,16 @@ export const PLINKO_POOL: PlinkoTask[] = [
  * replay keeps scoring them with the right stat and the history keeps their titles.
  */
 const LEGACY_TASKS: PlinkoTask[] = [
+  {
+    id: 'clean15',
+    tier: 3,
+    title: '15 минут уборки',
+    short: 'Уборка',
+    hint: 'Таймер и одна зона: пол, кухня или ванная',
+    stat: 'deal',
+    icon: 'hammer',
+    hours: [4, 22],
+  },
   {
     id: 'air',
     tier: 1,
