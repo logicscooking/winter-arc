@@ -220,11 +220,21 @@ export interface Measurements {
   colaWeek?: number
   chocoWeek?: number
   pushups?: number
+  /** no longer asked (v0.9), kept so old baselines still load */
   plankSec?: number
   pullups?: number
+  /** no longer asked (v0.9) */
   waistCm?: number
   morningFeel?: number
+  /** no longer asked (v0.9) */
   booksYear?: number
+  /** v0.9: self-ratings 1–10 and monthly income */
+  mood?: number
+  incomeMonth?: number
+  bodyShape?: number
+  procrastination?: number
+  backgroundLoad?: number
+  sleepRecovery?: number
 }
 
 export interface Review {

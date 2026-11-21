@@ -470,7 +470,7 @@ function Prep() {
       <div className="section-title" style={{ marginBottom: 4 }}>
         <h2>Подготовка к старту</h2>
       </div>
-      <PrepLink href="#/more/measurements" icon={Ruler} title="Замеры на старте" hint={hasBaseline ? 'Заполнено — в финале сравним' : 'Отжимания, планка, талия, экран…'} done={hasBaseline} />
+      <PrepLink href="#/more/measurements" icon={Ruler} title="Замеры на старте" hint={hasBaseline ? 'Заполнено — в финале сравним' : 'Отжимания, состояние, заработок, экран…'} done={hasBaseline} />
       <PrepLink href="#/more/books" icon={BookOpen} title="Книга на пролог" hint={hasBook ? 'Страницы идут в «Чтение»' : 'Страницы пойдут в квест «Чтение»'} done={hasBook} />
       <PrepLink href="#/deal" icon={Hammer} title="Дерево Дела" hint={hasProject ? 'Проекты есть — выбирай Дело дня' : 'Проект и задачи для «Дела дня»'} done={hasProject} />
       <PrepLink href="#/more/quests" icon={ListChecks} title="Квесты под себя" hint="Формулировки «когда X → Y», мини-версии" />

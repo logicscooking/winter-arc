@@ -2033,6 +2033,8 @@ html { scroll-padding-top: calc(var(--safe-t) + 66px + 26px); }
 /* two-column fields: the columns may shrink, iOS time inputs drop their native min width */
 .grid-2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .grid-2 > * { min-width: 0; }
+/* a two-line label pushes only its own label down: inputs in a row stay on one line */
+.grid-2 > .field > span { flex: 1; }
 input[type='time'].input, input[type='date'].input {
   -webkit-appearance: none; appearance: none; display: block;
   width: 100%; min-width: 0; max-width: 100%; text-align: left; line-height: 1.3;

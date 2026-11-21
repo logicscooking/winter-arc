@@ -7,11 +7,14 @@ export const MEASURE_FIELDS: { key: keyof Measurements; label: string; unit?: st
   { key: 'colaWeek', label: 'Кола в неделю', unit: 'банок', better: 'down' },
   { key: 'chocoWeek', label: 'Шоколад в неделю', unit: 'шт', better: 'down' },
   { key: 'pushups', label: 'Макс. отжиманий', unit: 'раз', better: 'up' },
-  { key: 'plankSec', label: 'Планка', unit: 'сек', better: 'up' },
   { key: 'pullups', label: 'Подтягиваний', unit: 'раз', better: 'up' },
-  { key: 'waistCm', label: 'Талия', unit: 'см', better: 'down' },
   { key: 'morningFeel', label: 'Самочувствие утром, 1–10', better: 'up' },
-  { key: 'booksYear', label: 'Книг за последний год', better: 'up' },
+  { key: 'mood', label: 'Состояние, 1–10', better: 'up' },
+  { key: 'incomeMonth', label: 'Заработок в месяц', unit: '₽', better: 'up' },
+  { key: 'bodyShape', label: 'Форма тела, 1–10', better: 'up' },
+  { key: 'procrastination', label: 'Прокрастинация, 1–10', better: 'down' },
+  { key: 'backgroundLoad', label: 'Чувство фоновой загруженности, 1–10', better: 'down' },
+  { key: 'sleepRecovery', label: 'Восстановление после сна, 1–10', better: 'up' },
 ]
 
 export function MeasurementsForm({ value, onChange }: { value: Measurements; onChange: (m: Measurements) => void }) {
