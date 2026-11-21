@@ -28,7 +28,7 @@ export interface SyncDoc extends SyncMeta {
 }
 
 /** Settings that stay per device: theme, snow, sound and the debug clock are not synced */
-export const LOCAL_SETTINGS = ['theme', 'snow', 'debugOffsetDays', 'aiUse', 'sound'] as const
+export const LOCAL_SETTINGS = ['theme', 'snow', 'debugOffsetDays', 'aiUse', 'sound', 'morningMusic'] as const
 
 const SEP = '/'
 // v0.4 collections merge per item exactly like tasks: one atom per id, LWW by stamp, tombstone on delete
@@ -233,6 +233,15 @@ const RESOLVERS: Record<string, (a: unknown, b: unknown) => unknown> = {
   [`ack${SEP}finaleSeen`]: (a, b) => !!a || !!b,
 }
 
+const minNum = (a: unknown, b: unknown) => (typeof a === 'number' && typeof b === 'number' ? Math.min(a, b) : typeof a === 'number' ? a : b)
+
+/** Per-day atoms that combine: «Утренняя инвестиция» finished on both devices → the earliest finish */
+function resolverFor(path: string): ((a: unknown, b: unknown) => unknown) | undefined {
+  if (RESOLVERS[path]) return RESOLVERS[path]
+  if (path.startsWith(`days${SEP}`) && path.endsWith(`${SEP}morningAt`)) return minNum
+  return undefined
+}
+
 export interface Side {
   atoms: Atoms
   meta: SyncMeta
@@ -272,8 +281,8 @@ export function mergeSides(local: Side, remote: Side): MergeResult {
       const t = Math.max(lT, rT)
       if (sameValue(lv, rv)) {
         atoms[path] = lv
-      } else if (RESOLVERS[path]) {
-        atoms[path] = RESOLVERS[path](lv, rv)
+      } else if (resolverFor(path)) {
+        atoms[path] = resolverFor(path)!(lv, rv)
       } else {
         atoms[path] = lT > rT ? lv : rv
       }

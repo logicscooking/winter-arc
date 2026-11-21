@@ -28,10 +28,12 @@ import { MeasurementsForm } from '../components/MeasurementsForm'
 import { Field } from '../components/ui'
 import { AiSettings } from '../components/ai'
 import { setTopGarlandPref, useTopGarlandPref } from '../components/festive'
+import { FinalPicker } from './Morning'
 
 /** game screens first, with their pixel icons */
 const GAME: { title: string; hint: string; icon: SpriteName; href: string }[] = [
   { title: 'Магазин', hint: 'Дофамин, свои награды, снаряжение за ❄', icon: 'shard', href: '#/shop' },
+  { title: 'Утренняя инвестиция', hint: 'Зарядка под спокойную музыку, раз в день', icon: 'sun', href: '#/morning' },
   { title: 'Судьба дня', hint: 'Шар Плинко выберет дело и запустит таймер', icon: 'plinko', href: '#/destiny' },
   { title: 'План дня', hint: 'Кольцо суток: квесты по часам', icon: 'dial', href: '#/plan' },
   { title: 'Образ', hint: 'Шапки, шарфы, пуховики, очки', icon: 'hero', href: '#/avatar' },
@@ -95,6 +97,7 @@ export function More({ sub }: { sub?: string }) {
       </div>
       <AccountEntry />
       <Appearance />
+      <MorningSettings />
       <AiSettings />
       <div className="stack" style={{ gap: 8 }}>
         {PAGES.map((p) => (
@@ -195,10 +198,34 @@ function Appearance() {
         <span>
           <span style={{ fontWeight: 700 }}>Звук</span>
           <span className="tiny muted" style={{ display: 'block' }}>
-            Щелчки и звон в Плинко. Беззвучный режим телефона сайт не видит
+            Щелчки и звон в Плинко и тики таймера зарядки. Беззвучный режим телефона сайт не видит
           </span>
         </span>
         <button className="switch" role="switch" aria-checked={settings.sound ?? true} aria-label="Звук" onClick={() => setSettings({ sound: !(settings.sound ?? true) })} />
+      </div>
+    </section>
+  )
+}
+
+function MorningSettings() {
+  const settings = useStore((s) => s.data.settings)
+  const setSettings = useStore((s) => s.setSettings)
+  const music = settings.morningMusic ?? true
+  return (
+    <section className="panel stack" aria-label="Утренняя инвестиция">
+      <h3>Утренняя инвестиция</h3>
+      <FinalPicker value={settings.morningFinal} onChange={(f) => setSettings({ morningFinal: f })} />
+      <p className="tiny muted" style={{ marginTop: -4 }}>
+        Мужчины: 20 приседаний + 20 отжиманий. Женщины: 20 приседаний + 5 отжиманий, с колен ок
+      </p>
+      <div className="switch-row">
+        <span>
+          <span style={{ fontWeight: 700 }}>Музыка</span>
+          <span className="tiny muted" style={{ display: 'block' }}>
+            Спокойный эмбиент во время зарядки. Только на этом устройстве
+          </span>
+        </span>
+        <button className="switch" role="switch" aria-checked={music} aria-label="Музыка в зарядке" onClick={() => setSettings({ morningMusic: !music })} />
       </div>
     </section>
   )

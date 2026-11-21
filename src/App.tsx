@@ -31,6 +31,7 @@ import type { SpriteName } from './pixel/sprites'
 import { AvatarScreen } from './screens/Avatar'
 import { Destiny } from './screens/Destiny'
 import { PlanDay } from './screens/PlanDay'
+import { Morning } from './screens/Morning'
 import { SlipFlow, ComebackFlow } from './flows/Slip'
 import { CravingFlow } from './flows/Craving'
 import { CheckinSheet } from './flows/Checkin'
@@ -49,7 +50,7 @@ const NAV: { path: string; label: string; icon: SpriteName; tab: boolean }[] = [
   { path: '/more', label: 'Ещё', icon: 'chest', tab: true },
 ]
 /** sub-screens that light up a tab */
-const TAB_OF: Record<string, string> = { '/avatar': '/hero', '/charts': '/more', '/skill': '/deal', '/skill-new': '/deal', '/flow': '/deal' }
+const TAB_OF: Record<string, string> = { '/morning': '/today', '/avatar': '/hero', '/charts': '/more', '/skill': '/deal', '/skill-new': '/deal', '/flow': '/deal' }
 
 /** the theme's top bar color as #rrggbb: the tokens are color-mix()es, so let the browser resolve them */
 function barColor() {
@@ -199,6 +200,9 @@ function Shell({ top }: { top: string }) {
     case 'plan':
       screen = <PlanDay />
       break
+    case 'morning':
+      screen = <Morning />
+      break
     default:
       screen = <Today />
   }
@@ -206,7 +210,7 @@ function Shell({ top }: { top: string }) {
   const current = `/${top}`
   const currentTab = TAB_OF[current] ?? current
   return (
-    <div className="app">
+    <div className={`app${top === 'morning' ? ' focus' : ''}`}>
       <nav className="sidebar" aria-label="Разделы">
         <div className="brand">
           <Px name="wolf" size={32} /> Winter Arc

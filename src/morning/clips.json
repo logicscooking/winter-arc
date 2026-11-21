@@ -1,0 +1,302 @@
+[
+  {
+    "id": "lymph-jumps-1",
+    "block": "v1",
+    "title": "Лимфопрыжки 1",
+    "mode": "time",
+    "seconds": 30,
+    "hint": "Лёгкие подпрыгивания на носках, руки и плечи расслаблены.",
+    "video": "morning/lymph-jumps-1.mp4",
+    "poster": "morning/lymph-jumps-1.jpg",
+    "src": {
+      "video": "V1",
+      "start": 4.3,
+      "end": 6.9
+    }
+  },
+  {
+    "id": "lymph-jumps-2",
+    "block": "v1",
+    "title": "Лимфопрыжки 2",
+    "mode": "time",
+    "seconds": 30,
+    "hint": "Продолжай мягко пружинить на носках, плечи свободные.",
+    "video": "morning/lymph-jumps-2.mp4",
+    "poster": "morning/lymph-jumps-2.jpg",
+    "src": {
+      "video": "V1",
+      "start": 6.6,
+      "end": 9.2
+    }
+  },
+  {
+    "id": "torso-twist",
+    "block": "v1",
+    "title": "Поворот торса",
+    "mode": "time",
+    "seconds": 30,
+    "hint": "Ноги на ширине плеч, корпус скручивается влево-вправо, руки свободно следуют за корпусом.",
+    "video": "morning/torso-twist.mp4",
+    "poster": "morning/torso-twist.jpg",
+    "src": {
+      "video": "V1",
+      "start": 10.0,
+      "end": 13.0
+    }
+  },
+  {
+    "id": "wave",
+    "block": "v1",
+    "title": "Волна",
+    "mode": "time",
+    "seconds": 60,
+    "hint": "Руки вверх, затем плавная волна всем телом вниз через корпус и обратно вверх.",
+    "video": "morning/wave.mp4",
+    "poster": "morning/wave.jpg",
+    "src": {
+      "video": "V1",
+      "start": 14.6,
+      "end": 16.6
+    }
+  },
+  {
+    "id": "mcgregor",
+    "block": "v1",
+    "title": "Макгрегоры",
+    "mode": "time",
+    "seconds": 30,
+    "hint": "Лёгкая стойка, поочерёдные хлёсткие махи руками к плечам, как в боксе.",
+    "video": "morning/mcgregor.mp4",
+    "poster": "morning/mcgregor.jpg",
+    "src": {
+      "video": "V1",
+      "start": 31.5,
+      "end": 34.5
+    }
+  },
+  {
+    "id": "whirligig",
+    "block": "v1",
+    "title": "Вертушка",
+    "mode": "time",
+    "seconds": 60,
+    "hint": "Корпус вращается из стороны в сторону, руки свободно летят по инерции.",
+    "video": "morning/whirligig.mp4",
+    "poster": "morning/whirligig.jpg",
+    "src": {
+      "video": "V1",
+      "start": 37.0,
+      "end": 40.0
+    }
+  },
+  {
+    "id": "knee-opener",
+    "block": "v2",
+    "title": "Раскрытие на коленях",
+    "mode": "reps",
+    "reps": 10,
+    "hint": "На коленях, руки за головой: наклон вперёд, затем раскрой грудь и прогнись назад.",
+    "video": "morning/knee-opener.mp4",
+    "poster": "morning/knee-opener.jpg",
+    "src": {
+      "video": "V2",
+      "start": 1.75,
+      "end": 4.37
+    }
+  },
+  {
+    "id": "lunge-rotations",
+    "block": "v2",
+    "title": "Ротации в разножке",
+    "mode": "reps",
+    "reps": 10,
+    "hint": "Выпад с опорой на руку, поворачивай корпус и тянись рукой вверх, 10 раз на каждую сторону.",
+    "video": "morning/lunge-rotations.mp4",
+    "poster": "morning/lunge-rotations.jpg",
+    "src": {
+      "video": "V2",
+      "start": 4.45,
+      "end": 7.7
+    }
+  },
+  {
+    "id": "deep-squat-rotations",
+    "block": "v2",
+    "title": "Ротации в глубоком седе",
+    "mode": "reps",
+    "reps": 14,
+    "hint": "Глубокий присед, ладони у груди, поворот корпуса и рука вверх, 14 раз на каждую сторону.",
+    "video": "morning/deep-squat-rotations.mp4",
+    "poster": "morning/deep-squat-rotations.jpg",
+    "src": {
+      "video": "V2",
+      "start": 7.78,
+      "end": 9.97
+    }
+  },
+  {
+    "id": "ninety-ninety",
+    "block": "v2",
+    "title": "90/90",
+    "mode": "reps",
+    "reps": 14,
+    "hint": "Сидя на полу, колени согнуты под 90°, переваливай колени из стороны в сторону, 14 раз на каждую сторону.",
+    "video": "morning/ninety-ninety.mp4",
+    "poster": "morning/ninety-ninety.jpg",
+    "src": {
+      "video": "V2",
+      "start": 10.12,
+      "end": 12.87
+    }
+  },
+  {
+    "id": "side-bends",
+    "block": "v2",
+    "title": "Боковые наклоны",
+    "mode": "reps",
+    "reps": 10,
+    "hint": "Сидя в разножке, наклон корпуса к ноге с рукой над головой, 10 раз на каждую сторону.",
+    "video": "morning/side-bends.mp4",
+    "poster": "morning/side-bends.jpg",
+    "src": {
+      "video": "V2",
+      "start": 12.95,
+      "end": 15.4
+    }
+  },
+  {
+    "id": "back-elbow-arc",
+    "block": "v3",
+    "title": "Дуга локтем",
+    "mode": "reps",
+    "reps": 10,
+    "hint": "Лёжа на животе, согнутой рукой веди локоть по дуге от головы вниз; грудь не отрывай от пола.",
+    "video": "morning/back-elbow-arc.mp4",
+    "poster": "morning/back-elbow-arc.jpg",
+    "src": {
+      "video": "V3",
+      "start": 0.0,
+      "end": 3.0
+    }
+  },
+  {
+    "id": "back-open-arm",
+    "block": "v3",
+    "title": "Раскрытие руки",
+    "mode": "reps",
+    "reps": 10,
+    "hint": "Лёжа на животе, рука идёт по дуге от головы в сторону, раскрывая грудь и плечо.",
+    "video": "morning/back-open-arm.mp4",
+    "poster": "morning/back-open-arm.jpg",
+    "src": {
+      "video": "V3",
+      "start": 3.5,
+      "end": 6.2
+    }
+  },
+  {
+    "id": "back-pendulum",
+    "block": "v3",
+    "title": "Маятник рукой",
+    "mode": "reps",
+    "reps": 10,
+    "hint": "Лёжа на животе, прямая рука свободно качается вниз-вперёд, плечо расслаблено.",
+    "video": "morning/back-pendulum.mp4",
+    "poster": "morning/back-pendulum.jpg",
+    "src": {
+      "video": "V3",
+      "start": 6.7,
+      "end": 9.7
+    }
+  },
+  {
+    "id": "back-straight-arc",
+    "block": "v3",
+    "title": "Дуга прямой рукой",
+    "mode": "reps",
+    "reps": 10,
+    "hint": "Лёжа на животе, прямая рука идёт широкой дугой от пола вверх и обратно.",
+    "video": "morning/back-straight-arc.mp4",
+    "poster": "morning/back-straight-arc.jpg",
+    "src": {
+      "video": "V3",
+      "start": 10.3,
+      "end": 14.0
+    }
+  },
+  {
+    "id": "neck-nape",
+    "block": "v4",
+    "title": "Массаж затылка",
+    "mode": "time",
+    "seconds": 20,
+    "hint": "Одна рука за головой, пальцами другой разминай основание шеи и затылок.",
+    "video": "morning/neck-nape.mp4",
+    "poster": "morning/neck-nape.jpg",
+    "src": {
+      "video": "V4",
+      "start": 0.5,
+      "end": 5.5
+    }
+  },
+  {
+    "id": "neck-skull-base",
+    "block": "v4",
+    "title": "Основание черепа",
+    "mode": "time",
+    "seconds": 20,
+    "hint": "Пальцы за ушами у основания черепа, круговые надавливания без боли.",
+    "video": "morning/neck-skull-base.mp4",
+    "poster": "morning/neck-skull-base.jpg",
+    "src": {
+      "video": "V4",
+      "start": 10.0,
+      "end": 13.0
+    }
+  },
+  {
+    "id": "neck-traps",
+    "block": "v4",
+    "title": "Трапеции",
+    "mode": "time",
+    "seconds": 20,
+    "hint": "Ладони на плечи у шеи, разминай трапеции и верх позвоночника.",
+    "video": "morning/neck-traps.mp4",
+    "poster": "morning/neck-traps.jpg",
+    "src": {
+      "video": "V4",
+      "start": 13.4,
+      "end": 18.2
+    }
+  },
+  {
+    "id": "neck-sides",
+    "block": "v4",
+    "title": "Боковые стороны шеи",
+    "mode": "time",
+    "seconds": 20,
+    "hint": "Пальцы по бокам шеи под ушами, мягко массируй сверху вниз.",
+    "video": "morning/neck-sides.mp4",
+    "poster": "morning/neck-sides.jpg",
+    "src": {
+      "video": "V4",
+      "start": 19.3,
+      "end": 23.3
+    }
+  },
+  {
+    "id": "neck-lymph",
+    "block": "v4",
+    "title": "Лимфодренаж головы",
+    "mode": "time",
+    "seconds": 20,
+    "hint": "Обе ладони на затылке, плавно массируй вверх и вниз для лимфодренажа.",
+    "video": "morning/neck-lymph.mp4",
+    "poster": "morning/neck-lymph.jpg",
+    "src": {
+      "video": "V4",
+      "start": 24.5,
+      "end": 29.5
+    }
+  }
+]

@@ -1,6 +1,7 @@
 import { DEFAULT_QUESTS, REELS_LIMIT } from './quests'
 import { sanitizeBlock } from './plan'
 import { isBoard, sanitizeDrop } from './plinko'
+import { validMorningAt } from './morning'
 import type { AppData, DayLog, PlinkoDrop, TimeBlock } from './types'
 
 export const SCHEMA_VERSION = 1
@@ -67,7 +68,7 @@ export function normalizeData(raw: unknown): AppData {
 function migrateV03(d: AppData): AppData {
   let days = d.days
   for (const [day, log] of Object.entries(d.days ?? {})) {
-    if (!log || (log.blocks === undefined && log.destiny === undefined && log.plinko === undefined && log.plinkoBoard === undefined)) continue
+    if (!log || (log.blocks === undefined && log.destiny === undefined && log.plinko === undefined && log.plinkoBoard === undefined && log.morningAt === undefined)) continue
     const next: DayLog = { ...log }
     if (log.blocks !== undefined) {
       const clean = Array.isArray(log.blocks) ? log.blocks.map(sanitizeBlock).filter((b): b is TimeBlock => !!b) : []
@@ -86,6 +87,7 @@ function migrateV03(d: AppData): AppData {
       else delete next.plinko
     }
     if (log.plinkoBoard !== undefined && !isBoard(log.plinkoBoard)) delete next.plinkoBoard
+    if (log.morningAt !== undefined && !validMorningAt(log.morningAt)) delete next.morningAt
     if (days === d.days) days = { ...d.days }
     days[day] = next
   }

@@ -1,0 +1,133 @@
+/* «Утренняя инвестиция»: the player keeps the app chrome (top bar) but drops the tab bar for focus */
+.app.focus .tabbar { display: none; }
+.app.focus .page { padding-bottom: calc(var(--safe-b) + 28px); }
+
+/* the long title fits the island on a phone */
+.topbar-title.mi-bar-title { font-size: 1.12rem; }
+.mi-music.off .px { filter: grayscale(1) brightness(0.75); opacity: 0.55; }
+.mi-music.off::after {
+  content: ''; position: absolute; left: 10px; right: 10px; top: 50%; height: 3px; border-radius: 2px;
+  background: var(--mist); transform: rotate(-35deg);
+}
+
+/* ---------- start ---------- */
+.mi-hero { display: flex; gap: 14px; align-items: center; }
+.mi-lede { font-weight: 800; font-size: 1.02rem; line-height: 1.35; }
+.mi-meta { display: flex; gap: 6px; margin-top: 4px; color: var(--mist); font-weight: 800; font-size: 0.9rem; }
+.mi-meta .num { color: var(--pine); }
+.mi-blocks { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.mi-blocks li {
+  display: flex; align-items: center; gap: 12px; min-height: 58px; padding: 8px 14px;
+  background: var(--surface); border: var(--bw) solid var(--card-line); border-radius: var(--r-md);
+  font-family: var(--display); font-weight: 800; box-shadow: var(--shadow-1);
+}
+.mi-blocks li .grow { display: flex; flex-direction: column; }
+.mi-blocks li small { font-family: var(--text); color: var(--mist); font-weight: 700; font-size: 0.82rem; }
+.mi-blocks li.fin { border-color: color-mix(in srgb, var(--gold-mark) 60%, var(--card-line)); background: color-mix(in srgb, var(--gold-soft) 55%, var(--surface)); }
+.mi-bn { width: 34px; height: 34px; flex: none; border-radius: 11px; display: grid; place-items: center; background: var(--pine-soft); color: var(--pine); font-size: 1rem; }
+.mi-blocks li.fin .mi-bn { background: var(--gold-soft); color: var(--gold); }
+.mi-final { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.mi-final .seg { min-height: 40px; padding: 0 14px; border-radius: 12px; font-weight: 800; color: var(--ink-2); }
+.mi-final .seg[aria-checked='true'] { background: var(--surface); color: var(--ink); box-shadow: 0 2px 0 var(--lip); }
+.mi-final-opt { flex-direction: column; gap: 2px; min-height: 76px; padding: 10px; }
+.mi-final-opt b { font-family: var(--display); font-size: 1.1rem; }
+.mi-final-opt small { color: var(--mist); font-weight: 700; font-size: 0.78rem; line-height: 1.2; }
+.mi-reward { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mi-reward.center-row { justify-content: center; }
+.mi-reward .reward-chip { animation: none; }
+.btn.mi-big { min-height: 60px; font-size: 1.12rem; border-radius: 18px; }
+
+/* ---------- player ---------- */
+.mi-player { display: flex; flex-direction: column; gap: 14px; }
+.mi-top { display: grid; gap: 7px; }
+.mi-top-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.mi-block {
+  font-family: var(--display); font-weight: 800; font-size: 0.86rem; color: var(--pine);
+  padding: 4px 10px; border-radius: 10px; background: var(--pine-soft);
+}
+.mi-count { font-size: 1.05rem; color: var(--ink-2); }
+.mi-bar { display: flex; gap: 3px; height: 6px; }
+.mi-bar i { flex: 1; border-radius: 3px; background: var(--surface-3); transition: background 0.3s ease; }
+.mi-bar i.gap { margin-left: 5px; }
+.mi-bar i.on { background: var(--pine); }
+.mi-bar i.now { background: color-mix(in srgb, var(--pine) 50%, var(--surface-3)); }
+
+/* the frame takes the clip's own ratio (4:5 portrait, ~1:1 for the neck block), so nothing is cropped */
+.mi-frame {
+  --ar: 0.8;
+  position: relative; height: min(35vh, 320px); aspect-ratio: var(--ar); max-width: 100%; margin: 0 auto;
+  border-radius: var(--r-lg); overflow: hidden;
+  background: var(--surface-2); border: var(--bw) solid var(--card-line); box-shadow: var(--shadow-1);
+  transition: aspect-ratio 0.25s var(--ease-out);
+}
+.mi-frame video { width: 100%; height: 100%; object-fit: cover; display: block; background: var(--surface-2); }
+.mi-ph { position: absolute; inset: 0; display: grid; place-items: center; background: radial-gradient(circle at 50% 40%, var(--pine-soft), var(--surface-2) 70%); }
+
+.mi-text { display: grid; gap: 4px; text-align: center; }
+.mi-title { font-family: var(--display); font-weight: 900; font-size: 1.55rem; line-height: 1.1; text-wrap: balance; }
+.mi-text p { text-wrap: balance; }
+
+.mi-controls { display: flex; align-items: center; justify-content: center; gap: 22px; }
+.mi-round {
+  width: 54px; height: 54px; border-radius: 18px; display: grid; place-items: center; flex: none;
+  background: var(--surface); border: var(--bw) solid var(--card-line); color: var(--ink); box-shadow: var(--shadow-1);
+  transition: transform 0.12s var(--ease-out);
+}
+.mi-round:active { transform: translateY(2px); }
+.mi-round:disabled { opacity: 0.35; pointer-events: none; }
+.mi-ring-btn { border-radius: 50%; }
+.mi-ring-btn .timer-ring { margin: 0; }
+.timer-ring .t.mi-t { font-size: 2.6rem; line-height: 1; display: grid; place-items: center; }
+.timer-ring .t.mi-t.hot { color: var(--gold); }
+.timer-ring .t.mi-t.get { color: var(--frost); }
+.mi-ring-btn .timer-ring .t.mi-t.sm { font-size: 2.1rem; margin-top: 0; }
+.mi-next { text-align: center; color: var(--mist); font-weight: 700; margin: -4px 0 -2px; }
+.mi-next b { color: var(--ink-2); font-weight: 800; }
+.mi-btn-time { opacity: 0.7; margin-left: 2px; }
+.mi-ring-btn .timer-ring { display: grid; place-items: center; align-content: center; }
+.mi-unit { position: absolute; bottom: 30px; left: 0; right: 0; text-align: center; font-size: 0.72rem; font-weight: 800; color: var(--mist); }
+.mi-ring-btn .t { margin-top: -8px; }
+.mi-reps {
+  width: 124px; height: 124px; border-radius: 50%; display: grid; place-items: center; align-content: center;
+  background: var(--pine-soft); border: 4px solid var(--pine-line);
+}
+.mi-reps .num { font-size: 2.7rem; line-height: 1; color: var(--ink); }
+.mi-reps small { font-size: 0.72rem; font-weight: 800; color: var(--mist); }
+.mi-skip { align-self: center; color: var(--mist); margin-top: -6px; }
+
+/* ---------- finish ---------- */
+.mi-cele { position: relative; display: grid; justify-items: center; gap: 10px; text-align: center; padding-top: 18px; }
+.mi-cele .big-title { font-size: 2rem; }
+.mi-note { color: var(--ink-2); font-weight: 700; }
+.mi-confetti { position: absolute; inset: -10px 0 auto; height: 260px; pointer-events: none; overflow: hidden; }
+.mi-confetti i {
+  position: absolute; top: -12px; left: var(--x); width: var(--s); height: var(--s); border-radius: 2px;
+  background: var(--c); opacity: 0;
+  animation: mi-fall var(--d) var(--ease-out) var(--delay) forwards;
+}
+@keyframes mi-fall {
+  0% { opacity: 1; transform: translate3d(0, 0, 0) rotate(0); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translate3d(0, 240px, 0) rotate(var(--rot)); }
+}
+
+/* ---------- «Сегодня» card ---------- */
+.mi-card {
+  display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center;
+  min-height: 70px; padding: 10px 10px 10px 14px; border-radius: var(--r-lg);
+  background: var(--surface); border: var(--bw) solid var(--pine-line); box-shadow: var(--shadow-1);
+  color: var(--ink); text-decoration: none;
+}
+.mi-card b { font-family: var(--display); font-weight: 800; font-size: 1.06rem; display: block; }
+.mi-card small { display: block; color: var(--mist); font-weight: 800; font-size: 0.82rem; }
+.mi-card .mi-play {
+  width: 48px; height: 48px; border-radius: 16px; display: grid; place-items: center;
+  background: var(--pine); color: var(--pine-ink); box-shadow: 0 3px 0 color-mix(in srgb, var(--pine) 45%, #000);
+}
+.mi-card.done { border-color: var(--card-line); }
+.mi-card.done .mi-play { background: var(--pine-soft); color: var(--pine); box-shadow: none; }
+.mi-card.done small { color: var(--pine); }
+
+@media (min-width: 1024px) {
+  .app.focus .page { max-width: 640px; }
+}

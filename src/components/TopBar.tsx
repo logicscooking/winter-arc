@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Px } from '../pixel/Pixel'
 import type { SpriteName } from '../pixel/sprites'
 import { useGame } from '../store/hooks'
+import { MorningMusicBtn } from '../screens/Morning'
 
 /** A pixel icon button in the top bar: a link or an action, with an optional number pill */
 export function BarBtn({ icon, label, href, onClick, badge }: { icon: SpriteName; label: string; href?: string; onClick?: () => void; badge?: ReactNode }) {
@@ -42,11 +43,11 @@ export function BackBtn({ href, onBack }: { href?: string; onBack?: () => void }
 }
 
 /** The sticky island on top of every screen: title in the middle, pixel actions on the sides */
-export function TopBar({ title, left, right }: { title: ReactNode; left?: ReactNode; right?: ReactNode }) {
+export function TopBar({ title, left, right, titleClass }: { title: ReactNode; left?: ReactNode; right?: ReactNode; titleClass?: string }) {
   return (
     <header className="topbar">
       <div className="topbar-side">{left}</div>
-      <h1 className="topbar-title">{title}</h1>
+      <h1 className={`topbar-title${titleClass ? ` ${titleClass}` : ''}`}>{title}</h1>
       <div className="topbar-side end">{right}</div>
     </header>
   )
@@ -92,6 +93,8 @@ export function RouteTopBar({ top, sub, query }: { top: string; sub?: string; qu
       return <TopBar title="Судьба дня" left={<BackBtn href="#/today" />} right={shop} />
     case 'plan':
       return <TopBar title="План дня" left={<BackBtn href="#/today" />} right={<BarBtn icon="plinko" label="Судьба дня: Плинко" href="#/destiny" />} />
+    case 'morning':
+      return <TopBar title="Утренняя инвестиция" titleClass="mi-bar-title" left={<BackBtn href="#/today" />} right={<MorningMusicBtn />} />
     case 'finale':
       return <TopBar title="Финал арки" left={<BackBtn href="#/today" />} />
     case 'skill':

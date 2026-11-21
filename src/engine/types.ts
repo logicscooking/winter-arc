@@ -86,6 +86,8 @@ export interface DayLog {
   plinko?: Record<string, PlinkoDrop>
   /** v0.7 Плинко: the day's 16 slots (PLINKO_POOL ids or '@reroll' / '@rest', slot 0 = left edge), laid out once at random */
   plinkoBoard?: string[]
+  /** «Утренняя инвестиция»: the warm-up program was finished at, ms (a partial run writes nothing) */
+  morningAt?: number
 }
 
 export interface Destiny {
@@ -280,6 +282,10 @@ export interface Settings {
   aiUse?: { day: DayKey; n: number; last: number }
   /** v0.7 «Заработано»: publish week / arc totals to the party (missing = off) */
   moneyShare?: boolean
+  /** «Утренняя инвестиция»: the final block (squats + push-ups) for men or women; missing = ask on first run */
+  morningFinal?: 'm' | 'f'
+  /** «Утренняя инвестиция»: ambient music on this device (missing = on, kept local) */
+  morningMusic?: boolean
 }
 
 export interface Ack {

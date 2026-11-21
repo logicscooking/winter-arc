@@ -19,6 +19,7 @@ import { taskXp } from './tasks'
 import { duelEvents } from './duels'
 import { plinkoEvents } from './plinko'
 import { moneyEvents } from './money'
+import { morningDone, morningEvents } from './morning'
 import { FLOW, barMult, flowAt, flowWindows, skillEvents } from './skills'
 import {
   ARC_END,
@@ -59,6 +60,8 @@ export interface DayResult {
   crits: string[]
   /** «Судьба дня» finished before the timer ran out */
   destinyWon: boolean
+  /** «Утренняя инвестиция» finished */
+  morning: boolean
 }
 
 export interface BossState {
@@ -266,6 +269,8 @@ export function computeState(data: AppData, now: Date): GameState {
   for (const e of plinkoEvents(data)) push({ day: e.day, at: e.at, xp: e.xp, stat: e.stat, shards: e.shards })
   // v0.7 «Заработано»: once a day into «Дело», by the order of the day's total
   for (const e of moneyEvents(data)) push({ day: e.day, at: e.at, xp: e.xp, stat: 'deal' })
+  // «Утренняя инвестиция»: once per game day, when the program was finished
+  for (const e of morningEvents(data)) push({ day: e.day, at: e.at, xp: e.xp, stat: e.stat, shards: e.shards })
   for (const s of data.slips) {
     push({ day: s.day, at: s.at, hp: HP.slip })
     if (s.comebackAt && s.comebackAt >= s.at && s.comebackAt - s.at <= COMEBACK_WINDOW_MS) {
@@ -349,6 +354,7 @@ export function computeState(data: AppData, now: Date): GameState {
       bossDamage: info.boss,
       crits: info.crits,
       destinyWon: info.destinyWon,
+      morning: morningDone(log),
     }
 
     if (closed && warmup) {

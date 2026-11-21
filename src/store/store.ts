@@ -98,6 +98,8 @@ interface Store {
   /** v0.7: the day's 16 slot tasks */
   setPlinkoBoard: (day: DayKey, ids: string[]) => void
   setBlocks: (day: DayKey, blocks: TimeBlock[]) => void
+  /** «Утренняя инвестиция» finished: once per game day, a later finish keeps the first */
+  finishMorning: (day: DayKey, at: number) => void
   setSettings: (patch: Partial<Settings>) => void
   // ---- v0.4 skills ----
   createSkill: (m: Materialized) => SkillStatus
@@ -377,6 +379,11 @@ export const useStore = create<Store>()(
             else delete log.blocks
           }),
         setSettings: (patch) => update((d) => void Object.assign(d.settings, patch)),
+        finishMorning: (day, at) =>
+          update((d) => {
+            const log = dayLog(d, day)
+            if (log.morningAt === undefined) log.morningAt = at
+          }),
 
         // ---------- v0.4 skills ----------
         createSkill: (m) => {

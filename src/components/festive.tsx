@@ -9,7 +9,7 @@ function rnd(seed: number) {
 }
 
 /** true while the system asks for less motion */
-function useReducedMotion() {
+export function useReducedMotion() {
   const q = '(prefers-reduced-motion: reduce)'
   return useSyncExternalStore(
     (cb) => {
