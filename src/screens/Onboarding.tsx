@@ -10,6 +10,7 @@ import { AuthForm } from '../components/AuthForm'
 import { Sheet } from '../components/ui'
 import { cloudConfigured } from '../cloud/client'
 import { useSocial } from '../cloud/state'
+import { TimePicker } from '../components/TimePicker'
 
 const AVATARS = ['🐺', '🦊', '🐻‍❄️', '🦉', '🐧', '🦌', '🐉', '🦅', '🗻', '🔥', '❄️', '🌑']
 
@@ -119,7 +120,7 @@ export function Onboarding() {
               <p className="muted">Цель — 07:00. Сдвигаемся на 30 минут каждые 2 дня, без рывков. Цель дня будет в квесте «Подъём».</p>
             </div>
             <Field label="Обычный подъём">
-              <input className="input num" type="time" value={wake} onChange={(e) => setWake(e.target.value)} />
+              <TimePicker label="Обычный подъём" value={wake} onChange={(v) => v && setWake(v)} />
             </Field>
             {planRows.length > 0 ? (
               <div className="panel kv small">

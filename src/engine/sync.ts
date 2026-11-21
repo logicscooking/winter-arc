@@ -10,7 +10,7 @@
  * Nothing here touches storage or the network.
  */
 import { V04_COLLECTIONS, normalizeData } from './data'
-import type { AppData, DayLog, PlinkoDrop, Task } from './types'
+import type { AppData, DayLog, Task } from './types'
 
 export type Atoms = Record<string, unknown>
 
@@ -35,6 +35,8 @@ const SEP = '/'
 const COLLECTIONS = ['quests', 'tasks', 'slips', 'cravings', 'purchases', 'rewards', 'pauses', 'books', ...V04_COLLECTIONS] as const
 type CollectionKey = (typeof COLLECTIONS)[number]
 const SET_ACKS = ['reviewedWeeks', 'hints', 'celebrated'] as const
+/** Day-log maps whose entries are separate atoms: `days/<day>/<map>/<key>` */
+const DAY_MAPS = ['quests', 'plinko', 'dayBlocks', 'assign', 'transitions'] as const
 const KNOWN = new Set<string>(['schemaVersion', 'profile', 'days', 'activeBookId', 'baseline', 'final', 'reviews', 'settings', 'ack', ...COLLECTIONS])
 
 // ---------- canonical JSON ----------
@@ -73,10 +75,9 @@ export function toAtoms(d: AppData): Atoms {
   }
   for (const [day, log] of Object.entries(d.days ?? {})) {
     if (!log) continue
-    for (const [qid, m] of Object.entries(log.quests ?? {})) put(`days${SEP}${day}${SEP}quests${SEP}${qid}`, m)
-    // v0.6 Plinko throws merge per throw, like quest marks
-    for (const [n, drop] of Object.entries(log.plinko ?? {})) put(`days${SEP}${day}${SEP}plinko${SEP}${n}`, drop)
-    for (const [k, v] of Object.entries(log)) if (k !== 'quests' && k !== 'plinko') put(`days${SEP}${day}${SEP}${k}`, v)
+    // quest marks, Plinko throws (v0.6) and the v0.9 plan maps merge per entry
+    for (const k of DAY_MAPS) for (const [id, v] of Object.entries((log[k] ?? {}) as Record<string, unknown>)) put(`days${SEP}${day}${SEP}${k}${SEP}${id}`, v)
+    for (const [k, v] of Object.entries(log)) if (!(DAY_MAPS as readonly string[]).includes(k)) put(`days${SEP}${day}${SEP}${k}`, v)
   }
   put('activeBookId', d.activeBookId)
   for (const k of ['baseline', 'final'] as const) for (const [f, v] of Object.entries(d[k] ?? {})) put(`${k}${SEP}${f}`, v)
@@ -132,9 +133,9 @@ export function fromAtoms(atoms: Atoms, local: AppData): AppData {
     else if (head === 'days') {
       const day = parts[1]
       const log: DayLog = (out.days[day] ??= { quests: {} })
-      if (parts[2] === 'quests' && parts.length >= 4) log.quests[parts.slice(3).join(SEP)] = v as DayLog['quests'][string]
-      else if (parts[2] === 'plinko' && parts.length >= 4) (log.plinko ??= {})[parts.slice(3).join(SEP)] = v as PlinkoDrop
-      else (log as unknown as Record<string, unknown>)[parts[2]] = v
+      const raw = log as unknown as Record<string, Record<string, unknown> | unknown>
+      if ((DAY_MAPS as readonly string[]).includes(parts[2]) && parts.length >= 4) ((raw[parts[2]] ??= {}) as Record<string, unknown>)[parts.slice(3).join(SEP)] = v
+      else raw[parts[2]] = v
     } else if (head === 'activeBookId') out.activeBookId = v as string
     else if (head === 'baseline' || head === 'final') (out[head] as Record<string, unknown>)[parts[1]] = v
     else if (head === 'reviews') (out.reviews as Record<string, unknown>)[parts[1]] = v
@@ -239,6 +240,8 @@ const minNum = (a: unknown, b: unknown) => (typeof a === 'number' && typeof b ==
 function resolverFor(path: string): ((a: unknown, b: unknown) => unknown) | undefined {
   if (RESOLVERS[path]) return RESOLVERS[path]
   if (path.startsWith(`days${SEP}`) && path.endsWith(`${SEP}morningAt`)) return minNum
+  // «Переход» done on both devices → the earliest
+  if (path.startsWith(`days${SEP}`) && path.split(SEP)[2] === 'transitions') return minNum
   return undefined
 }
 

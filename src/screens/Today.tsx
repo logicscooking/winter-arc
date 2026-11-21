@@ -39,6 +39,7 @@ import { ThemeCard } from '../components/skills'
 import { MoneySheet } from '../components/Money'
 import { buildProgram, programMinutes } from '../morning/program'
 import { useWhySeen } from './Why'
+import { TransitionCard } from './PlanDay'
 import '../morning/morning.css'
 
 export function Today() {
@@ -270,6 +271,7 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
             </div>
           )}
 
+          <TransitionCard />
           <MorningCard />
           <BarOffers />
           <ThemeCard compact />

@@ -1,8 +1,8 @@
 import { DEFAULT_QUESTS, REELS_LIMIT } from './quests'
-import { sanitizeBlock } from './plan'
+import { migrateDayPlan, transitionReps } from './plan'
 import { isBoard, sanitizeDrop } from './plinko'
 import { validMorningAt } from './morning'
-import type { AppData, DayLog, PlinkoDrop, TimeBlock } from './types'
+import type { AppData, DayLog, PlinkoDrop } from './types'
 
 export const SCHEMA_VERSION = 1
 export const STORAGE_KEY = 'winter-arc-v1'
@@ -50,31 +50,32 @@ export function normalizeData(raw: unknown): AppData {
   const base = createInitialData()
   // v0.4 collections: anything that is not an array (corrupt or from a future shape) becomes empty
   for (const k of V04_COLLECTIONS) if (k in r && !Array.isArray(r[k])) delete (r as Record<string, unknown>)[k]
+  const settings = { ...base.settings, theme: 'auto' as const, ...(r.settings ?? {}) }
+  // v0.9 «Переход»: reps stay within 10..100
+  if (settings.transition !== undefined) settings.transition = transitionReps(settings.transition)
   return migrateV03({
     ...base,
     ...r,
     schemaVersion: 1,
     // a backup without a theme was made before v0.3: keep it following the system, as it did
-    settings: { ...base.settings, theme: 'auto', ...(r.settings ?? {}) },
+    settings,
     ack: { ...base.ack, ...(r.ack ?? {}) },
   } as AppData)
 }
 
 /**
- * v0.3 fields are optional additions (day blocks, destiny, outfit, reward icon), so old data stays
+ * v0.3+ fields are optional additions (day blocks, destiny, outfit, reward icon), so old data stays
  * valid as is and schemaVersion stays 1. Here they are only sanitized; nothing is ever dropped
  * except a malformed v0.3 field.
  */
 function migrateV03(d: AppData): AppData {
   let days = d.days
   for (const [day, log] of Object.entries(d.days ?? {})) {
-    if (!log || (log.blocks === undefined && log.destiny === undefined && log.plinko === undefined && log.plinkoBoard === undefined && log.morningAt === undefined)) continue
-    const next: DayLog = { ...log }
-    if (log.blocks !== undefined) {
-      const clean = Array.isArray(log.blocks) ? log.blocks.map(sanitizeBlock).filter((b): b is TimeBlock => !!b) : []
-      if (clean.length) next.blocks = clean
-      else delete next.blocks
-    }
+    if (!log) continue
+    const plan = migrateDayPlan(log)
+    if (plan === log && log.destiny === undefined && log.plinko === undefined && log.plinkoBoard === undefined && log.morningAt === undefined) continue
+    // v0.9 «План дня»: legacy blocks become day blocks with their quest inside (engine/plan.ts)
+    const next: DayLog = plan === log ? { ...log } : plan
     const z = log.destiny
     if (z !== undefined && !(z && (z.ref === 'quest' || z.ref === 'task') && typeof z.id === 'string' && Number.isFinite(z.startedAt) && Number.isFinite(z.minutes))) delete next.destiny
     if (log.plinko !== undefined) {

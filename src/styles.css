@@ -2038,8 +2038,6 @@ input[type='time'].input, input[type='date'].input {
 input[type='time'].input::-webkit-date-and-time-value, input[type='date'].input::-webkit-date-and-time-value { text-align: left; margin: 0; }
 /* room under the top bar for the hanging bulbs, so the first row of every screen stays clear */
 body:has(.top-garland:not(.is-off)) .topbar { margin-bottom: 26px; }
-/* «План дня» on a 375px phone: quest names get a third line instead of an ellipsis */
-#plan-add .pick span { -webkit-line-clamp: 3; line-clamp: 3; }
 
 /* ---------- v8 «чистка»: «?» help, Пати sections, the flow pill, «Зачем мы здесь» ---------- */
 
@@ -2126,3 +2124,10 @@ a.btn.flow-on { background: var(--gold-soft); color: var(--ink); border: var(--b
 .why-rule { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: center; border-color: var(--pine-line); }
 .why-rule p { margin: 0; line-height: 1.42; color: var(--ink-2); font-weight: 600; }
 .why-rule b { color: var(--ink); font-family: var(--display); font-weight: 800; display: block; margin-bottom: 2px; }
+
+/* v0.9: scrolled content slides under the top bar and its hanging garland, never through the bulbs:
+   a bar-coloured band (solid, then fading) fills the room the garland hangs in */
+body:has(.top-garland:not(.is-off)) .topbar::after {
+  content: ''; position: absolute; left: -100vmax; right: -100vmax; top: 100%; height: 30px; z-index: -1; pointer-events: none;
+  background: linear-gradient(var(--bar-bg) 0, var(--bar-bg) 50%, color-mix(in srgb, var(--bar-bg) 0%, transparent));
+}

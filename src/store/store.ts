@@ -37,7 +37,7 @@ import type {
   Destiny,
   PlinkoDrop,
   Outfit,
-  TimeBlock,
+  PlanBlock,
   ChapterId,
   ChestType,
   FlowBlock,
@@ -97,7 +97,19 @@ interface Store {
   setPlinkoLater: (day: DayKey, n: number, at: number) => void
   /** v0.7: the day's 16 slot tasks */
   setPlinkoBoard: (day: DayKey, ids: string[]) => void
-  setBlocks: (day: DayKey, blocks: TimeBlock[]) => void
+  // ---- v0.9 «План дня» ----
+  /** add or replace a block of the day */
+  putPlanBlock: (day: DayKey, b: PlanBlock) => void
+  /** remove a block; what was inside goes back to «Без времени» */
+  removePlanBlock: (day: DayKey, id: string) => void
+  /** replace all blocks of the day (a template); assignments to removed blocks are dropped */
+  setPlanBlocks: (day: DayKey, blocks: PlanBlock[]) => void
+  /** put a plan item (`quest:id`, `task:id`, …) into a block, or back to «Без времени» (null) */
+  assignPlan: (day: DayKey, key: string, blockId: string | null) => void
+  /** «Переход» before a block: done at (ms) or undo (null) */
+  setTransition: (day: DayKey, blockId: string, at: number | null) => void
+  /** a custom task of a plan day: a daily task on that day (the same list as on «Сегодня») */
+  addDayTask: (day: DayKey, title: string, now: Date) => string
   /** «Утренняя инвестиция» finished: once per game day, a later finish keeps the first */
   finishMorning: (day: DayKey, at: number) => void
   setSettings: (patch: Partial<Settings>) => void
@@ -145,6 +157,16 @@ interface Store {
 }
 
 const dayLog = (d: AppData, day: DayKey): DayLog => (d.days[day] ??= { quests: {} })
+
+/** v0.9 «План дня»: assignments and transitions of blocks that are gone, and empty maps, go away */
+function dropPlanOrphans(log: DayLog) {
+  const blocks = log.dayBlocks ?? {}
+  for (const [k, v] of Object.entries(log.assign ?? {})) if (!blocks[v]) delete log.assign![k]
+  for (const id of Object.keys(log.transitions ?? {})) if (!blocks[id]) delete log.transitions![id]
+  if (log.dayBlocks && !Object.keys(log.dayBlocks).length) delete log.dayBlocks
+  if (log.assign && !Object.keys(log.assign).length) delete log.assign
+  if (log.transitions && !Object.keys(log.transitions).length) delete log.transitions
+}
 
 function applyReadingDelta(d: AppData, delta: number, day: DayKey) {
   const book = d.books.find((b) => b.id === d.activeBookId)
@@ -372,12 +394,51 @@ export const useStore = create<Store>()(
             const drop = d.days[day]?.plinko?.[String(n)]
             if (drop && drop.doneAt === undefined && drop.laterAt === undefined) drop.laterAt = at
           }),
-        setBlocks: (day, blocks) =>
+        putPlanBlock: (day, b) =>
           update((d) => {
             const log = dayLog(d, day)
-            if (blocks.length) log.blocks = blocks
-            else delete log.blocks
+            ;(log.dayBlocks ??= {})[b.id] = { ...b }
           }),
+        removePlanBlock: (day, id) =>
+          update((d) => {
+            const log = d.days[day]
+            if (!log?.dayBlocks?.[id]) return
+            delete log.dayBlocks[id]
+            dropPlanOrphans(log)
+          }),
+        setPlanBlocks: (day, blocks) =>
+          update((d) => {
+            const log = dayLog(d, day)
+            log.dayBlocks = Object.fromEntries(blocks.map((b) => [b.id, { ...b }]))
+            dropPlanOrphans(log)
+          }),
+        assignPlan: (day, key, blockId) =>
+          update((d) => {
+            const log = dayLog(d, day)
+            if (blockId && log.dayBlocks?.[blockId]) (log.assign ??= {})[key] = blockId
+            else if (log.assign) {
+              delete log.assign[key]
+              if (!Object.keys(log.assign).length) delete log.assign
+            }
+          }),
+        setTransition: (day, blockId, at) =>
+          update((d) => {
+            const log = dayLog(d, day)
+            if (at !== null && log.dayBlocks?.[blockId]) {
+              if (!log.transitions?.[blockId]) (log.transitions ??= {})[blockId] = at
+            } else if (log.transitions) {
+              delete log.transitions[blockId]
+              if (!Object.keys(log.transitions).length) delete log.transitions
+            }
+          }),
+        addDayTask: (day, title, now) => {
+          const id = uid()
+          update((d) => {
+            const siblings = d.tasks.filter((t) => t.parentId === null && t.scope === 'daily')
+            d.tasks.push({ id, parentId: null, title, stat: 'deal', scope: 'daily', day, createdAt: now.getTime(), postponed: 0, order: siblings.length })
+          })
+          return id
+        },
         setSettings: (patch) => update((d) => void Object.assign(d.settings, patch)),
         finishMorning: (day, at) =>
           update((d) => {

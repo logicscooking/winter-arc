@@ -6,6 +6,7 @@ import { useStore } from '../store/store'
 import { haptic, nowWithOffset, useFx } from '../store/hooks'
 import { useUi } from '../store/ui'
 import { Chips, Field, Sheet } from '../components/ui'
+import { TimePicker } from '../components/TimePicker'
 
 type Draft = Omit<Confession, 'at'>
 
@@ -120,7 +121,7 @@ export function ConfessionSheet({ day }: { day: DayKey }) {
             <input className="input num" type="number" inputMode="numeric" min={0} max={1440} value={draft.reelsMin} onChange={(e) => set('reelsMin', Math.min(1440, Math.max(0, Number(e.target.value) || 0)))} />
           </Field>
           <Field label="Во сколько ляжешь">
-            <input className="input num" type="time" value={draft.bedtime} onChange={(e) => set('bedtime', e.target.value)} />
+            <TimePicker label="Во сколько ляжешь" value={draft.bedtime} onChange={(v) => v && set('bedtime', v)} />
           </Field>
         </div>
         <Chips<SugarAnswer>

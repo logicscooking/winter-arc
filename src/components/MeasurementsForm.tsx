@@ -1,5 +1,6 @@
 import type { Measurements } from '../engine'
 import { Field, NumInput } from './ui'
+import { TimePicker } from './TimePicker'
 
 export const MEASURE_FIELDS: { key: keyof Measurements; label: string; unit?: string; better: 'up' | 'down' | 'time' }[] = [
   { key: 'wake', label: 'Обычное время подъёма', better: 'time' },
@@ -23,7 +24,7 @@ export function MeasurementsForm({ value, onChange }: { value: Measurements; onC
       {MEASURE_FIELDS.map((f) => (
         <Field key={f.key} label={f.unit ? `${f.label}, ${f.unit}` : f.label}>
           {f.key === 'wake' ? (
-            <input className="input num" type="time" value={value.wake ?? ''} onChange={(e) => onChange({ ...value, wake: e.target.value || undefined })} />
+            <TimePicker label={f.label} optional value={value.wake ?? ''} onChange={(v) => onChange({ ...value, wake: v || undefined })} />
           ) : (
             <NumInput value={value[f.key] as number | undefined} onChange={(v) => onChange({ ...value, [f.key]: v })} min={0} />
           )}

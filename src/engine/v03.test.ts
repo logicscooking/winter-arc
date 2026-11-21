@@ -136,11 +136,14 @@ describe('План дня', () => {
     log(data, D1).destiny = { ref: 'quest', id: 'water', startedAt: 1, minutes: 25 }
     mark(data, D1, 'wake')
     const back = normalizeData(JSON.parse(JSON.stringify(data)))
-    expect(back.days[D1].blocks).toEqual(data.days[D1].blocks)
+    // v0.9: the legacy block lives on as a day block with its quest inside
+    expect(back.days[D1].blocks).toBeUndefined()
+    expect(back.days[D1].dayBlocks).toEqual({ a: { id: 'a', start: 600, dur: 60, title: 'Тренировка', color: 'body' } })
+    expect(back.days[D1].assign).toEqual({ 'quest:workout': 'a' })
     expect(back.days[D1].destiny).toEqual(data.days[D1].destiny)
     expect(back.days[D1].quests.wake.status).toBe('done')
     const broken = normalizeData({ ...JSON.parse(JSON.stringify(data)), days: { [D1]: { quests: {}, blocks: 'x', destiny: { ref: 'nope' } } } })
-    expect(broken.days[D1]).toEqual({ quests: {} })
+    expect(broken.days[D1]).toEqual({ quests: {}, planV: 2 })
   })
 })
 

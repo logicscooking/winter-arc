@@ -5,6 +5,7 @@ import { useStore } from '../store/store'
 import { nowWithOffset, reward } from '../store/hooks'
 import { useUi } from '../store/ui'
 import { Field, Rating, Sheet } from '../components/ui'
+import { TimePicker } from '../components/TimePicker'
 
 export function CheckinSheet({ day }: { day: DayKey }) {
   const close = useUi((s) => s.close)
@@ -35,7 +36,7 @@ export function CheckinSheet({ day }: { day: DayKey }) {
     <Sheet title="Доброе утро" onClose={dismiss}>
       <div className="stack-lg">
         <Field label="Во сколько встал">
-          <input className="input num" type="time" value={wake} onChange={(e) => setWake(e.target.value)} />
+          <TimePicker label="Во сколько встал" step={1} value={wake} onChange={(v) => v && setWake(v)} />
         </Field>
         {target !== undefined && (
           <p className="small" style={{ marginTop: -10, color: onTarget ? 'var(--pine)' : 'var(--mist)' }}>

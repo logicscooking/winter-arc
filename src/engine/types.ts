@@ -78,8 +78,16 @@ export interface DayLog {
   dealTaskId?: string
   /** v0.3 «Судьба дня»: the quest/task picked by the spin and its focus timer */
   destiny?: Destiny
-  /** v0.3 «План дня»: time blocks on the 24h ring */
+  /** v0.3 «План дня» (legacy): one quest per time block; migrated into dayBlocks + assign on load */
   blocks?: TimeBlock[]
+  /** v0.9 «План дня»: the day split into a few blocks, by block id (synced per block) */
+  dayBlocks?: Record<string, PlanBlock>
+  /** v0.9 «План дня»: what goes into which block, plan item key (`quest:id`, `task:id`, `node:id`, `goal:id`) → block id */
+  assign?: Record<string, string>
+  /** v0.9 «Переход» before a block (push-ups + squats): block id → done at, ms */
+  transitions?: Record<string, number>
+  /** v0.9: the legacy `blocks` of this day were migrated; a late copy from an old device is ignored */
+  planV?: 2
   /** v0.4 «Сегодня качаю»: a skill node as the Deal of the day; a practice on it closes the quest */
   dealNodeId?: string
   /** v0.6 «Судьба дня» Плинко: throws of the day by throw number ("0", "1") */
@@ -130,6 +138,26 @@ export interface TimeBlock {
   stat?: StatId
   ref?: { kind: 'quest' | 'task'; id: string }
 }
+
+/** v0.9 «План дня»: block colours are theme tokens (stats + frost + gold) */
+export type BlockColor = StatId | 'frost' | 'gold'
+
+/** v0.9 «План дня»: one block of the day, «Утро · фокус 09:00–11:30» */
+export interface PlanBlock {
+  id: string
+  title: string
+  /** minutes from 00:00 of the calendar day, 0..1439 (a game day runs 04:00–04:00) */
+  start: number
+  /** minutes, 5..720 */
+  dur: number
+  color?: BlockColor
+  /** pixel sprite name from PLAN_ICONS */
+  icon?: string
+  /** work block: counts towards «не больше 6 ч» and «до 17:00» */
+  work?: boolean
+}
+
+export type PlanItemKind = 'quest' | 'task' | 'node' | 'goal'
 
 export type TaskScope = 'deal' | 'daily'
 
@@ -296,6 +324,8 @@ export interface Settings {
   morningFinal?: 'm' | 'f'
   /** «Утренняя инвестиция»: ambient music on this device (missing = on, kept local) */
   morningMusic?: boolean
+  /** v0.9 «Переход» between plan blocks: reps (missing = 10 + 10, never below) */
+  transition?: { push: number; squat: number }
 }
 
 export interface Ack {
