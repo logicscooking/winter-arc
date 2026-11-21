@@ -11,14 +11,14 @@
  */
 
 const CHORDS: number[][] = [
-  [50, 57, 64, 66, 69], // Dmaj9
-  [47, 54, 61, 62, 66], // Bm9
-  [43, 50, 54, 59, 61], // Gmaj7♯11
-  [45, 52, 57, 59, 64], // Asus2
+  [62, 69, 76, 78, 81], // Dmaj9
+  [59, 66, 73, 74, 78], // Bm9
+  [55, 62, 66, 71, 73], // Gmaj7♯11
+  [57, 64, 69, 71, 76], // Asus2
 ]
-const BELLS = [74, 76, 78, 81, 83, 86] // D pentatonic, upper octave
+const BELLS = [86, 88, 90, 93, 95, 98] // D pentatonic, above the pad
 const CHORD_SEC = 14
-const ATTACK = 5
+const ATTACK = 2.5
 const RELEASE = 7
 const LOOKAHEAD = 2.5
 
@@ -54,9 +54,17 @@ function impulse(ctx: BaseAudioContext, seconds = 4.5): AudioBuffer {
 
 /** The whole graph on any context (also an OfflineAudioContext, to listen to it in a test page) */
 export function buildGraph(ctx: BaseAudioContext, dest: AudioNode): Graph {
+  // a limiter at the end: the level is set for phone speakers, the compressor keeps the peaks clean
+  const limiter = ctx.createDynamicsCompressor()
+  limiter.threshold.value = -10
+  limiter.knee.value = 6
+  limiter.ratio.value = 12
+  limiter.attack.value = 0.005
+  limiter.release.value = 0.25
+  limiter.connect(dest)
   const master = ctx.createGain()
   master.gain.value = 0.9
-  master.connect(dest)
+  master.connect(limiter)
   const duck = ctx.createGain()
   duck.connect(master)
   const music = ctx.createGain()
@@ -72,13 +80,13 @@ export function buildGraph(ctx: BaseAudioContext, dest: AudioNode): Graph {
 
   const filter = ctx.createBiquadFilter()
   filter.type = 'lowpass'
-  filter.frequency.value = 950
+  filter.frequency.value = 2200
   filter.Q.value = 0.4
-  // the cutoff drifts 650 … 1250 Hz once every ~25 s
+  // the cutoff drifts 1700 … 2700 Hz once every ~25 s
   const lfo = ctx.createOscillator()
   lfo.frequency.value = 0.04
   const lfoAmt = ctx.createGain()
-  lfoAmt.gain.value = 300
+  lfoAmt.gain.value = 500
   lfo.connect(lfoAmt)
   lfoAmt.connect(filter.frequency)
   lfo.start()
@@ -145,14 +153,14 @@ export function scheduleChord(g: Graph, notes: number[], t: number) {
     o.stop(end + 0.05)
   }
   notes.forEach((n, i) => {
-    const peak = 0.05 / (1 + i * 0.3)
+    const peak = 0.13 / (1 + i * 0.3)
     voice(hz(n), peak, 'sine', -6)
     voice(hz(n), peak * 0.55, 'triangle', 7)
   })
-  voice(hz(notes[0] - 12), 0.06, 'sine', 0)
+  voice(hz(notes[0] - 12), 0.12, 'triangle', 0)
 }
 
-function scheduleBell(g: Graph, midi: number, t: number, vol = 0.022) {
+function scheduleBell(g: Graph, midi: number, t: number, vol = 0.05) {
   for (const [mult, v, dur] of [
     [1, vol, 3.2],
     [2.0, vol * 0.25, 1.6],
@@ -205,8 +213,49 @@ function resumeCtx() {
   if (c && c.state !== 'running' && c.state !== 'closed') void c.resume().catch(() => {})
 }
 
+/** a 0.1 s silent WAV: playing it through an <audio> element moves iOS to the «playback» session */
+function silentWav(): string {
+  const n = 800
+  const b = new Uint8Array(44 + n)
+  const v = new DataView(b.buffer)
+  const str = (o: number, t: string) => [...t].forEach((c, i) => (b[o + i] = c.charCodeAt(0)))
+  str(0, 'RIFF'); v.setUint32(4, 36 + n, true); str(8, 'WAVEfmt ')
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true)
+  v.setUint32(24, 8000, true); v.setUint32(28, 8000, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true)
+  str(36, 'data'); v.setUint32(40, n, true); b.fill(128, 44)
+  let bin = ''
+  b.forEach((x) => (bin += String.fromCharCode(x)))
+  return 'data:audio/wav;base64,' + btoa(bin)
+}
+
+let keepAlive: HTMLAudioElement | null = null
+
+/**
+ * iOS plays Web Audio in the «ambient» session, which the silent switch mutes. Declaring a playback
+ * session (Safari 16.4+) and looping a silent <audio> (older iOS) make the music play like a video does.
+ */
+function playbackSession() {
+  try {
+    const nav = navigator as Navigator & { audioSession?: { type: string } }
+    if (nav.audioSession) nav.audioSession.type = 'playback'
+  } catch {
+    /* not supported */
+  }
+  try {
+    if (!keepAlive) {
+      keepAlive = new Audio(silentWav())
+      keepAlive.loop = true
+      keepAlive.setAttribute('playsinline', '')
+    }
+    if (keepAlive.paused) void keepAlive.play().catch(() => {})
+  } catch {
+    keepAlive = null
+  }
+}
+
 /** Call from a tap handler: creates / resumes the context (iOS audio unlock) */
 export function unlockMorningAudio(): void {
+  playbackSession()
   if (ensure()) resumeCtx()
 }
 
@@ -250,7 +299,7 @@ export function startMusic(): void {
     clearInterval(timer)
     timer = setInterval(tickScheduler, 500)
   }
-  rampMusic(1, 4)
+  rampMusic(1, 2)
 }
 
 /** Fade out; the notes already playing ring out under the fade */
@@ -279,7 +328,10 @@ export function resumeAudio(): void {
   const c = ctxOf()
   if (!c) return
   resumeCtx()
-  if (playing) rampMusic(1, 2.5)
+  if (playing) {
+    rampMusic(1, 2.5)
+    if (keepAlive?.paused) void keepAlive.play().catch(() => {})
+  }
   // iOS may keep the context «interrupted» until the next tap
   if (c.state !== 'running') window.addEventListener('pointerdown', resumeCtx, { once: true, capture: true })
 }
@@ -287,6 +339,7 @@ export function resumeAudio(): void {
 /** Close everything when the player is left */
 export function releaseAudio(): void {
   stopMusic(0.8)
+  keepAlive?.pause()
 }
 
 // ---------- timer sounds ----------
