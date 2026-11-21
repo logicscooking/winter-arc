@@ -51,8 +51,8 @@ export function normalizeData(raw: unknown): AppData {
   // v0.4 collections: anything that is not an array (corrupt or from a future shape) becomes empty
   for (const k of V04_COLLECTIONS) if (k in r && !Array.isArray(r[k])) delete (r as Record<string, unknown>)[k]
   const settings = { ...base.settings, theme: 'auto' as const, ...(r.settings ?? {}) }
-  // v0.9 «Переход»: reps stay within 10..100
-  if (settings.transition !== undefined) settings.transition = transitionReps(settings.transition)
+  // v0.9 «Переход»: reps stay between the minimum for the sex (old 10 + 10 moves up) and 100
+  if (settings.transition !== undefined) settings.transition = transitionReps(settings.transition, settings.morningFinal)
   return migrateV03({
     ...base,
     ...r,
@@ -73,7 +73,7 @@ function migrateV03(d: AppData): AppData {
   for (const [day, log] of Object.entries(d.days ?? {})) {
     if (!log) continue
     const plan = migrateDayPlan(log)
-    if (plan === log && log.destiny === undefined && log.plinko === undefined && log.plinkoBoard === undefined && log.morningAt === undefined) continue
+    if (plan === log && log.destiny === undefined && log.plinko === undefined && log.plinkoBoard === undefined && log.morningAt === undefined && log.picks === undefined) continue
     // v0.9 «План дня»: legacy blocks become day blocks with their quest inside (engine/plan.ts)
     const next: DayLog = plan === log ? { ...log } : plan
     const z = log.destiny
@@ -89,6 +89,12 @@ function migrateV03(d: AppData): AppData {
     }
     if (log.plinkoBoard !== undefined && !isBoard(log.plinkoBoard)) delete next.plinkoBoard
     if (log.morningAt !== undefined && !validMorningAt(log.morningAt)) delete next.morningAt
+    if (log.picks !== undefined) {
+      const picks: Record<string, number> = {}
+      if (log.picks && typeof log.picks === 'object' && !Array.isArray(log.picks)) for (const [id, t] of Object.entries(log.picks)) if (typeof t === 'number' && Number.isFinite(t) && t > 0) picks[id] = t
+      if (Object.keys(picks).length) next.picks = picks
+      else delete next.picks
+    }
     if (days === d.days) days = { ...d.days }
     days[day] = next
   }

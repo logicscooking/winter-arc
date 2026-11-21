@@ -86,6 +86,8 @@ export interface DayLog {
   assign?: Record<string, string>
   /** v0.9 «Переход» before a block (push-ups + squats): block id → done at, ms */
   transitions?: Record<string, number>
+  /** v0.10 project tasks marked «на сегодня» for this day: task id → marked at, ms (synced per task) */
+  picks?: Record<string, number>
   /** v0.9: the legacy `blocks` of this day were migrated; a late copy from an old device is ignored */
   planV?: 2
   /** v0.4 «Сегодня качаю»: a skill node as the Deal of the day; a practice on it closes the quest */

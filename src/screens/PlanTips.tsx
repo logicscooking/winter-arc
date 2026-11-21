@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { formatDayRu } from '../engine'
+import { TRANSITION_MIN, formatDayRu } from '../engine'
+import { useStore } from '../store/store'
 import type { DayKey } from '../engine'
 import { Px } from '../pixel/Pixel'
 import type { SpriteName } from '../pixel/sprites'
@@ -22,7 +23,6 @@ const GROUPS: { title: string; icon: SpriteName; tips: Tip[] }[] = [
       { icon: 'star', text: <><b>Самое трудное — в первый блок</b></> },
       { icon: 'dial', text: <><b>Блок 60–90 минут</b>, потом перерыв 10–15</> },
       { icon: 'trophy', text: <><b>Один главный приоритет</b> на блок</> },
-      { icon: 'dumbbell', text: <>Перед каждым блоком — <b>переход 10 + 10</b></> },
     ],
   },
   {
@@ -51,9 +51,25 @@ const GROUPS: { title: string; icon: SpriteName; tips: Tip[] }[] = [
 
 export function PlanTips({ day, today, onApplied }: { day: DayKey; today: DayKey; onApplied: () => void }) {
   const apply = useApplyTemplate()
+  const sex = useStore((s) => s.data.settings.morningFinal) === 'f' ? 'f' : 'm'
+  const min = TRANSITION_MIN[sex]
+  const transition: Tip = {
+    icon: 'dumbbell',
+    text:
+      sex === 'f' ? (
+        <>
+          Перед каждым блоком — <b>переход: {min.squat} приседаний по Неумывакину + {min.push} отжиманий</b>
+        </>
+      ) : (
+        <>
+          Перед каждым блоком — <b>переход: {min.push} отжиманий + {min.squat} приседаний по Неумывакину</b>
+        </>
+      ),
+  }
+  const groups = GROUPS.map((g) => (g.title === 'Работа' ? { ...g, tips: [...g.tips, transition] } : g))
   return (
     <div className="stack-lg pd-tips">
-      {GROUPS.map((g) => (
+      {groups.map((g) => (
         <section key={g.title} className="pd-tip-group">
           <h2>
             <Px name={g.icon} size={24} /> {g.title}

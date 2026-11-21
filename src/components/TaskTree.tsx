@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
-import { Check, ChevronDown, ChevronRight, Crosshair, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
-import { MAX_DEPTH, childrenOf, depthOf, needsSplitHint, plural, taskXp } from '../engine'
+import { Check, ChevronDown, ChevronRight, Crosshair, MoreHorizontal, Pencil, Plus, Sun, Trash2 } from 'lucide-react'
+import { MAX_DEPTH, childrenOf, depthOf, needsSplitHint, plural, projectTasksFor, taskXp } from '../engine'
 import type { DayKey, Task, TaskScope } from '../engine'
 import { useStore } from '../store/store'
 import { nowWithOffset, reward } from '../store/hooks'
@@ -13,6 +13,8 @@ interface Props {
   pickDay?: DayKey
   dealId?: string
   locked?: boolean
+  /** v0.10: project tasks that show up on «Сегодня» for pickDay (filled by TaskTree) */
+  onToday?: Set<string>
 }
 
 export function AddTask({ scope, parentId, placeholder, onDone, autoFocus }: { scope: TaskScope; parentId: string | null; placeholder: string; onDone?: () => void; autoFocus?: boolean }) {
@@ -41,6 +43,8 @@ function Node({ t, props, depth }: { t: Task; props: Props; depth: number }) {
   const del = useStore((s) => s.deleteTask)
   const rename = useStore((s) => s.renameTask)
   const setDeal = useStore((s) => s.setDeal)
+  const setPick = useStore((s) => s.setPick)
+  const pickedToday = useStore((s) => !!(props.pickDay && s.data.days[props.pickDay]?.picks?.[t.id]))
   const say = useUi((s) => s.say)
   const confirm = useUi((s) => s.confirm)
   const [adding, setAdding] = useState(false)
@@ -52,6 +56,8 @@ function Node({ t, props, depth }: { t: Task; props: Props; depth: number }) {
   const canAdd = depth + 1 <= MAX_DEPTH[t.scope]
   const canPick = props.pickDay && t.scope === 'deal' && depth >= 1 && !t.doneAt
   const picked = props.dealId === t.id
+  const canToday = !!props.pickDay && t.scope === 'deal' && depth >= 1 && !t.doneAt && !picked
+  const shownToday = !!props.onToday?.has(t.id)
 
   const onTick = (el: HTMLElement) => {
     if (props.locked) return
@@ -104,6 +110,8 @@ function Node({ t, props, depth }: { t: Task; props: Props; depth: number }) {
           )}
           <div className="row wrap" style={{ gap: 6, marginTop: 2 }}>
             {picked && <span className="tag base">Дело дня</span>}
+            {!picked && pickedToday && <span className="tag today-tag">на сегодня</span>}
+            {!picked && !pickedToday && shownToday && !t.doneAt && <span className="tag">в «Сегодня»</span>}
             {t.postponed > 0 && !t.doneAt && (
               <span className={`tag ${t.postponed >= 3 ? 'ember' : ''}`}>
                 перенесено {t.postponed} {plural(t.postponed, 'раз', 'раза', 'раз')}
@@ -119,6 +127,20 @@ function Node({ t, props, depth }: { t: Task; props: Props; depth: number }) {
         </div>
         {!props.locked && (
           <div className="row" style={{ gap: 0 }}>
+            {canToday && (
+              <button
+                className={`icon-btn ${pickedToday ? 'today-pick' : ''}`}
+                onClick={() => {
+                  setPick(props.pickDay!, t.id, !pickedToday, nowWithOffset())
+                  say(pickedToday ? `Убрано с «Сегодня»: ${t.title}` : `На сегодня: ${t.title}`, () => useStore.getState().setPick(props.pickDay!, t.id, pickedToday, nowWithOffset()))
+                }}
+                aria-label={pickedToday ? 'Убрать с «Сегодня»' : 'На сегодня'}
+                aria-pressed={pickedToday}
+                title="На сегодня"
+              >
+                <Sun size={19} />
+              </button>
+            )}
             {canPick && (
               <button className={`icon-btn ${picked ? 'deal-pick' : ''}`} onClick={() => setDeal(props.pickDay!, picked ? null : t.id)} aria-label={picked ? 'Убрать из Дела дня' : 'Сделать Делом дня'} aria-pressed={picked} title="Дело дня">
                 <Crosshair size={19} />
@@ -197,10 +219,13 @@ function descCount(tasks: Task[], id: string): number {
 
 export function TaskTree(props: Props) {
   const tasks = useStore((s) => s.data.tasks)
+  const days = useStore((s) => s.data.days)
+  const onToday = props.pickDay && props.scope === 'deal' ? new Set(projectTasksFor({ tasks, days }, props.pickDay).map((t) => t.id)) : undefined
+  const p = onToday ? { ...props, onToday } : props
   return (
     <div className="tree">
       {props.roots.map((t) => (
-        <Node key={t.id} t={t} props={props} depth={depthOf(tasks, t.id)} />
+        <Node key={t.id} t={t} props={p} depth={depthOf(tasks, t.id)} />
       ))}
     </div>
   )

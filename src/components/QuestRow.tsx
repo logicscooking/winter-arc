@@ -16,11 +16,13 @@ interface Props {
   game: GameState
   locked: boolean
   wakeTarget?: number
+  /** «Сегодня» by blocks: a checkbox row inside a section card (same actions, same menu) */
+  compact?: boolean
 }
 
 const STATUS_WORD: Record<MarkStatus, string> = { done: 'выполнено', mini: 'мини-версия', skip: 'пропуск' }
 
-export function QuestRow({ plan, quest, status, auto, day, game, locked, wakeTarget }: Props) {
+export function QuestRow({ plan, quest, status, auto, day, game, locked, wakeTarget, compact }: Props) {
   const setMark = useStore((s) => s.setMark)
   const setValue = useStore((s) => s.setValue)
   const restoreMark = useStore((s) => s.restoreMark)
@@ -114,48 +116,8 @@ export function QuestRow({ plan, quest, status, auto, day, game, locked, wakeTar
   if (quest.kind === 'reels' || quest.kind === 'bedtime') hint = 'отметится по исповеди'
   if (quest.kind === 'deal' && !completed) hint = 'закрой Дело дня'
 
-  return (
-    <div className={cls}>
-      <span className="ear">{plan.role === 'main' ? 'Главный' : 'Побочный'}</span>
-      <span className="q-icon">
-        <Px name={questSprite(quest)} size={44} />
-      </span>
-      <button className="quest-body" onClick={() => !locked && setMenu(!menu)} disabled={locked} aria-expanded={menu} aria-label={`${quest.title}: варианты — мини-версия, пропуск`} style={{ cursor: locked ? 'default' : 'pointer' }}>
-        <div className="quest-title">{quest.title}</div>
-        <div className="quest-sub">
-          <span className="xp-chip" title="XP за выполнение">
-            <Px name={STAT_SPRITE[quest.stat]} size={18} />+{doneXp} XP
-          </span>
-          {plan.role === 'main' && (
-            <span className="ice-chip" title="Осколки за выполнение">
-              <Px name="shard" size={18} />+{SHARDS.main}
-            </span>
-          )}
-          {streak.last7 > 0 && (
-            <span className="streak-chip" title={`Серия: ${streak.current}, лучшая ${streak.best}`} aria-label={`${streak.last7} из последних 7 дней`}>
-              <Px name="flame" size={18} />
-              {streak.last7}/7
-            </span>
-          )}
-          {plan.base && <span className="tag base">база ×0.5</span>}
-          {barNorm && step > 0 && <span className="tag bar-tag">планка {step} · +{step * 10}%</span>}
-          {auto && status && <span className="tag auto">авто</span>}
-          {hint && <span>{hint}</span>}
-        </div>
-      </button>
-      <button
-        className="check"
-        onClick={(e) => onCheck(e.currentTarget)}
-        aria-label={`${quest.title}: ${status ? STATUS_WORD[status] : 'отметить'}`}
-        aria-pressed={completed}
-        disabled={locked && !status}
-      >
-        <span>
-          {status === 'done' && <Check size={30} strokeWidth={4} />}
-          {status === 'mini' && <Minus size={30} strokeWidth={4} />}
-          {status === 'skip' && <X size={26} strokeWidth={4} />}
-        </span>
-      </button>
+  const extra = (
+    <>
       {entry && (
         <form
           className="quest-extra"
@@ -245,6 +207,77 @@ export function QuestRow({ plan, quest, status, auto, day, game, locked, wakeTar
           </div>
         </div>
       )}
+    </>
+  )
+
+  if (compact) {
+    const sub = [plan.role === 'main' ? 'главный' : '', auto && status ? 'авто' : '', quest.kind === 'reels' || quest.kind === 'bedtime' ? 'по исповеди' : quest.kind === 'wake' && wakeTarget !== undefined ? `цель ${formatHM(wakeTarget)}` : quest.kind === 'deal' && !completed ? 'закрой Дело дня' : ''].filter(Boolean).join(' · ')
+    const badge = numeric ? (value ? `${value}/${quest.goal ?? quest.min} ${quest.unit ?? ''}` : `${quest.goal ?? quest.min} ${quest.unit ?? ''}`).trim() : `+${doneXp} XP`
+    return (
+      <div className={`qrow ${status ?? ''}${completed ? ' done' : ''}`}>
+        <button className="pd-check" onClick={(e) => onCheck(e.currentTarget)} aria-label={`${quest.title}: ${status ? STATUS_WORD[status] : 'отметить'}`} aria-pressed={completed} disabled={locked && !status}>
+          <span>
+            {status === 'done' && <Check size={15} strokeWidth={3.5} />}
+            {status === 'mini' && <Minus size={15} strokeWidth={3.5} />}
+            {status === 'skip' && <X size={14} strokeWidth={3.5} />}
+          </span>
+        </button>
+        <button className="qrow-main" onClick={() => !locked && setMenu(!menu)} disabled={locked} aria-expanded={menu} aria-label={`${quest.title}: варианты — мини-версия, пропуск`}>
+          <Px name={questSprite(quest)} size={24} />
+          <span className="grow">
+            <span className="pd-item-title">{quest.title}</span>
+            {sub && <small>{sub}</small>}
+          </span>
+          <span className={`qrow-badge num${completed ? ' on' : ''}`}>{badge}</span>
+        </button>
+        {extra}
+      </div>
+    )
+  }
+
+  return (
+    <div className={cls}>
+      <span className="ear">{plan.role === 'main' ? 'Главный' : 'Побочный'}</span>
+      <span className="q-icon">
+        <Px name={questSprite(quest)} size={44} />
+      </span>
+      <button className="quest-body" onClick={() => !locked && setMenu(!menu)} disabled={locked} aria-expanded={menu} aria-label={`${quest.title}: варианты — мини-версия, пропуск`} style={{ cursor: locked ? 'default' : 'pointer' }}>
+        <div className="quest-title">{quest.title}</div>
+        <div className="quest-sub">
+          <span className="xp-chip" title="XP за выполнение">
+            <Px name={STAT_SPRITE[quest.stat]} size={18} />+{doneXp} XP
+          </span>
+          {plan.role === 'main' && (
+            <span className="ice-chip" title="Осколки за выполнение">
+              <Px name="shard" size={18} />+{SHARDS.main}
+            </span>
+          )}
+          {streak.last7 > 0 && (
+            <span className="streak-chip" title={`Серия: ${streak.current}, лучшая ${streak.best}`} aria-label={`${streak.last7} из последних 7 дней`}>
+              <Px name="flame" size={18} />
+              {streak.last7}/7
+            </span>
+          )}
+          {plan.base && <span className="tag base">база ×0.5</span>}
+          {barNorm && step > 0 && <span className="tag bar-tag">планка {step} · +{step * 10}%</span>}
+          {auto && status && <span className="tag auto">авто</span>}
+          {hint && <span>{hint}</span>}
+        </div>
+      </button>
+      <button
+        className="check"
+        onClick={(e) => onCheck(e.currentTarget)}
+        aria-label={`${quest.title}: ${status ? STATUS_WORD[status] : 'отметить'}`}
+        aria-pressed={completed}
+        disabled={locked && !status}
+      >
+        <span>
+          {status === 'done' && <Check size={30} strokeWidth={4} />}
+          {status === 'mini' && <Minus size={30} strokeWidth={4} />}
+          {status === 'skip' && <X size={26} strokeWidth={4} />}
+        </span>
+      </button>
+      {extra}
     </div>
   )
 }

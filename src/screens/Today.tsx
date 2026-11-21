@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { AlertTriangle, BookOpen, Check, ChevronRight, Hammer, ListChecks, Play, Plus, Ruler, Snowflake, Waves, X, type LucideIcon } from 'lucide-react'
 import { Px, questSprite } from '../pixel/Pixel'
 import type { SpriteName } from '../pixel/sprites'
@@ -31,7 +31,6 @@ import { BossCard, Hud } from '../components/Hud'
 import { QuestRow } from '../components/QuestRow'
 import { AddTask, TaskTree } from '../components/TaskTree'
 import { Help, formatMMSS } from '../components/ui'
-import { Garland } from '../components/festive'
 import { Spark } from '../components/Spark'
 import { PAGES_GOAL, WAKE_GOAL, pagesValues, wakeValues, window7 } from '../store/trends'
 import { BAR_LADDERS, BAR_STEP_BONUS, barStep, barSuggestion } from '../engine'
@@ -40,6 +39,8 @@ import { MoneySheet } from '../components/Money'
 import { buildProgram, programMinutes } from '../morning/program'
 import { useWhySeen } from './Why'
 import { TransitionCard } from './PlanDay'
+import { DayRingCard, TodayBlocks } from './TodayBlocks'
+import { todaySections } from './todayItems'
 import '../morning/morning.css'
 
 export function Today() {
@@ -91,9 +92,9 @@ function nextQuestStep(data: AppData, q: Quest, day: DayKey): Omit<Step, 'key' |
       return { title: q.title, text: q.ifThen, cta: data.days[day]?.dealTaskId ? 'Открыть Дело дня' : 'Выбрать Дело дня', run: () => go('/deal') }
     case 'reading':
     case 'number':
-      return { title: q.title, text: q.ifThen, cta: `Записать ${q.unit ?? ''}`.trim(), run: () => document.getElementById(`q-${q.id}`)?.querySelector<HTMLButtonElement>('.check')?.click() }
+      return { title: q.title, text: q.ifThen, cta: `Записать ${q.unit ?? ''}`.trim(), run: () => document.getElementById(`q-${q.id}`)?.querySelector<HTMLButtonElement>('.check, .pd-check')?.click() }
     default:
-      return { title: q.title, text: q.ifThen, cta: 'Сделал', run: () => document.getElementById(`q-${q.id}`)?.querySelector<HTMLButtonElement>('.check')?.click() }
+      return { title: q.title, text: q.ifThen, cta: 'Сделал', run: () => document.getElementById(`q-${q.id}`)?.querySelector<HTMLButtonElement>('.check, .pd-check')?.click() }
   }
 }
 
@@ -116,12 +117,12 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
   const confOpen = isConfessionOpen(today, now) && !locked
   const wt = wakeTargetFor(data, today)
   const mains = plan.filter((p) => p.role === 'main')
-  const sides = plan.filter((p) => p.role === 'side')
   const doneMain = mains.filter((p) => isCompleted(marks[p.id].status)).length
   const perfectNow = mains.length > 0 && doneMain === mains.length
   const activeSlip = [...data.slips].reverse().find((s) => !s.retro && !s.comebackAt && now.getTime() - s.at < COMEBACK_WINDOW_MS && now.getTime() >= s.at)
   const dailyRoots = childrenOf(data.tasks, null, 'daily').filter((t) => t.day === today)
   const flag = redFlag(data)
+  const progress = useMemo(() => todaySections(data, today).progress, [data, today])
 
   useEffect(() => {
     if (!perfectNow || locked) return
@@ -189,17 +190,6 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
   const hero = steps[0]
   const rest = steps.slice(1, 3)
 
-  const renderQuest = (p: (typeof plan)[number]) => {
-    const q = data.quests.find((x) => x.id === p.id)
-    if (!q) return null
-    return (
-      <div id={`q-${p.id}`} key={p.id}>
-        <QuestRow plan={p} quest={q} status={marks[p.id].status} auto={marks[p.id].auto} day={today} game={game} locked={locked} wakeTarget={wt} />
-      </div>
-    )
-  }
-
-  const [filter, setFilter] = useState<'all' | 'main' | 'side'>('all')
   const [dial, setDial] = useState(false)
   const [money, setMoney] = useState(false)
   const addDaily = () => {
@@ -209,11 +199,13 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
     el?.focus({ preventScroll: true })
   }
 
-  const bulbs = plan.map((p) => ({ id: p.id, main: p.role === 'main', on: isCompleted(marks[p.id].status) }))
 
   return (
     <div>
       <Hud game={game} mainsDone={doneMain} mainsTotal={mains.length} />
+      <div style={{ marginBottom: 22 }}>
+        <DayRingCard progress={progress} />
+      </div>
       <div className="cols">
         <div className="stack-lg">
           <WhyCard />
@@ -276,47 +268,7 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
           <BarOffers />
           <ThemeCard compact />
 
-          <Garland bulbs={bulbs} label={warmup ? 'Гирлянда разминки' : 'Гирлянда дня'} />
-
-          <div className="filter-row" role="group" aria-label="Какие квесты показать">
-            {(
-              [
-                ['all', 'Все'],
-                ['main', 'Главные'],
-                ['side', 'Побочные'],
-              ] as const
-            ).map(([id, label]) => (
-              <button key={id} className="fchip" aria-pressed={filter === id} onClick={() => setFilter(id)}>
-                {label}
-              </button>
-            ))}
-            <button className="fchip add" onClick={addDaily}>
-              <Plus size={18} strokeWidth={3} aria-hidden /> Задача
-            </button>
-          </div>
-
-          {filter !== 'side' && (
-            <section>
-              <div className="section-title">
-                <h2>
-                  <Px name="shield" size={24} /> Главные квесты <span className="count-pill num">{doneMain}/{mains.length}</span>
-                  <Help title="Как отмечать квесты" text={['Квадрат справа — выполнено. Тап по названию — мини-версия или пропуск.', 'Ошибся — внизу появится «Отменить».', 'Сделал — XP и ❄. Пропустил главный — минус HP при закрытии дня.']} />
-                </h2>
-              </div>
-              <div className="quests">{mains.map(renderQuest)}</div>
-            </section>
-          )}
-          {filter !== 'main' && sides.length > 0 && (
-            <section>
-              <div className="section-title">
-                <h2>
-                  <Px name="star" size={24} /> Побочные <span className="count-pill num">{sides.length}</span>
-                </h2>
-                <span className="small muted">только XP</span>
-              </div>
-              <div className="quests">{sides.map(renderQuest)}</div>
-            </section>
-          )}
+          <TodayBlocks game={game} locked={locked} />
         </div>
 
         <div className="stack-lg" style={{ marginTop: 4 }}>
@@ -353,15 +305,22 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
               </p>
             </section>
           )}
-          <section>
-            <div className="section-title">
-              <h2>Задачи дня</h2>
-              <span className="small muted">подзадача +3 XP</span>
+          <section className="stack" style={{ gap: 6 }}>
+            <div className="section-title" style={{ marginBottom: 0 }}>
+              <h2>Своя задача</h2>
+              <span className="small muted">+3 XP · попадёт в «День»</span>
             </div>
-            {dailyRoots.length > 0 && <TaskTree scope="daily" roots={dailyRoots} />}
             <div id="add-daily">
               <AddTask scope="daily" parentId={null} placeholder="Что сделать сегодня" />
             </div>
+            {dailyRoots.length > 0 && (
+              <details className="later">
+                <summary>Изменить задачи дня · {dailyRoots.length}</summary>
+                <div style={{ marginTop: 8 }}>
+                  <TaskTree scope="daily" roots={dailyRoots} />
+                </div>
+              </details>
+            )}
           </section>
         </div>
       </div>

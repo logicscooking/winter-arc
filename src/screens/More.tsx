@@ -28,7 +28,7 @@ import { MeasurementsForm } from '../components/MeasurementsForm'
 import { Field, Help } from '../components/ui'
 import { AiSettings } from '../components/ai'
 import { setTopGarlandPref, useTopGarlandPref } from '../components/festive'
-import { FinalPicker } from './Morning'
+import { TRANSITION_MIN, transitionText } from '../engine'
 import { Why } from './Why'
 
 /** game screens first, with their pixel icons */
@@ -108,6 +108,7 @@ export function More({ sub }: { sub?: string }) {
       </div>
       <AccountEntry />
       <Appearance />
+      <SexSettings />
       <MorningSettings />
       <AiSettings />
       <div className="stack" style={{ gap: 8 }}>
@@ -221,6 +222,35 @@ function Appearance() {
   )
 }
 
+/** «Пол»: one switch for the warm-up final and the «Переход» minimum (stored as settings.morningFinal) */
+function SexSettings() {
+  const sex = useStore((s) => s.data.settings.morningFinal)
+  const transition = useStore((s) => s.data.settings.transition)
+  const setSettings = useStore((s) => s.setSettings)
+  const pick = (f: 'm' | 'f') => {
+    // the stored reps follow the new minimum (never below it)
+    const min = TRANSITION_MIN[f]
+    setSettings({ morningFinal: f, ...(transition ? { transition: { push: Math.max(min.push, f === 'f' && sex !== 'f' ? min.push : transition.push), squat: Math.max(min.squat, transition.squat) } } : {}) })
+  }
+  return (
+    <section className="panel stack" aria-label="Пол">
+      <div className="row between">
+        <h3>Пол</h3>
+        <div className="seg-switch" role="radiogroup" aria-label="Пол">
+          {(['m', 'f'] as const).map((f) => (
+            <button key={f} role="radio" aria-checked={sex === f} aria-pressed={sex === f} onClick={() => pick(f)}>
+              {f === 'm' ? 'М' : 'Ж'}
+            </button>
+          ))}
+        </div>
+      </div>
+      <p className="tiny muted" style={{ marginTop: -4 }}>
+        Для финала зарядки и минимума перехода между блоками. М: {transitionText(TRANSITION_MIN.m, 'm')}. Ж: {transitionText(TRANSITION_MIN.f, 'f')}.
+      </p>
+    </section>
+  )
+}
+
 function MorningSettings() {
   const settings = useStore((s) => s.data.settings)
   const setSettings = useStore((s) => s.setSettings)
@@ -228,10 +258,6 @@ function MorningSettings() {
   return (
     <section className="panel stack" aria-label="Утренняя инвестиция">
       <h3>Утренняя инвестиция</h3>
-      <FinalPicker value={settings.morningFinal} onChange={(f) => setSettings({ morningFinal: f })} />
-      <p className="tiny muted" style={{ marginTop: -4 }}>
-        М: 20 приседаний + 20 отжиманий · Ж: 20 + 5, с колен ок
-      </p>
       <div className="switch-row">
         <span>
           <span style={{ fontWeight: 700 }}>Музыка</span>

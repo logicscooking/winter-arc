@@ -207,3 +207,99 @@
 .pd-today a { color: var(--ink); text-decoration: none; display: grid; }
 .pd-today b { font-family: var(--display); font-weight: 800; font-size: 1.02rem; line-height: 1.25; }
 .pd-today small { color: var(--mist); font-weight: 800; font-size: 0.82rem; margin-top: 2px; }
+
+/* ---------- v0.10: three tabs, duration chips, the hour grid ---------- */
+.pd-tabs button { padding: 0 8px; font-size: 0.86rem; flex: auto; }
+.pd-durs { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; margin-top: -2px; }
+.pd-durs .chip { padding: 0; }
+
+.pd-hours {
+  max-height: min(62vh, 560px); overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  border-radius: var(--r-lg); background: var(--surface); border: var(--bw) solid var(--card-line); box-shadow: var(--shadow-1);
+}
+.pd-hgrid { position: relative; margin: 0 6px 0 0; cursor: pointer; }
+.pd-hrow { position: absolute; left: 0; right: 0; height: 0; border-top: 1px solid var(--line-soft); }
+.pd-hrow span { position: absolute; left: 8px; top: 3px; font-size: 0.74rem; color: var(--mist); }
+.pd-hsleep {
+  position: absolute; left: 52px; right: 0; pointer-events: none;
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--frost-soft) 70%, transparent) 0 8px, transparent 8px 16px);
+}
+.pd-hsleep span { display: inline-flex; align-items: center; gap: 6px; margin: 6px 8px; font-size: 0.78rem; font-weight: 800; color: var(--frost); }
+.pd-cal-block {
+  position: absolute; left: 56px; right: 2px; display: flex; flex-direction: column; align-items: stretch; gap: 1px;
+  padding: 5px 8px 4px 11px; text-align: left; overflow: hidden; border-radius: 12px; color: var(--ink);
+  background: color-mix(in srgb, var(--bc) 24%, var(--surface)); border: 2px solid color-mix(in srgb, var(--bc) 70%, var(--card-line));
+}
+.pd-cal-block::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--bc); }
+.pd-cal-head { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.pd-cal-head b { font-family: var(--display); font-weight: 800; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+.pd-cal-head .px { flex: none; }
+.pd-cal-tr { color: var(--pine); flex: none; }
+.pd-cal-block > small { font-size: 0.76rem; color: var(--ink-2); font-weight: 800; }
+.pd-cal-item { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 700; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 19px; }
+.pd-cal-item i { flex: none; width: 10px; height: 10px; border-radius: 3px; border: 2px solid var(--mist); }
+.pd-cal-item svg { flex: none; color: var(--pine); }
+.pd-cal-item.done { color: var(--mist); text-decoration: line-through; }
+.pd-cal-more { font-size: 0.74rem; font-weight: 800; color: var(--mist); }
+.pd-hnow { position: absolute; left: 46px; right: 0; height: 0; border-top: 2.5px solid var(--gold-bright); pointer-events: none; z-index: 2; }
+.pd-hnow::before { content: ''; position: absolute; left: -5px; top: -6px; width: 9px; height: 9px; border-radius: 3px; background: var(--gold-bright); }
+
+/* ---------- «Сегодня» by blocks ---------- */
+.td-ring {
+  display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: center; padding: 12px 14px;
+  border-radius: var(--r-lg); background: var(--surface); border: var(--bw) solid var(--card-line); box-shadow: var(--shadow-1);
+}
+.td-ring-dial { position: relative; width: 88px; height: 88px; }
+.td-ring-dial svg { display: block; width: 100%; height: 100%; transform: rotate(-90deg); }
+.td-ring-dial circle { fill: none; stroke-width: 10; }
+.td-ring-dial .track { stroke: var(--surface-3); }
+.td-ring-dial .fill { stroke: var(--pine); stroke-linecap: round; transition: stroke-dashoffset 0.8s var(--ease-out), stroke 0.3s ease; }
+.td-ring-dial.full .fill { stroke: var(--gold-mark); }
+.td-ring-dial b { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--num-sm); font-weight: 900; font-size: 1.45rem; }
+.td-ring-dial b small { font-size: 0.8rem; margin-left: 1px; }
+.td-ring-dial b > span { display: inline-flex; align-items: baseline; }
+@media (prefers-reduced-motion: reduce) { .td-ring-dial .fill { transition: none; } }
+.td-ring-text { display: grid; gap: 6px; min-width: 0; }
+.td-ring-text > b { font-family: var(--display); font-weight: 800; font-size: 1.08rem; line-height: 1.2; }
+.td-legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+.td-legend li { display: flex; align-items: center; gap: 8px; font-size: 0.86rem; font-weight: 800; color: var(--ink-2); }
+.td-legend li i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.td-legend li .num { margin-left: auto; color: var(--ink); }
+
+.td-sections { display: grid; gap: 10px; }
+.td-sec {
+  border-radius: var(--r-lg); background: var(--surface); border: var(--bw) solid var(--card-line); box-shadow: var(--shadow-1);
+  padding: 6px 8px 6px 6px; position: relative; overflow: hidden;
+}
+.td-sec.block { padding-left: 14px; }
+.td-sec.block::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--bc); }
+.td-sec.now { border-color: var(--pine); }
+.td-sec-head { display: flex; align-items: center; gap: 10px; padding: 6px 4px 6px 6px; }
+.td-sec-head .grow { display: grid; min-width: 0; }
+.td-sec-head b { font-family: var(--display); font-weight: 800; font-size: 1.08rem; line-height: 1.2; }
+.td-sec-head small { font-size: 0.8rem; font-weight: 800; color: var(--mist); }
+.td-count { font-family: var(--num-sm); font-weight: 900; font-size: 0.92rem; padding: 3px 9px; border-radius: 10px; background: var(--surface-2); color: var(--ink-2); }
+.td-count.full { background: var(--pine); color: var(--pine-ink); }
+.td-sec-items { display: grid; gap: 0; border-top: 2px solid var(--line-soft); padding-top: 4px; }
+.td-sec-empty { padding: 8px 10px 10px; font-size: 0.86rem; font-weight: 700; color: var(--mist); }
+.td-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+
+/* quest as a checkbox row (same QuestRow logic, compact look) */
+.qrow { display: flex; flex-wrap: wrap; align-items: center; min-height: 48px; border-radius: 14px; }
+.qrow-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; min-height: 46px; padding: 2px 6px 2px 2px; text-align: left; border-radius: 12px; color: var(--ink); }
+.qrow-main .grow { display: grid; }
+.qrow-main small { color: var(--mist); font-weight: 700; font-size: 0.8rem; }
+.qrow.done .pd-item-title { color: var(--mist); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--mist) 60%, transparent); }
+.qrow.mini .pd-check > span { background: var(--gold-mark); border-color: var(--gold-mark); color: #2a1a00; }
+.qrow.skip .pd-check > span { background: var(--surface-3); border-color: var(--line); color: var(--mist); }
+.qrow.skip .pd-item-title { color: var(--mist); }
+.qrow .pd-check[aria-pressed='true'] > span { background: var(--pine); border-color: var(--pine); }
+.qrow.mini .pd-check[aria-pressed='true'] > span { background: var(--gold-mark); border-color: var(--gold-mark); }
+.qrow .quest-extra { flex-basis: 100%; margin: 0; padding: 2px 6px 8px 44px; }
+.qrow-badge {
+  flex: none; font-size: 0.76rem; font-weight: 800; padding: 3px 8px; border-radius: 9px; white-space: nowrap;
+  background: var(--surface-2); color: var(--ink-2);
+}
+.qrow-badge.on { background: var(--pine-soft); color: var(--pine); }
+.tag.today-tag { background: var(--gold-soft); color: var(--gold); }
+.icon-btn.today-pick { color: var(--gold-mark); background: var(--gold-soft); }

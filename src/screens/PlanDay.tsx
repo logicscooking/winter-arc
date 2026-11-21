@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties, type PointerEvent, type ReactNode } from 'react'
+import { useMemo, useState, type CSSProperties, type MouseEvent, type PointerEvent, type ReactNode } from 'react'
 import { CalendarDays, Check, ChevronLeft, ChevronRight, Clock, LayoutTemplate, Pencil, Plus } from 'lucide-react'
 import {
   ARC_END,
@@ -32,6 +32,8 @@ import {
   templateBlocks,
   transitionDue,
   transitionReps,
+  transitionText,
+  TRANSITION_MIN,
   uid,
   weekday,
   workMinutes,
@@ -62,6 +64,14 @@ export const BLOCK_COLOR_VAR: Record<BlockColor, string> = {
   gold: 'var(--gold-mark)',
 }
 const COLOR_NAME: Record<BlockColor, string> = { mind: 'Разум', deal: 'Дело', body: 'Тело', energy: 'Энергия', will: 'Воля', frost: 'Лёд', gold: 'Золото' }
+const DUR_CHIPS: [number, string][] = [
+  [15, '15′'],
+  [30, '30′'],
+  [45, '45′'],
+  [60, '1 ч'],
+  [90, '1,5 ч'],
+  [120, '2 ч'],
+]
 const NAME_PRESETS = ['Утро · фокус', 'Глубокая работа', 'Дела', 'Учёба', 'Спорт', 'Прогулка', 'Обед', 'Вечер']
 
 const colorOf = (b: Pick<PlanBlock, 'color'>) => BLOCK_COLOR_VAR[b.color ?? 'deal']
@@ -80,7 +90,6 @@ export function fmtDur(m: number): string {
 const range = (b: Pick<PlanBlock, 'start' | 'dur'>) => `${formatHM(b.start)}–${formatHM(blockEnd(b))}`
 const MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
 const minOf = (d: Date) => d.getHours() * 60 + d.getMinutes()
-const repsText = (r: { push: number; squat: number }) => `${r.push} отжиманий + ${r.squat} приседаний`
 
 // ---------- the ring ----------
 
@@ -272,7 +281,7 @@ function CalendarSheet({ day, first, last, today, planned, onPick, onClose }: { 
 
 // ---------- checking items: the same actions as on «Сегодня» ----------
 
-function useCheck(day: DayKey, canCheck: boolean, openValue: (it: PlanItem) => void) {
+export function useCheck(day: DayKey, canCheck: boolean, openValue: (it: PlanItem) => void) {
   const game = useGame()
   const say = useUi((s) => s.say)
   return (it: PlanItem, el: HTMLElement) => {
@@ -321,7 +330,7 @@ function useCheck(day: DayKey, canCheck: boolean, openValue: (it: PlanItem) => v
   }
 }
 
-function ItemRow({ it, onCheck, onTap, canCheck, place }: { it: PlanItem; onCheck: (it: PlanItem, el: HTMLElement) => void; onTap: () => void; canCheck: boolean; place?: ReactNode }) {
+export function ItemRow({ it, onCheck, onTap, canCheck, place, badge }: { it: PlanItem; onCheck: (it: PlanItem, el: HTMLElement) => void; onTap: () => void; canCheck: boolean; place?: ReactNode; badge?: boolean }) {
   const open = it.action === 'open'
   return (
     <div className={`pd-item${it.done ? ' done' : ''}`}>
@@ -340,8 +349,45 @@ function ItemRow({ it, onCheck, onTap, canCheck, place }: { it: PlanItem; onChec
           <span className="pd-item-title">{it.title}</span>
           {it.sub && <small>{it.sub}</small>}
         </span>
+        {badge && it.badge && <span className={`qrow-badge num${it.done ? ' on' : ''}`}>{it.badge}</span>}
         {place}
       </button>
+    </div>
+  )
+}
+
+/** «Переход» before a block: checkbox (today only) + tap on the text opens the reps sheet */
+export function TransitionRow({ day, block, isToday }: { day: DayKey; block: PlanBlock; isToday: boolean }) {
+  const done = useStore((s) => !!s.data.days[day]?.transitions?.[block.id])
+  const cfg = useStore((s) => s.data.settings.transition)
+  const sex = useStore((s) => s.data.settings.morningFinal)
+  const setTransition = useStore((s) => s.setTransition)
+  const say = useUi((s) => s.say)
+  const [open, setOpen] = useState(false)
+  const toggle = (el: HTMLElement) => {
+    if (!isToday) return say('Переход отмечается в день блока')
+    if (done) {
+      setTransition(day, block.id, null)
+      return say('Переход снят', () => useStore.getState().setTransition(day, block.id, nowWithOffset().getTime()))
+    }
+    setTransition(day, block.id, nowWithOffset().getTime())
+    reward(el, { xp: TRANSITION.xp })
+    say(`Переход сделан: +${TRANSITION.xp} XP Тела`, () => useStore.getState().setTransition(day, block.id, null))
+  }
+  return (
+    <div className={`pd-trans${done ? ' done' : ''}`}>
+      <button className="pd-check sm" onClick={(e) => toggle(e.currentTarget)} aria-pressed={done} disabled={!isToday} aria-label={`Переход перед «${block.title}»: ${done ? 'снять' : 'сделал'}`}>
+        <span>{done && <Check size={12} strokeWidth={3} />}</span>
+      </button>
+      <button className="pd-trans-main" onClick={() => setOpen(true)} aria-label="Переход: сколько повторов">
+        <Px name="dumbbell" size={18} />
+        <span className="grow">
+          <b>Переход</b>
+          <small>{transitionText(transitionReps(cfg, sex), sex)}</small>
+        </span>
+        <span className="pd-xp num">+{TRANSITION.xp} XP</span>
+      </button>
+      {open && <RepsSheet onClose={() => setOpen(false)} />}
     </div>
   )
 }
@@ -354,7 +400,8 @@ export function PlanDay() {
   const data = useStore((s) => s.data)
   const now = useNow()
   const today = gameDayOf(now)
-  const [tab, setTab] = useState<'plan' | 'tips'>(route.query.get('tab') === 'tips' ? 'tips' : 'plan')
+  const qt = route.query.get('tab')
+  const [tab, setTab] = useState<'plan' | 'calendar' | 'tips'>(qt === 'tips' || qt === 'calendar' ? qt : 'plan')
   const first = [replayStartOf(data), today].sort()[0]
   const last = today > ARC_END ? today : ARC_END
   const qd = route.query.get('day')
@@ -369,14 +416,17 @@ export function PlanDay() {
         <button role="tab" aria-selected={tab === 'plan'} aria-pressed={tab === 'plan'} onClick={() => setTab('plan')}>
           План
         </button>
+        <button role="tab" aria-selected={tab === 'calendar'} aria-pressed={tab === 'calendar'} onClick={() => setTab('calendar')}>
+          Календарь
+        </button>
         <button role="tab" aria-selected={tab === 'tips'} aria-pressed={tab === 'tips'} onClick={() => setTab('tips')}>
           Как строить день
         </button>
       </div>
-      {tab === 'plan' ? (
+      {tab !== 'tips' ? (
         <>
           <DateStrip day={day} setDay={setDay} first={first} last={last} today={today} planned={planned} onCalendar={() => setCal(true)} />
-          <PlanTab key={day} day={day} today={today} />
+          {tab === 'plan' ? <PlanTab key={day} day={day} today={today} /> : <PlanCalendar key={day} day={day} today={today} />}
         </>
       ) : (
         <PlanTips day={day} today={today} onApplied={() => setTab('plan')} />
@@ -390,9 +440,7 @@ type BlockEdit = { mode: 'new'; start?: number; assignKey?: string } | { mode: '
 
 function PlanTab({ day, today }: { day: DayKey; today: DayKey }) {
   const data = useStore((s) => s.data)
-  const setTransition = useStore((s) => s.setTransition)
   const assignPlan = useStore((s) => s.assignPlan)
-  const say = useUi((s) => s.say)
   const now = useNow()
   const log = data.days[day]
   const blocks = useMemo(() => planBlocksOf(log), [log])
@@ -402,13 +450,13 @@ function PlanTab({ day, today }: { day: DayKey; today: DayKey }) {
   const nowMin = isToday ? minOf(now) : undefined
   const current = nowMin !== undefined ? blockAt(blocks, nowMin) : undefined
   const canCheck = isToday && !log?.confession
-  const reps = transitionReps(data.settings.transition)
+  const sex = data.settings.morningFinal
+  const reps = transitionReps(data.settings.transition, sex)
 
   const [edit, setEdit] = useState<BlockEdit | null>(null)
   const [pickFor, setPickFor] = useState<PlanItem | null>(null)
   const [addTo, setAddTo] = useState<string | null>(null)
   const [tpl, setTpl] = useState(false)
-  const [repsOpen, setRepsOpen] = useState(false)
   const [valueFor, setValueFor] = useState<PlanItem | null>(null)
   const [moreSkills, setMoreSkills] = useState(false)
   const check = useCheck(day, canCheck, setValueFor)
@@ -417,17 +465,6 @@ function PlanTab({ day, today }: { day: DayKey; today: DayKey }) {
   const loose = items.filter((it) => !assignedBlock(log, it.key))
   const work = workMinutes(blocks)
   const late = lateWork(blocks)
-
-  const doTransition = (b: PlanBlock, el: HTMLElement) => {
-    if (!isToday) return say('Переход отмечается в день блока')
-    if (log?.transitions?.[b.id]) {
-      setTransition(day, b.id, null)
-      return say('Переход снят', () => useStore.getState().setTransition(day, b.id, nowWithOffset().getTime()))
-    }
-    setTransition(day, b.id, nowWithOffset().getTime())
-    reward(el, { xp: TRANSITION.xp })
-    say(`Переход сделан: +${TRANSITION.xp} XP Тела`, () => useStore.getState().setTransition(day, b.id, null))
-  }
 
   const centerTxt =
     nowMin !== undefined ? (
@@ -448,22 +485,7 @@ function PlanTab({ day, today }: { day: DayKey; today: DayKey }) {
   blocks.forEach((b) => {
     const gap = gameMin(b.start) - prevEnd
     if (gap >= 15) rows.push(<div key={`g${b.id}`} className="pd-gap">свободно {fmtDur(gap)}</div>)
-    const tDone = !!log?.transitions?.[b.id]
-    rows.push(
-      <div key={`t${b.id}`} className={`pd-trans${tDone ? ' done' : ''}`}>
-        <button className="pd-check sm" onClick={(e) => doTransition(b, e.currentTarget)} aria-pressed={tDone} disabled={!isToday} aria-label={`Переход перед «${b.title}»: ${tDone ? 'снять' : 'сделал'}`}>
-          <span>{tDone && <Check size={12} strokeWidth={3} />}</span>
-        </button>
-        <button className="pd-trans-main" onClick={() => setRepsOpen(true)} aria-label="Переход: сколько повторов">
-          <Px name="dumbbell" size={18} />
-          <span className="grow">
-            <b>Переход</b>
-            <small>{repsText(reps)}</small>
-          </span>
-          <span className="pd-xp num">+{TRANSITION.xp} XP</span>
-        </button>
-      </div>,
-    )
+    rows.push(<TransitionRow key={`t${b.id}`} day={day} block={b} isToday={isToday} />)
     const list = inBlock(b.id)
     const isNow = current?.id === b.id
     rows.push(
@@ -501,7 +523,7 @@ function PlanTab({ day, today }: { day: DayKey; today: DayKey }) {
 
   const skills = loose.filter((it) => it.group === 'skill')
   const shownSkills = moreSkills ? skills : skills.slice(0, 3)
-  const looseShown = [...loose.filter((it) => it.group === 'deal'), ...loose.filter((it) => it.group === 'quest'), ...loose.filter((it) => it.group === 'own'), ...shownSkills]
+  const looseShown = [...loose.filter((it) => it.group === 'deal'), ...loose.filter((it) => it.group === 'quest'), ...loose.filter((it) => it.group === 'project'), ...loose.filter((it) => it.group === 'own'), ...shownSkills]
 
   return (
     <>
@@ -524,7 +546,7 @@ function PlanTab({ day, today }: { day: DayKey; today: DayKey }) {
           text={[
             'День — это несколько блоков: «Утро · фокус», «Дела», «Вечер». Нажми на свободное место кольца — блок начнётся с этого времени.',
             'Дела из списка «Без времени» ставятся в блок тапом. Галочки здесь те же, что на «Сегодня».',
-            `Перед каждым блоком — переход: ${repsText(reps)}. +${TRANSITION.xp} XP Тела, один раз на блок.`,
+            `Перед каждым блоком — переход: ${transitionText(reps, sex)}. +${TRANSITION.xp} XP Тела, один раз на блок.`,
             'Сон на кольце — по целям подъёма и отбоя. Работа: не больше 6 ч и до 17:00.',
           ]}
         />
@@ -603,7 +625,6 @@ function PlanTab({ day, today }: { day: DayKey; today: DayKey }) {
       )}
       {addTo && blocks.some((b) => b.id === addTo) && <AddToBlockSheet day={day} block={blocks.find((b) => b.id === addTo)!} items={loose} onClose={() => setAddTo(null)} />}
       {tpl && <TemplateSheet day={day} onClose={() => setTpl(false)} />}
-      {repsOpen && <RepsSheet onClose={() => setRepsOpen(false)} />}
       {valueFor && <ValueSheet day={day} item={valueFor} onClose={() => setValueFor(null)} />}
     </>
   )
@@ -717,6 +738,13 @@ function BlockSheet({ day, edit, blocks, sleep, onClose }: { day: DayKey; edit: 
             <TimePicker label="Конец" value={formatHM(end)} onChange={(v) => v && setEnd(v)} />
           </div>
         </div>
+        <div className="chips pd-durs" role="group" aria-label="Длительность">
+          {DUR_CHIPS.map(([d, label]) => (
+            <button key={d} type="button" className="chip sm" aria-pressed={b.dur === d} onClick={() => set({ dur: d })}>
+              {label}
+            </button>
+          ))}
+        </div>
         <div className="field">
           <span>Цвет и значок</span>
           <div className="pd-swatches" role="group" aria-label="Цвет">
@@ -762,7 +790,7 @@ function BlockSheet({ day, edit, blocks, sleep, onClose }: { day: DayKey; edit: 
   )
 }
 
-function PickBlockSheet({ item, blocks, current, onPick, onNew, onClose }: { item: PlanItem; blocks: PlanBlock[]; current?: string; onPick: (id: string | null) => void; onNew: () => void; onClose: () => void }) {
+export function PickBlockSheet({ item, blocks, current, onPick, onNew, onClose }: { item: PlanItem; blocks: PlanBlock[]; current?: string; onPick: (id: string | null) => void; onNew: () => void; onClose: () => void }) {
   return (
     <Sheet title="Куда поставить?" onClose={onClose}>
       <div className="stack">
@@ -920,13 +948,15 @@ function TemplateSheet({ day, onClose }: { day: DayKey; onClose: () => void }) {
 
 function RepsSheet({ onClose }: { onClose: () => void }) {
   const cur = useStore((s) => s.data.settings.transition)
+  const sex = useStore((s) => s.data.settings.morningFinal)
   const setSettings = useStore((s) => s.setSettings)
-  const r = transitionReps(cur)
-  const set = (k: 'push' | 'squat', d: number) => setSettings({ transition: transitionReps({ ...r, [k]: r[k] + d }) })
+  const r = transitionReps(cur, sex)
+  const min = TRANSITION_MIN[sex === 'f' ? 'f' : 'm']
+  const set = (k: 'push' | 'squat', d: number) => setSettings({ transition: transitionReps({ ...r, [k]: r[k] + d }, sex) })
   const Step = ({ k, label }: { k: 'push' | 'squat'; label: string }) => (
     <div className="pd-step">
       <span className="grow">{label}</span>
-      <button className="btn sm ghost" onClick={() => set(k, -5)} disabled={r[k] <= TRANSITION.minReps} aria-label={`${label}: меньше`}>
+      <button className="btn sm ghost" onClick={() => set(k, -5)} disabled={r[k] <= min[k]} aria-label={`${label}: меньше`}>
         −5
       </button>
       <b className="num">{r[k]}</b>
@@ -939,10 +969,20 @@ function RepsSheet({ onClose }: { onClose: () => void }) {
     <Sheet title="Переход между блоками" onClose={onClose}>
       <div className="stack">
         <p className="small" style={{ color: 'var(--ink-2)' }}>
-          Перед каждым блоком — разогнать кровь и переключить голову. Минимум 10 + 10, больше — по желанию. <b>+{TRANSITION.xp} XP Тела</b>, один раз на блок.
+          Перед каждым блоком — разогнать кровь и переключить голову. Минимум: {transitionText(min, sex)}, больше — по желанию. <b>+{TRANSITION.xp} XP Тела</b>, один раз на блок.
         </p>
-        <Step k="push" label="Отжимания" />
-        <Step k="squat" label="Приседания" />
+        {sex === 'f' ? (
+          <>
+            <Step k="squat" label="Приседания по Неумывакину" />
+            <Step k="push" label="Отжимания" />
+          </>
+        ) : (
+          <>
+            <Step k="push" label="Отжимания" />
+            <Step k="squat" label="Приседания по Неумывакину" />
+          </>
+        )}
+        <p className="tiny muted">Минимум зависит от пола («Ещё» → «Пол»): М — {transitionText(TRANSITION_MIN.m, 'm')}, Ж — {transitionText(TRANSITION_MIN.f, 'f')}.</p>
         <button className="btn primary block" onClick={onClose}>
           Готово
         </button>
@@ -986,6 +1026,84 @@ function ValueSheet({ day, item, onClose }: { day: DayKey; item: PlanItem; onClo
   )
 }
 
+// ---------- «Календарь»: the day as an hour grid ----------
+
+const HOUR_PX = 56
+
+/** Hour grid of the game day (04:00 → 04:00): blocks as rectangles, their tasks inside, sleep shaded, a «now» line */
+function PlanCalendar({ day, today }: { day: DayKey; today: DayKey }) {
+  const data = useStore((s) => s.data)
+  const now = useNow()
+  const log = data.days[day]
+  const blocks = useMemo(() => planBlocksOf(log), [log])
+  const items = useMemo(() => planItems(data, day), [data, day])
+  const sleep = sleepWindow(data, day)
+  const [edit, setEdit] = useState<BlockEdit | null>(null)
+  const isToday = day === today
+  const y = (gm: number) => (gm / 60) * HOUR_PX
+  const scroller = (el: HTMLDivElement | null) => {
+    if (el && !el.dataset.ready) {
+      el.dataset.ready = '1'
+      el.scrollTop = Math.max(0, y(gameMin(sleep.wake) - 45))
+    }
+  }
+  const onGrid = (e: MouseEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest('.pd-cal-block')) return
+    const r = e.currentTarget.getBoundingClientRect()
+    const gm = Math.floor((((e.clientY - r.top) / HOUR_PX) * 60) / 15) * 15
+    setEdit({ mode: 'new', start: (gm + 240) % 1440 })
+  }
+  const sleepFrom = gameMin(sleep.sleep)
+  const wakeAt = gameMin(sleep.wake)
+  const hours = Array.from({ length: 24 }, (_, i) => (i + 4) % 24)
+  return (
+    <>
+      <div className="pd-hours" ref={scroller} aria-label="Часы дня">
+        <div className="pd-hgrid" style={{ height: y(1440) }} onClick={onGrid}>
+          {hours.map((h, i) => (
+            <div key={h} className="pd-hrow" style={{ top: y(i * 60) }}>
+              <span className="num">{String(h).padStart(2, '0')}:00</span>
+            </div>
+          ))}
+          {wakeAt > 0 && <div className="pd-hsleep" style={{ top: 0, height: y(wakeAt) }} aria-hidden />}
+          {sleepFrom < 1440 && (
+            <div className="pd-hsleep" style={{ top: y(sleepFrom), height: y(1440 - sleepFrom) }}>
+              <span>
+                <Px name="moon" size={16} /> сон {formatHM(sleep.sleep)}–{formatHM(sleep.wake)}
+              </span>
+            </div>
+          )}
+          {blocks.map((b) => {
+            const list = items.filter((it) => assignedBlock(log, it.key) === b.id)
+            const h = y(b.dur) - 3
+            const room = Math.max(0, Math.floor((h - 46) / 20))
+            return (
+              <button key={b.id} className="pd-cal-block" style={{ top: y(gameMin(b.start)) + 1, height: h, '--bc': colorOf(b) } as CSSProperties} onClick={() => setEdit({ mode: 'edit', id: b.id })} aria-label={`${b.title}, ${range(b)}: изменить`}>
+                <span className="pd-cal-head">
+                  <Px name={blockIcon(b)} size={18} />
+                  <b>{b.title}</b>
+                  {log?.transitions?.[b.id] ? <Check size={14} strokeWidth={3} className="pd-cal-tr" aria-label="переход сделан" /> : null}
+                </span>
+                {h >= 34 && <small className="num">{range(b)}</small>}
+                {list.slice(0, room).map((it) => (
+                  <span key={it.key} className={`pd-cal-item${it.done ? ' done' : ''}`}>
+                    {it.done ? <Check size={12} strokeWidth={3} /> : <i />}
+                    {it.title}
+                  </span>
+                ))}
+                {list.length > room && h >= 66 && <span className="pd-cal-more">+{list.length - room}</span>}
+              </button>
+            )
+          })}
+          {isToday && <div className="pd-hnow" style={{ top: y(gameMin(minOf(now))) }} aria-label={`Сейчас ${formatHM(minOf(now))}`} />}
+        </div>
+      </div>
+      <p className="tiny muted center">Тап по пустому часу — новый блок, по блоку — изменить.</p>
+      {edit && <BlockSheet day={day} edit={edit} blocks={blocks} sleep={sleep} onClose={() => setEdit(null)} />}
+    </>
+  )
+}
+
 // ---------- «Сегодня»: the transition card ----------
 
 /** «Новый блок «…» — сначала переход»: 15 min before a block starts and 15 min after */
@@ -994,11 +1112,12 @@ export function TransitionCard() {
   const today = gameDayOf(now)
   const log = useStore((s) => s.data.days[today])
   const repsCfg = useStore((s) => s.data.settings.transition)
+  const sex = useStore((s) => s.data.settings.morningFinal)
   const setTransition = useStore((s) => s.setTransition)
   const say = useUi((s) => s.say)
   const due = transitionDue(log, minOf(now))
   if (!due) return null
-  const r = transitionReps(repsCfg)
+  const r = transitionReps(repsCfg, sex)
   const { block, inMin } = due
   const when = inMin > 0 ? `через ${inMin} мин` : inMin === 0 ? 'начинается' : `идёт ${-inMin} мин`
   return (
@@ -1007,7 +1126,7 @@ export function TransitionCard() {
       <a className="grow" href="#/plan">
         <b>Новый блок «{block.title}»</b>
         <small>
-          сначала переход: {r.push} + {r.squat} · {when} · +{TRANSITION.xp} XP
+          сначала переход: {transitionText(r, sex)} · {when} · +{TRANSITION.xp} XP
         </small>
       </a>
       <button

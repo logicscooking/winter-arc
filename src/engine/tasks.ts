@@ -1,5 +1,5 @@
 import { diffDays } from './time'
-import type { DayKey, Task, TaskScope } from './types'
+import type { AppData, DayKey, Task, TaskScope } from './types'
 import { XP } from './quests'
 
 /** daily: task → sub → sub-sub; deal: project → task → subtask → sub-sub */
@@ -83,4 +83,49 @@ export function carryOver(tasks: Task[], today: DayKey): { tasks: Task[]; moved:
 
 export function needsSplitHint(t: Task): boolean {
   return t.postponed >= POSTPONE_WARN && !t.doneAt
+}
+
+/**
+ * v0.10 project tasks on «Сегодня» and in the plan, without flooding the day:
+ *   - tasks marked «на сегодня» for this day (DayLog.picks);
+ *   - per project, the first open leaf in project order (the next concrete step);
+ *   - per project, the steps already closed on this day (so a tick stays visible and the next step shows up).
+ * The Deal of the day is left out: it has its own row. Order: project by project, tree order inside.
+ */
+export function projectTasksFor(data: Pick<AppData, 'tasks' | 'days'>, day: DayKey): Task[] {
+  const log = data.days[day]
+  const picks = log?.picks ?? {}
+  const dealId = log?.dealTaskId
+  const out: Task[] = []
+  const walk = (parentId: string, visit: (t: Task, leaf: boolean) => void) => {
+    for (const t of childrenOf(data.tasks, parentId, 'deal')) {
+      const leaf = !data.tasks.some((c) => c.parentId === t.id)
+      visit(t, leaf)
+      walk(t.id, visit)
+    }
+  }
+  for (const project of childrenOf(data.tasks, null, 'deal')) {
+    let next: Task | undefined
+    const keep = new Set<string>()
+    walk(project.id, (t, leaf) => {
+      if (t.id === dealId) return
+      if (picks[t.id]) keep.add(t.id)
+      if (leaf && t.doneDay === day) keep.add(t.id)
+      if (leaf && !t.doneAt && !next) next = t
+    })
+    if (next) keep.add(next.id)
+    walk(project.id, (t) => keep.has(t.id) && out.push(t))
+  }
+  return out
+}
+
+/** The project (root) a deal task belongs to */
+export function projectOf(tasks: Task[], t: Task): Task {
+  let cur = t
+  for (let i = 0; i < 10 && cur.parentId; i++) {
+    const p = tasks.find((x) => x.id === cur.parentId)
+    if (!p) break
+    cur = p
+  }
+  return cur
 }

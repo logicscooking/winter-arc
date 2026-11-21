@@ -36,7 +36,7 @@ const COLLECTIONS = ['quests', 'tasks', 'slips', 'cravings', 'purchases', 'rewar
 type CollectionKey = (typeof COLLECTIONS)[number]
 const SET_ACKS = ['reviewedWeeks', 'hints', 'celebrated'] as const
 /** Day-log maps whose entries are separate atoms: `days/<day>/<map>/<key>` */
-const DAY_MAPS = ['quests', 'plinko', 'dayBlocks', 'assign', 'transitions'] as const
+const DAY_MAPS = ['quests', 'plinko', 'dayBlocks', 'assign', 'transitions', 'picks'] as const
 const KNOWN = new Set<string>(['schemaVersion', 'profile', 'days', 'activeBookId', 'baseline', 'final', 'reviews', 'settings', 'ack', ...COLLECTIONS])
 
 // ---------- canonical JSON ----------

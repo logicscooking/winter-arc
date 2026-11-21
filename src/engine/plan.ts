@@ -258,11 +258,10 @@ export function templateBlocks(id: PlanTemplate['id'], ctx: { wake: number; slee
 
 // ---------- «Переход» between blocks ----------
 
-/** 10 push-ups + 10 squats before a block: a small body reward, once per block per day */
+/** push-ups + squats («по Неумывакину») before a block: a small body reward, once per block per day */
 export const TRANSITION = {
   xp: 2,
   stat: 'body' as StatId,
-  minReps: 10,
   maxReps: 100,
   /** at most this many paid transitions a day */
   perDay: 8,
@@ -272,9 +271,32 @@ export const TRANSITION = {
   lagMin: 15,
 } as const
 
-export function transitionReps(s?: { push?: unknown; squat?: unknown }): { push: number; squat: number } {
-  const clamp = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(TRANSITION.minReps, Math.min(TRANSITION.maxReps, Math.round(v))) : TRANSITION.minReps)
-  return { push: clamp(s?.push), squat: clamp(s?.squat) }
+export type Sex = 'm' | 'f'
+
+/** Minimum reps by sex (the setting is Settings.morningFinal, shared with the warm-up final; missing = М) */
+export const TRANSITION_MIN: Record<Sex, { push: number; squat: number }> = {
+  m: { push: 20, squat: 20 },
+  f: { push: 5, squat: 20 },
+}
+
+/** Reps of a transition: the stored numbers, never below the minimum for the sex, never above 100 */
+export function transitionReps(s?: { push?: unknown; squat?: unknown }, sex?: Sex): { push: number; squat: number } {
+  const min = TRANSITION_MIN[sex === 'f' ? 'f' : 'm']
+  const clamp = (v: unknown, lo: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(lo, Math.min(TRANSITION.maxReps, Math.round(v))) : lo)
+  return { push: clamp(s?.push, min.push), squat: clamp(s?.squat, min.squat) }
+}
+
+const ru = (n: number, one: string, few: string, many: string) => {
+  const a = Math.abs(n) % 100
+  const b = a % 10
+  return a > 10 && a < 20 ? many : b > 1 && b < 5 ? few : b === 1 ? one : many
+}
+
+/** «20 отжиманий + 20 приседаний по Неумывакину» (М) / «20 приседаний по Неумывакину + 5 отжиманий» (Ж) */
+export function transitionText(r: { push: number; squat: number }, sex?: Sex): string {
+  const push = `${r.push} ${ru(r.push, 'отжимание', 'отжимания', 'отжиманий')}`
+  const squat = `${r.squat} ${ru(r.squat, 'приседание', 'приседания', 'приседаний')} по Неумывакину`
+  return sex === 'f' ? `${squat} + ${push}` : `${push} + ${squat}`
 }
 
 export interface TransitionEvent {

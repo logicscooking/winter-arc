@@ -17,6 +17,7 @@ import {
   transitionDue,
   transitionEvents,
   transitionReps,
+  transitionText,
   workMinutes,
 } from './plan'
 import { computeState } from './replay'
@@ -114,13 +115,24 @@ describe('План дня v0.9: миграция', () => {
     expect(migrateDayPlan(plain)).toBe(plain)
   })
 
-  it('настройки перехода: не меньше 10 и не больше 100', () => {
-    expect(transitionReps(undefined)).toEqual({ push: 10, squat: 10 })
-    expect(transitionReps({ push: 3, squat: 25.4 })).toEqual({ push: 10, squat: 25 })
-    expect(transitionReps({ push: 1e6, squat: 'x' })).toEqual({ push: 100, squat: 10 })
+  it('переход по полу: М — минимум 20 + 20, Ж — 20 приседаний + 5 отжиманий; старые 10 + 10 поднимаются', () => {
+    expect(transitionReps(undefined)).toEqual({ push: 20, squat: 20 })
+    expect(transitionReps(undefined, 'f')).toEqual({ push: 5, squat: 20 })
+    expect(transitionReps({ push: 10, squat: 10 }, 'm')).toEqual({ push: 20, squat: 20 })
+    expect(transitionReps({ push: 10, squat: 10 }, 'f')).toEqual({ push: 10, squat: 20 })
+    expect(transitionReps({ push: 1e6, squat: 'x' }, 'f')).toEqual({ push: 100, squat: 20 })
+    expect(transitionReps({ push: 35.4, squat: 40 }, 'm')).toEqual({ push: 35, squat: 40 })
     const d = makeData()
-    d.settings.transition = { push: 2, squat: 15 }
-    expect(normalizeData(JSON.parse(JSON.stringify(d))).settings.transition).toEqual({ push: 10, squat: 15 })
+    d.settings.transition = { push: 10, squat: 10 }
+    expect(normalizeData(JSON.parse(JSON.stringify(d))).settings.transition).toEqual({ push: 20, squat: 20 })
+    d.settings.morningFinal = 'f'
+    expect(normalizeData(JSON.parse(JSON.stringify(d))).settings.transition).toEqual({ push: 10, squat: 20 })
+  })
+
+  it('подписи: приседания по Неумывакину у обоих, у Ж приседания первыми', () => {
+    expect(transitionText({ push: 20, squat: 20 }, 'm')).toBe('20 отжиманий + 20 приседаний по Неумывакину')
+    expect(transitionText({ push: 5, squat: 20 }, 'f')).toBe('20 приседаний по Неумывакину + 5 отжиманий')
+    expect(transitionText({ push: 21, squat: 22 })).toBe('21 отжимание + 22 приседания по Неумывакину')
   })
 })
 

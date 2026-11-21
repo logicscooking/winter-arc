@@ -108,6 +108,8 @@ interface Store {
   assignPlan: (day: DayKey, key: string, blockId: string | null) => void
   /** «Переход» before a block: done at (ms) or undo (null) */
   setTransition: (day: DayKey, blockId: string, at: number | null) => void
+  /** v0.10: a project task «на сегодня» for a day (on) or not (off) */
+  setPick: (day: DayKey, taskId: string, on: boolean, now: Date) => void
   /** a custom task of a plan day: a daily task on that day (the same list as on «Сегодня») */
   addDayTask: (day: DayKey, title: string, now: Date) => string
   /** «Утренняя инвестиция» finished: once per game day, a later finish keeps the first */
@@ -429,6 +431,15 @@ export const useStore = create<Store>()(
             } else if (log.transitions) {
               delete log.transitions[blockId]
               if (!Object.keys(log.transitions).length) delete log.transitions
+            }
+          }),
+        setPick: (day, taskId, on, now) =>
+          update((d) => {
+            const log = dayLog(d, day)
+            if (on) (log.picks ??= {})[taskId] = now.getTime()
+            else if (log.picks) {
+              delete log.picks[taskId]
+              if (!Object.keys(log.picks).length) delete log.picks
             }
           }),
         addDayTask: (day, title, now) => {
