@@ -751,14 +751,21 @@ export function cantStartPick(data: AppData, skillId: string, today: DayKey, fal
 export const CHEST = { need: 3, rare: 0.12, legendary: 0.03, pityRare: 0.1, pityLegendary: 0.03 } as const
 export const CHEST_TYPES: ChestType[] = ['repeat', 'short', 'mid']
 
-/** goal closures of a type on a day */
-export function closuresOn(data: Pick<AppData, 'goals'>, type: ChestType, day: DayKey): number {
+/** Chest sources: «Квесты» = quests of the day (done or mini), «Задачи» = any closed task (project steps,
+ * Дело дня, own tasks), «Навыки» = practices; skill goals of the matching type count too */
+export type ChestData = Pick<AppData, 'goals' | 'chests'> & Partial<Pick<AppData, 'days' | 'tasks' | 'practices'>>
+
+/** what moves a chest of a type on a day */
+export function closuresOn(data: ChestData, type: ChestType, day: DayKey): number {
   let n = 0
   for (const g of data.goals ?? []) {
     if (g.type !== type) continue
     if (type === 'mid') n += g.doneDay === day ? 1 : 0
     else n += g.checks?.some((c) => c.day === day) ? 1 : 0
   }
+  if (type === 'repeat') n += Object.values(data.days?.[day]?.quests ?? {}).filter((m) => m.status !== 'skip').length
+  if (type === 'short') n += (data.tasks ?? []).filter((t) => t.doneAt && gameDayOf(new Date(t.doneAt)) === day).length
+  if (type === 'mid') n += (data.practices ?? []).filter((p) => p.day === day).length
   return n
 }
 
@@ -803,7 +810,7 @@ export interface ChestStatus {
   opened?: ChestOpen
 }
 
-export function chestsFor(data: Pick<AppData, 'goals' | 'chests'>, day: DayKey): ChestStatus[] {
+export function chestsFor(data: ChestData, day: DayKey): ChestStatus[] {
   return CHEST_TYPES.map((type) => {
     const opened = (data.chests ?? []).find((c) => c.id === `${day}:${type}`)
     const count = closuresOn(data, type, day)

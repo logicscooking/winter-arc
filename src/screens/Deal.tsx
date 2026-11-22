@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Check, ChevronRight, Crosshair, Plus, X } from 'lucide-react'
 import {
   CHEST,
-  GOAL_META,
   MAX_ACTIVE_SKILLS,
   STATS,
   XP,
@@ -205,7 +204,7 @@ function SkillCard({ skill, view, theme, xp }: { skill: Skill; view: ReturnType<
   )
 }
 
-const CHEST_NAME: Record<ChestType, string> = { repeat: GOAL_META.repeat.name, short: GOAL_META.short.name, mid: GOAL_META.mid.name }
+const CHEST_NAME: Record<ChestType, string> = { repeat: 'Квесты', short: 'Задачи', mid: 'Навыки' }
 
 function Chests() {
   const data = useStore((s) => s.data)
@@ -220,9 +219,9 @@ function Chests() {
       <div className="section-title">
         <h2>
           Сундуки дня
-          <Help title="Сундуки дня" text={[`${CHEST.need} закрытые цели одного типа за день открывают сундук этого типа.`, 'Внутри — одна из твоих наград магазина с редкостью: обычная, редкая или легендарная.']} />
+          <Help title="Сундуки дня" text={[`${CHEST.need} закрытых дела одного вида за день открывают сундук: квесты дня, задачи (проекты, Дело дня, свои) или практики навыков. Цели навыков тоже считаются.`, 'Внутри — одна из твоих наград магазина с редкостью: обычная, редкая или легендарная.']} />
         </h2>
-        <span className="small muted">{CHEST.need} цели → сундук</span>
+        <span className="small muted">{CHEST.need} дела → сундук</span>
       </div>
       <div className="chest-row">
         {list.map((c) => (

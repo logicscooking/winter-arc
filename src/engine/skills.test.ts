@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  chestsFor,
   BAR_LADDERS,
   FLOW,
   GOAL_XP,
@@ -527,5 +528,23 @@ describe('обмен деревом', () => {
   it('мусор → понятная ошибка', async () => {
     await expect(decodeTree('привет')).rejects.toThrow(/не код/)
     await expect(decodeTree('WA1.!!!!')).rejects.toThrow()
+  })
+})
+
+describe('chests count quests, tasks and practices', () => {
+  it('fills «Квесты», «Задачи», «Навыки» from the day', () => {
+    const day = '2026-11-23'
+    const at = new Date('2026-11-23T12:00:00').getTime()
+    const data = {
+      goals: [],
+      chests: [],
+      days: { [day]: { quests: { a: { status: 'done', at }, b: { status: 'mini', at }, c: { status: 'skip', at }, d: { status: 'done', at } } } },
+      tasks: [{ doneAt: at }, { doneAt: at }, { doneAt: at }, {}],
+      practices: [{ day }, { day: '2026-11-22' }],
+    } as unknown as Parameters<typeof chestsFor>[0]
+    const [repeat, short, mid] = chestsFor(data, day)
+    expect([repeat.count, repeat.ready]).toEqual([3, true])
+    expect([short.count, short.ready]).toEqual([3, true])
+    expect([mid.count, mid.ready]).toEqual([1, false])
   })
 })
