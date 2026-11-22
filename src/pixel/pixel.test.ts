@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { SPRITES } from './sprites'
+import { MONEY_BOSS_SPRITES } from './moneyBossSprites'
+import { MONEY_BOSSES } from '../engine/moneyBosses'
 import { AV_BASE, AV_H, AV_LAYERS, AV_W } from './avatar-layers'
 import { PAL } from './palette'
 import { createElement } from 'react'
@@ -19,6 +21,18 @@ describe('pixel art', () => {
         expect(r.length, `${name} row ${i}`).toBe(16)
         for (const ch of r) expect(ch === '.' || ch in PAL, `${name} row ${i} char ${ch}`).toBe(true)
       })
+    }
+  })
+  it('v0.17: five money boss sprites, clean 24×24 grids, one per boss', () => {
+    expect(Object.keys(MONEY_BOSS_SPRITES).sort()).toEqual(MONEY_BOSSES.map((b) => b.id).sort())
+    for (const [name, rows] of Object.entries(MONEY_BOSS_SPRITES)) {
+      expect(rows.length, name).toBe(24)
+      rows.forEach((r, i) => {
+        expect(r.length, `${name} row ${i}`).toBe(24)
+        for (const ch of r) expect(ch === '.' || ch in PAL, `${name} row ${i} char ${ch}`).toBe(true)
+      })
+      // outlined, so it reads on light and dark themes
+      expect(rows.join('').split('k').length - 1, name).toBeGreaterThan(40)
     }
   })
   it('avatar layers fit the 20×24 hero', () => {

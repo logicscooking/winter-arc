@@ -3,12 +3,14 @@ import { LEVEL_CAP, LEVEL_UP_SHARDS, levelOf, levelTitle, nextTitle, sphereLevel
 import { CAPS, computeState, heroTitle, heroTitles } from './replay'
 import { BOSS_RULES, BOSS_WIN, FINAL_WIN, taskCap, weaknessOf } from './bosses'
 import { GEAR, gearPrice, ownsGear, wornOutfit } from './avatar'
-import { MILESTONES, milestoneEvents, moneyPath, usdRateOf } from './money'
+import { usdRateOf } from './money'
+import { MAIN_BOSS_PRIZE, MONEY_BOSSES, moneyLadder, moneyMonthEvents, moneyMonths, moneyXpDelta, monthEnd } from './moneyBosses'
+import { MONEY_BOSS_HP } from './money'
 import { SHOP_CHEST, rollChest, setupDue, CHAPTER_BOSS, PRACTICE_XP } from './skills'
 import { STAT_SPHERE, laggingSphere } from './spheres'
 import { buildPublicStats, detectFeedEvents, feedText, shareSettings } from './social'
 import { dopaminePrice } from './shop'
-import { ARC_START, addDays, weekDays } from './time'
+import { ARC_START, addDays, gameDayOf, weekDays } from './time'
 import { at, confess, log, makeData, mark, nowAt, perfectDays } from './testkit'
 import type { AppData, Income, Reward, Task } from './types'
 
@@ -185,57 +187,148 @@ describe('боссы', () => {
   })
 })
 
-describe('Путь к $10k', () => {
-  it('вехи за календарный месяц, каждая один раз', () => {
-    const data = makeData()
-    data.incomes = [income('2026-12-05', 50_000), income('2026-12-10', 40_000), income('2027-01-03', 100_000), income('2027-01-20', 120_000)]
-    const ev = milestoneEvents(data)
-    // Dec: 90 000 ₽ / 80 = $1 125 → $1k on the 10th; Jan: 220 000 ₽ = $2 750 → $2.5k, $1k never again
-    expect(ev.map((e) => [e.id, e.day])).toEqual([
-      ['usd1k', '2026-12-10'],
-      ['usd2500', '2027-01-20'],
+describe('Боссы месяца', () => {
+  const kills = (st: { moneyKills: { month: string; id: string }[] }) => st.moneyKills.map((k) => `${k.month}:${k.id}`)
+
+  it('пять боссов, имена как у автора, HP и награды', () => {
+    expect(MONEY_BOSSES.map((b) => [b.name, b.usd, b.xp, b.shards])).toEqual([
+      ['Босс отсос', 500, 100, 10],
+      ['Босс говна насос', 1000, 200, 20],
+      ['Босс посёлка городского типа', 2500, 400, 40],
+      ['Босс езжу только на бизнес такси', 5000, 700, 60],
+      ['Босс смерть в нищете пока шлюха', 10000, 1500, 150],
     ])
-    const st = computeState(data, nowAt('2027-01-21', 12))
-    expect(st.milestones.map((m) => m.id)).toEqual(['usd1k', 'usd2500'])
-    expect(st.xpByDay['2026-12-10']).toBeGreaterThanOrEqual(MILESTONES[0].xp)
+    expect(MONEY_BOSSES.filter((b) => b.main).map((b) => b.id)).toEqual(['mb5'])
+    expect(MONEY_BOSSES.map((b) => b.usd)).toEqual([...MONEY_BOSS_HP])
   })
 
-  it('два месяца не складываются; курс из настроек', () => {
+  it('окно месяца — игровой день: до 04:00 первого числа ещё прошлый месяц', () => {
     const data = makeData()
-    data.incomes = [income('2026-12-30', 70_000), income('2027-01-02', 70_000)]
-    expect(milestoneEvents(data)).toEqual([])
-    data.settings.usdRate = 50
-    expect(usdRateOf(data)).toBe(50)
-    expect(milestoneEvents(data).map((e) => e.id)).toEqual(['usd1k'])
+    data.incomes = [income('2026-11-30', 40_000)]
+    const night = gameDayOf(new Date(2026, 11, 1, 2, 30))
+    expect(night).toBe('2026-11-30')
+    const l1 = moneyLadder(data, night)
+    expect(l1.month).toBe('2026-11')
+    expect(l1.usd).toBe(500)
+    expect(l1.main.daysLeft).toBe(1)
+    // after 04:00 it is December: the ladder starts from zero, 31 days to go
+    const l2 = moneyLadder(data, gameDayOf(new Date(2026, 11, 1, 4, 0)))
+    expect(l2.month).toBe('2026-12')
+    expect(l2.usd).toBe(0)
+    expect(l2.killed).toBe(0)
+    expect(l2.main.daysLeft).toBe(31)
+    expect(l2.main.perDay).toBeCloseTo(10000 / 31)
+    expect(monthEnd('2027-02-10')).toBe('2027-02-28')
+  })
+
+  it('урон в $ по курсу; лестница: убитые, текущая цель, следующие', () => {
+    const data = makeData()
+    data.incomes = [income('2026-12-02', 50_000), income('2026-12-05', 46_000)]
+    const l = moneyLadder(data, '2026-12-10')
+    // 96 000 ₽ / 80 = $1 200: two dead, «посёлок» is the target
+    expect(l.usd).toBe(1200)
+    expect(l.steps.map((x) => x.state)).toEqual(['dead', 'dead', 'cur', 'next', 'next'])
+    expect(l.target?.id).toBe('mb3')
+    expect(l.progress).toBeCloseTo(1200 / 2500)
+    expect(l.main).toEqual({ dead: false, left: 8800, daysLeft: 22, perDay: 400 })
+    data.settings.usdRate = 30
+    expect(usdRateOf(data)).toBe(30)
+    expect(moneyLadder(data, '2026-12-10').killed).toBe(3)
     data.settings.usdRate = -3
     expect(usdRateOf(data)).toBe(80)
+    // the future does not count yet
+    expect(moneyLadder(data, '2026-12-03').usd).toBe(625)
   })
 
-  it('карточка: прогресс месяца к следующей вехе; $10k даёт костюм и титул', () => {
+  it('награда за каждого босса — раз в месяц, и снова в следующем', () => {
     const data = makeData()
-    data.incomes = [income('2027-01-03', 120_000)]
-    const p = moneyPath(data, '2027-01-10')
-    expect(p.next?.usd).toBe(2500)
-    expect(p.from).toBe(1000)
-    expect(p.progress).toBeCloseTo((1500 - 1000) / 1500)
-    data.incomes.push(income('2027-01-12', 700_000))
-    const st = computeState(data, nowAt('2027-01-12', 20))
-    expect(st.milestones.map((m) => m.id)).toEqual(['usd1k', 'usd2500', 'usd5k', 'usd10k'])
-    expect(ownsGear(GEAR.find((g) => g.milestone === 'usd10k')!, 1, [], st)).toBe(true)
-    expect(heroTitles(st)).toContain('Десятка в месяц')
+    data.incomes = [income('2026-12-05', 50_000), income('2026-12-10', 40_000), income('2026-12-20', 10_000), income('2027-01-03', 100_000)]
+    const ev = moneyMonthEvents(data).kills
+    expect(ev.map((e) => [e.month, e.id, e.day])).toEqual([
+      ['2026-12', 'mb1', '2026-12-05'],
+      ['2026-12', 'mb2', '2026-12-10'],
+      ['2027-01', 'mb1', '2027-01-03'],
+      ['2027-01', 'mb2', '2027-01-03'],
+    ])
+    const st = computeState(data, nowAt('2027-01-04', 12))
+    expect(kills(st)).toEqual(['2026-12:mb1', '2026-12:mb2', '2027-01:mb1', '2027-01:mb2'])
+    // Dec: $1 250 → 125 XP + 100 + 200; Jan: $1 250 → 125 + 100 + 200
+    expect(st.xpBySphere.money).toBe(125 + 300 + 125 + 300)
+    expect(st.xpByDay['2026-12-05']).toBe(62 + 100)
+    // two months never add up
+    const split = makeData()
+    split.incomes = [income('2026-12-30', 70_000), income('2027-01-02', 70_000)]
+    expect(moneyMonthEvents(split).kills.map((e) => e.id)).toEqual(['mb1', 'mb1'])
   })
 
-  it('веха в пати — только при включённом шаринге денег', () => {
+  it('главный босс: первая победа — костюм и титул; дальше просто награда', () => {
     const data = makeData()
-    data.incomes = [income(D1, 90_000)]
+    data.incomes = [income('2026-12-03', 400_000), income('2026-12-12', 400_000)]
+    const st = computeState(data, nowAt('2026-12-12', 20))
+    expect(kills(st)).toEqual(['2026-12:mb1', '2026-12:mb2', '2026-12:mb3', '2026-12:mb4', '2026-12:mb5'])
+    expect(ownsGear(GEAR.find((g) => g.moneyBoss === 'mb5')!, 1, [], st)).toBe(true)
+    expect(heroTitles(st)).toContain(MAIN_BOSS_PRIZE.title)
+    expect(st.xpBySphere.money).toBe(1000 + 100 + 200 + 400 + 700 + 1500)
+    expect(moneyLadder(data, '2026-12-12').target).toBeNull()
+    // not yet: no suit, no title
+    const poor = makeData()
+    poor.incomes = [income('2026-12-03', 400_000)]
+    const sp = computeState(poor, nowAt('2026-12-12', 20))
+    expect(ownsGear(GEAR.find((g) => g.moneyBoss === 'mb5')!, 1, [], sp)).toBe(false)
+    expect(heroTitles(sp)).not.toContain(MAIN_BOSS_PRIZE.title)
+    // again next month: the reward once more, still one title
+    data.incomes.push(income('2027-01-10', 800_000))
+    const st2 = computeState(data, nowAt('2027-01-10', 20))
+    expect(st2.moneyKills.filter((k) => k.id === 'mb5').map((k) => k.month)).toEqual(['2026-12', '2027-01'])
+    expect(heroTitles(st2).filter((t) => t === MAIN_BOSS_PRIZE.title)).toHaveLength(1)
+  })
+
+  it('1 XP за $10 месяца; удалённая запись забирает XP и победу', () => {
+    const data = makeData()
+    data.incomes = [income('2026-12-02', 799), income('2026-12-03', 1)] // $9.99 + $0.01 = $10 → 1 XP on the second
+    expect(moneyMonthEvents(data).xp).toEqual([{ day: '2026-12-03', at: at('2026-12-03', 12), xp: 1 }])
+    expect(moneyXpDelta(data, '2026-12-04', 8000)).toBe(10)
+    data.incomes.push(income('2026-12-05', 40_000))
+    const st = computeState(data, nowAt('2026-12-06', 12))
+    expect(kills(st)).toEqual(['2026-12:mb1'])
+    expect(st.xpBySphere.money).toBe(51 + 100)
+    data.incomes = data.incomes.slice(0, 2)
+    const back = computeState(data, nowAt('2026-12-06', 12))
+    expect(back.moneyKills).toEqual([])
+    expect(back.xpBySphere.money).toBe(1)
+    expect(back.shards).toBeLessThan(st.shards)
+  })
+
+  it('история месяцев: сколько убито из 5, главный ✓/✗', () => {
+    const data = makeData()
+    data.incomes = [income('2026-11-25', 60_000), income('2026-12-03', 820_000), income('2027-01-05', 100_000)]
+    const months = moneyMonths(data, '2026-11-20', '2027-01-10')
+    expect(months.map((m) => [m.month, m.killed, m.main, m.live])).toEqual([
+      ['2027-01', 2, false, true],
+      ['2026-12', 5, true, false],
+      ['2026-11', 1, false, false],
+    ])
+  })
+
+  it('пати видит убийства только при включённом шаринге денег', () => {
+    const data = makeData()
+    data.incomes = [income(D1, 900_000)]
     const st = computeState(data, nowAt(D1, 20))
     const ctx = { since: 0, levelAtSince: 99, share: shareSettings(data) }
-    expect(detectFeedEvents(data, st, ctx).filter((e) => e.key.startsWith('milestone'))).toEqual([])
+    const mine = () => detectFeedEvents(data, st, ctx).filter((e) => e.key.startsWith('mboss'))
+    expect(mine()).toEqual([])
+    // the title tells the income: hidden from the party without the opt-in
+    expect(heroTitles(st)[0]).toBe(MAIN_BOSS_PRIZE.title)
+    expect(buildPublicStats(data, st, nowAt(D1, 20)).title).not.toBe(MAIN_BOSS_PRIZE.title)
+    expect(JSON.stringify(buildPublicStats(data, st, nowAt(D1, 20)))).not.toMatch(/mb\d|bosses|900/)
     data.settings.moneyShare = true
-    const ev = detectFeedEvents(data, st, ctx).filter((e) => e.key.startsWith('milestone'))
-    expect(ev).toHaveLength(1)
-    expect(feedText(ev[0].kind, ev[0].payload)).toContain('$1 000')
+    const ev = mine()
+    expect(ev).toHaveLength(5)
+    expect(ev.every((e) => e.kind === 'level' && e.key.length <= 64)).toBe(true)
+    expect(feedText(ev[4].kind, ev[4].payload)).toContain('Босс смерть в нищете пока шлюха')
+    expect(feedText(ev[0].kind, ev[0].payload)).toContain('$500')
     expect(buildPublicStats(data, st, nowAt(D1, 20)).title).toBe(heroTitle(st))
+    expect(buildPublicStats(data, st, nowAt(D1, 20)).money?.bosses).toEqual({ month: '2026-11', killed: 5 })
   })
 })
 

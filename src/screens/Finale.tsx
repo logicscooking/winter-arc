@@ -1,5 +1,5 @@
 
-import { ARC_START, ARC_WEEKS, FINAL_MEASURE_FROM, MILESTONES, SPHERES, booksFinishedInArc, formatUsd, gameDayOf, heroTitles, levelOf, parseHM, questStreak, sphereLevelOf } from '../engine'
+import { ARC_START, ARC_WEEKS, FINAL_MEASURE_FROM, MAIN_MONEY_BOSS, SPHERES, booksFinishedInArc, gameDayOf, heroTitles, levelOf, parseHM, questStreak, sphereLevelOf } from '../engine'
 import type { Measurements } from '../engine'
 import { useStore } from '../store/store'
 import { useGame, useNow } from '../store/hooks'
@@ -52,9 +52,10 @@ export function Finale() {
             ['Книг дочитано', booksFinishedInArc(data, ARC_START)],
             ['Боссов повержено', `${game.trophies.length}/${ARC_WEEKS}`],
             ['Весенний босс', game.trophies.includes(ARC_WEEKS) ? 'повержен' : `${game.finalBoss.hp} HP`],
-            ['Лучшая веха денег', (() => {
-              const top = [...MILESTONES].reverse().find((m) => game.milestones.some((x) => x.id === m.id))
-              return top ? `${formatUsd(top.usd)}/мес` : '—'
+            ['Боссы месяца', (() => {
+              const kills = game.moneyKills.length
+              const main = game.moneyKills.filter((k) => k.id === MAIN_MONEY_BOSS.id).length
+              return `${kills}${main ? ` · главный ×${main}` : ''}`
             })()],
             ['Лучшая серия честности', game.bestHonesty],
             ['Падений', game.falls.length],

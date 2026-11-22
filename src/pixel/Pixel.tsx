@@ -4,6 +4,7 @@ import { SPRITES, type SpriteName } from './sprites'
 import { HAIR, PAL, SKIN, SWATCHES } from './palette'
 import { AV_BASE, AV_LAYERS, LAYER_ORDER } from './avatar-layers'
 import { gridPaths } from './render'
+import { MONEY_BOSS_SPRITES } from './moneyBossSprites'
 
 interface PxProps {
   name: SpriteName
@@ -100,6 +101,27 @@ export function BossSprite({ name, size = 48, className }: { name: string; size?
   return <Px name={look.name} swap={look.swap} size={size} className={className} />
 }
 
+/** v0.17 «Боссы месяца»: one of the five money bosses (moneyBosses.ts ids mb1…mb5), 24×24 */
+export const MoneyBossSprite = memo(function MoneyBossSprite({ id, size = 48, className, title }: { id: string; size?: number; className?: string; title?: string }) {
+  const grid = MONEY_BOSS_SPRITES[id] ?? MONEY_BOSS_SPRITES.mb1
+  const p = gridPaths([grid], `mb:${id}`)
+  return (
+    <svg
+      className={`px money-boss-px ${className ?? ''}`}
+      viewBox={`0 0 ${p.w} ${p.h}`}
+      width={size}
+      height={size}
+      shapeRendering="crispEdges"
+      role={title ? 'img' : undefined}
+      aria-label={title}
+      aria-hidden={title ? undefined : true}
+    >
+      {p.runs.map(([c, d]) => (
+        <path key={c} d={d} fill={PAL[c]} />
+      ))}
+    </svg>
+  )
+})
 
 // ---------- avatar ----------
 

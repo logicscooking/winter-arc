@@ -8,11 +8,12 @@ import { questStreak } from './analysis'
 import { wornOutfit } from './avatar'
 import { levelOf } from './levels'
 import { COMEBACK_WINDOW_MS, isCompleted } from './quests'
-import { heroTitle, marksFor, planFor } from './replay'
+import { heroTitles, marksFor, planFor } from './replay'
 import type { GameState } from './replay'
 import { activeSkills, skillView } from './skills'
 import { publicDuels } from './duels'
-import { MILESTONES, formatUsd, moneyShareOn, publicMoney } from './money'
+import { formatUsd, moneyShareOn, publicMoney } from './money'
+import { MAIN_BOSS_PRIZE, moneyBossById } from './moneyBosses'
 import type { MoneyTotals } from './money'
 import type { DuelPub } from './duels'
 import { publicRecap, publicWeek } from './week'
@@ -78,7 +79,7 @@ export interface PublicStats {
   /** v0.5 duels: ids, window and own closed-quests score per day. Friends validate it with safeDuels */
   duels?: DuelPub[]
   /** v0.7 «Заработано»: only with the opt-in, only totals. Friends validate it with safeMoney */
-  money?: MoneyTotals
+  money?: MoneyTotals & { bosses?: { month: string; killed: number } }
   /** «Неделя»: this week's goals without «только мне». Friends validate it with safeWeek */
   week?: { key: DayKey; goals: PubGoal[] }
   /** «Неделя»: the latest finished итог (not hidden). Friends validate it with safeRecap */
@@ -128,7 +129,8 @@ export function buildPublicStats(data: AppData, game: GameState, now: Date): Pub
     freezes: game.freezes,
     boss: bossWeek ? { week: bossWeek.week, name: bossWeek.name, hp: bossWeek.hp, damage: bossWeek.damage, won: bossWeek.won } : null,
     outfit: wornOutfit(data.profile?.outfit, level, data.purchases, game),
-    title: heroTitle(game),
+    // «Десятка в месяц» tells the income: public only with the money opt-in
+    title: heroTitles(game).filter((t) => moneyShareOn(data) || t !== MAIN_BOSS_PRIZE.title)[0],
     ...(activeSkills(data).length ? { skills: publicSkills(data, game) } : {}),
     ...(() => {
       const duels = publicDuels(data, game, now.getTime())
@@ -202,13 +204,13 @@ export function detectFeedEvents(data: AppData, game: GameState, ctx: FeedContex
     if (lvl > ctx.levelAtSince) out.push({ kind: 'level', key: `level:${lvl}`, payload: { level: lvl }, at: Date.now() })
   }
 
-  // v0.16 «Путь к $10k»: a milestone is news only with the money opt-in; it rides the 'level' kind
+  // v0.17 «Боссы месяца»: a kill is news only with the money opt-in; it rides the 'level' kind
   // (the server knows no other kinds) with a readable `level` so older clients still show a line
   if (moneyShareOn(data)) {
-    for (const m of game.milestones) {
-      if (m.day < sinceDay) continue
-      const ms = MILESTONES.find((x) => x.id === m.id)
-      if (ms) out.push({ kind: 'level', key: `milestone:${m.id}`, payload: { ms: m.id, usd: ms.usd, level: `${formatUsd(ms.usd)} за месяц` }, at: data.days[m.day]?.confession?.at ?? ctx.since })
+    for (const k of game.moneyKills) {
+      if (k.day < sinceDay) continue
+      const b = moneyBossById(k.id)
+      if (b) out.push({ kind: 'level', key: `mboss:${k.month}:${k.id}`, payload: { mb: k.id, month: k.month, usd: b.usd, level: `${b.name} повержен` }, at: k.at })
     }
   }
 
@@ -258,6 +260,11 @@ export function feedText(kind: string, payload: Record<string, unknown>, comebac
     case 'boss':
       return `Победил босса недели ${payload.week}: ${payload.name}`
     case 'level':
+      if (typeof payload.mb === 'string') {
+        const b = moneyBossById(payload.mb)
+        if (b) return `${b.main ? 'Главный босс месяца повержен' : 'Босс месяца повержен'}: «${b.name}» · ${formatUsd(b.usd)} 💰`
+      }
+      // v0.16 milestones still in the feed
       if (typeof payload.ms === 'string' && typeof payload.usd === 'number') return `Веха: ${formatUsd(payload.usd)} за месяц 💰`
       return `Новый уровень: ${payload.level}`
     case 'book':

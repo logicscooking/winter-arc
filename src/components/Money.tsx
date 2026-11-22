@@ -16,6 +16,8 @@ import {
   moneyBoard,
   moneyShareOn,
   moneyTotals,
+  moneyKillsBy,
+  moneyLadder,
   moneyXpDelta,
   parseAmount,
   safeMoney,
@@ -26,9 +28,8 @@ import { nowWithOffset, reward, useNow } from '../store/hooks'
 import { useUi } from '../store/ui'
 import type { Member } from '../cloud/state'
 import { Field, Help, Sheet } from './ui'
-import { MoneyPathCard } from './Progress'
 import { HeroAva } from './HeroAva'
-import { Px } from '../pixel/Pixel'
+import { MoneyBossSprite, Px } from '../pixel/Pixel'
 import './money.css'
 
 const QUICK = [500, 1000, 5000, 10000]
@@ -57,7 +58,7 @@ export function MoneySheet({ onClose }: { onClose: () => void }) {
   const [note, setNote] = useState('')
   const amount = parseAmount(raw)
   const xp = amount ? moneyXpDelta(data, day, amount) : 0
-  const dayHas = incomesOf(data).some((x) => x.day === day)
+  const kills = amount ? moneyKillsBy(data, day, amount) : []
   const bad = raw.trim() !== '' && !amount
 
   const save = (el: Element) => {
@@ -161,13 +162,18 @@ export function MoneySheet({ onClose }: { onClose: () => void }) {
           <input className="input" value={note} maxLength={MONEY_NOTE_MAX} onChange={(e) => setNote(e.target.value)} placeholder="За что, что сработало" />
         </Field>
 
+        {kills.length > 0 && (
+          <p className="money-kill small" role="status">
+            <MoneyBossSprite id={kills[kills.length - 1].id} size={28} /> Добьёт: {kills.map((b) => `«${b.name}»`).join(', ')}
+          </p>
+        )}
         <button className="btn amber block" type="submit" disabled={!amount}>
           <Px name="coin" size={20} /> {amount ? `Записать ${formatRub(amount)}` : 'Записать'}
           {xp > 0 && <span className="money-xp num">+{xp} XP</span>}
         </button>
         <p className="tiny muted center">
-          {amount && xp === 0 && dayHas ? 'XP за этот день уже есть.' : 'XP — раз в день, по сумме дня.'}{' '}
-          <Help title="XP за заработок" text={['XP в «Дело» — раз в день, по порядку суммы дня: 100 ₽ — 5 XP, 1 000 ₽ — 10, 10 000 ₽ — 15, от 100 000 ₽ — 20.', 'Записи за день складываются. XP добавится, только когда сумма дня перейдёт на новый порядок. Фармить незачем.']} />
+          1 XP за каждые $10 месяца, по курсу {usdRateOf(data)} ₽.{' '}
+          <Help title="XP за заработок" text={['В сферу «Деньги»: 1 XP за каждые $10, заработанные за календарный месяц. $10 000 за месяц ≈ 1 000 XP плюс награды боссов месяца.', 'Записи месяца складываются, мелочь не пропадает. Удалил запись — XP и боссы пересчитаются.']} />
         </p>
       </form>
     </Sheet>
@@ -184,7 +190,7 @@ export function MoneyShareRow() {
       <span>
         <span style={{ fontWeight: 700 }}>Показывать заработок в пати</span>
         <span className="tiny muted" style={{ display: 'block' }}>
-          Только суммы, без записей и заметок
+          Суммы и боссы месяца, без записей и заметок
         </span>
       </span>
       <button className="switch" role="switch" aria-checked={on} aria-label="Показывать заработок в пати" onClick={() => setSettings({ moneyShare: !on })} />
@@ -192,7 +198,7 @@ export function MoneyShareRow() {
   )
 }
 
-/** v0.16 «Путь к $10k»: ₽ per $ for the milestones only */
+/** ₽ per $: for «Боссы месяца» and money XP */
 export function UsdRateRow() {
   const rate = useStore((s) => usdRateOf(s.data))
   const setSettings = useStore((s) => s.setSettings)
@@ -207,7 +213,7 @@ export function UsdRateRow() {
       <span>
         <span style={{ fontWeight: 700 }}>Курс $</span>
         <span className="tiny muted" style={{ display: 'block' }}>
-          Только для вех «Путь к $10k», ₽ за $1
+          Для боссов месяца и XP, ₽ за $1
         </span>
       </span>
       <input className="input num" style={{ width: 88 }} inputMode="decimal" value={raw} onChange={(e) => setRaw(e.target.value.replace(/[^\d.,]/g, ''))} onBlur={commit} onKeyDown={(e) => e.key === 'Enter' && commit()} aria-label="Курс доллара в рублях" />
@@ -267,7 +273,7 @@ export function MoneyCard() {
                   className="icon-btn"
                   aria-label={`Удалить ${formatRub(x.amount)}`}
                   onClick={async () => {
-                    if (await confirm({ title: `Удалить ${formatRub(x.amount)}?`, body: 'Запись уйдёт и с другого устройства. XP за день пересчитается.', ok: 'Удалить', danger: true })) del(x.id)
+                    if (await confirm({ title: `Удалить ${formatRub(x.amount)}?`, body: 'Запись уйдёт и с другого устройства. XP и боссы месяца пересчитаются.', ok: 'Удалить', danger: true })) del(x.id)
                   }}
                 >
                   <Trash2 size={16} />
@@ -284,11 +290,6 @@ export function MoneyCard() {
         <MoneyShareRow />
         <UsdRateRow />
       </div>
-      {list.length > 0 && (
-        <div style={{ marginTop: 12 }}>
-          <MoneyPathCard />
-        </div>
-      )}
       {add && <MoneySheet onClose={() => setAdd(false)} />}
     </section>
   )
@@ -305,12 +306,13 @@ export function MoneyBoard({ members, meId }: { members: Member[]; meId: string 
   const [period, setPeriod] = useState<MoneyPeriod>('week')
   const on = moneyShareOn(data)
   const mine = moneyTotals(data, today)
+  const myMoney = on ? { week: mine.week, arc: mine.arc, bosses: moneyLadder(data, today).killed } : null
   const entries = members.map((m) =>
     m.id === meId
-      ? { id: m.id, name: m.display_name, me: true, money: on ? { week: mine.week, arc: mine.arc } : null }
+      ? { id: m.id, name: m.display_name, me: true, money: myMoney }
       : { id: m.id, name: m.display_name, money: safeMoney(m.stats?.money, today) },
   )
-  if (!entries.some((e) => e.me)) entries.unshift({ id: meId, name: 'Ты', me: true, money: on ? { week: mine.week, arc: mine.arc } : null })
+  if (!entries.some((e) => e.me)) entries.unshift({ id: meId, name: 'Ты', me: true, money: myMoney })
   const rows = moneyBoard(entries, period)
   const quiet = rows.filter((r) => !r.money && !r.me).length
   return (
@@ -343,7 +345,14 @@ export function MoneyBoard({ members, meId }: { members: Member[]; meId: string 
                 {r.me && <span className="tag">ты</span>}
               </span>
               {r.money ? (
-                <b className="board-sum num">{formatRub(r.value ?? 0)}</b>
+                <span className="board-right">
+                  <b className="board-sum num">{formatRub(r.value ?? 0)}</b>
+                  {r.money.bosses !== undefined && (
+                    <span className={`board-kills num${r.money.bosses >= 5 ? ' main' : ''}`} title="Боссы месяца убиты">
+                      ☠ {r.money.bosses}/5
+                    </span>
+                  )}
+                </span>
               ) : (
                 <>
                   <span className="board-hidden-tag tiny muted">
@@ -359,7 +368,7 @@ export function MoneyBoard({ members, meId }: { members: Member[]; meId: string 
       </ol>
       <p className="tiny muted">
         {period === 'week' ? 'С понедельника' : 'Вся арка с разминкой'}
-        {quiet > 0 ? ` · ещё ${quiet} скрывают` : ''} · друзья видят только сумму
+        {quiet > 0 ? ` · ещё ${quiet} скрывают` : ''} · друзья видят только сумму и боссов месяца
       </p>
     </section>
   )

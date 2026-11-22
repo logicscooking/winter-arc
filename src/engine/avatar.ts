@@ -18,8 +18,8 @@ export interface GearItem {
   fixed?: boolean
   /** earned by beating the boss of this arc week (14 = «Весенний босс») */
   boss?: number
-  /** earned by a money milestone (money.ts MILESTONES id) */
-  milestone?: string
+  /** earned by the first kill of a money boss (moneyBosses.ts MONEY_BOSSES id) */
+  moneyBoss?: string
   /** «легенда»: shown with a gold frame; a priced legendary keeps its price in every chapter */
   legendary?: boolean
 }
@@ -88,7 +88,7 @@ export const GEAR: GearItem[] = [
   { id: 'b_shield', slot: 'extra', title: 'Щит смелости', boss: 13, fixed: true },
   { id: 'b_springcrown', slot: 'hat', title: 'Венок весны', boss: 14, fixed: true, legendary: true },
   // «Путь к $10k»
-  { id: 'goldsuit', slot: 'coat', title: 'Золотой костюм', milestone: 'usd10k', fixed: true, legendary: true },
+  { id: 'goldsuit', slot: 'coat', title: 'Золотой костюм', moneyBoss: 'mb5', fixed: true, legendary: true },
   // legendary ❄ sinks: the price never scales with the chapter
   { id: 'shuba', slot: 'coat', title: 'Царская шуба', price: 180, fixed: true, legendary: true },
   { id: 'aurora', slot: 'extra', title: 'Северное сияние', price: 250, fixed: true, legendary: true },
@@ -109,16 +109,16 @@ export const OUTFIT_SLOTS: { id: OutfitSlot; title: string }[] = [
 export const gearItem = (id: string | undefined) => GEAR.find((g) => g.id === id)
 export const gearPurchaseId = (id: string) => `av:${id}`
 
-/** v0.16: what the replay earned besides levels: boss trophies (weeks) and money milestones */
+/** v0.16: what the replay earned besides levels: boss trophies (weeks) and money boss kills */
 export interface Earned {
   trophies: number[]
-  milestones: { id: string }[]
+  moneyKills: { id: string }[]
 }
 
 export function ownsGear(item: GearItem, level: number, purchases: Pick<Purchase, 'itemId' | 'kind'>[], earned?: Earned): boolean {
   if (item.level !== undefined && level >= item.level) return true
   if (item.boss !== undefined) return !!earned?.trophies.includes(item.boss)
-  if (item.milestone !== undefined) return !!earned?.milestones.some((m) => m.id === item.milestone)
+  if (item.moneyBoss !== undefined) return !!earned?.moneyKills?.some((m) => m.id === item.moneyBoss)
   return item.price !== undefined && purchases.some((p) => p.kind === 'avatar' && p.itemId === gearPurchaseId(item.id))
 }
 
@@ -132,7 +132,7 @@ export function gearPrice(item: GearItem, chapter: ChapterId): number {
 export function gearUnlockLabel(item: GearItem, bossName: (week: number) => string): string {
   if (item.level !== undefined) return `ур ${item.level}`
   if (item.boss !== undefined) return bossName(item.boss)
-  if (item.milestone === 'usd10k') return '$10k/мес'
+  if (item.moneyBoss !== undefined) return '$10k/мес'
   return ''
 }
 

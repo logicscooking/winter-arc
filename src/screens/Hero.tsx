@@ -3,7 +3,8 @@ import { ARC_START, ARC_WEEKS, CHAPTERS, GEAR, bossOf, chapterOf, chapterRank, h
 import { useStore } from '../store/store'
 import { useGame } from '../store/hooks'
 import { Spark } from '../components/Spark'
-import { FinalBossCard, MoneyPathCard, SphereList } from '../components/Progress'
+import { FinalBossCard, SphereList } from '../components/Progress'
+import { MoneyBossesCard } from '../components/MoneyBosses'
 import { MiniTrends } from './Today'
 import { hpValues, window7, xpValues } from '../store/trends'
 import { BossSprite, PixelAvatar, Px } from '../pixel/Pixel'
@@ -105,7 +106,7 @@ export function Hero() {
             <SphereList game={game} />
           </section>
 
-          <MoneyPathCard />
+          <MoneyBossesCard history />
         </div>
 
         <div className="stack-lg">

@@ -20,6 +20,7 @@ import { BossSprite, PixelAvatar, Px } from '../pixel/Pixel'
 import type { SpriteName } from '../pixel/sprites'
 import { DuelArea, useDuelReconcile, useTheirDuels } from '../components/Duels'
 import { MoneyBoard, MoneyCard } from '../components/Money'
+import { MoneyBossesCard } from '../components/MoneyBosses'
 import { PubGoals, RecapSummary, copyPrompt } from '../components/Week'
 import { goalsTally, recapPrompt, safeRecap, safeWeek, viewFromPub, weekLabel } from '../engine'
 import type { RecapView } from '../engine'
@@ -177,7 +178,10 @@ function MoneyTab() {
   const parties = useSocial((s) => s.parties)
   return (
     <div className="cols">
-      <MoneyCard />
+      <div className="stack-lg">
+        <MoneyBossesCard />
+        <MoneyCard />
+      </div>
       {cloudConfigured && account && parties.length > 0 ? <PartyBoard /> : null}
     </div>
   )

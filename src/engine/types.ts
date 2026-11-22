@@ -353,7 +353,7 @@ export interface Settings {
   aiUse?: { day: DayKey; n: number; last: number }
   /** v0.7 «Заработано»: publish week / arc totals to the party (missing = off) */
   moneyShare?: boolean
-  /** v0.16 «Путь к $10k»: ₽ per $ for the money milestones (missing = 80) */
+  /** v0.16: ₽ per $ for «Боссы месяца» and money XP (missing = 80) */
   usdRate?: number
   /** «Утренняя инвестиция»: the final block (squats + push-ups) for men or women; missing = ask on first run */
   morningFinal?: 'm' | 'f'

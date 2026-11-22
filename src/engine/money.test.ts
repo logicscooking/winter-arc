@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { MONEY_MAX, MONEY_XP, formatRub, moneyBoard, moneyEvents, moneyTotals, moneyXpFor, parseAmount, publicMoney, safeMoney } from './money'
+import { MONEY_MAX, formatRub, moneyBoard, moneyTotals, parseAmount, publicMoney, safeMoney } from './money'
+import { moneyMonthEvents } from './moneyBosses'
 import { computeState } from './replay'
 import { buildPublicStats } from './social'
 import { mergeDocs, stampChanges, toAtoms } from './sync'
@@ -40,28 +41,20 @@ describe('money: totals', () => {
 })
 
 describe('money: reward', () => {
-  it('grows by the order of the day total and is capped', () => {
-    expect(moneyXpFor(0)).toBe(0)
-    expect(moneyXpFor(50)).toBe(MONEY_XP.min)
-    expect(moneyXpFor(100)).toBe(5)
-    expect(moneyXpFor(1000)).toBe(10)
-    expect(moneyXpFor(15000)).toBe(15)
-    expect(moneyXpFor(9_000_000)).toBe(MONEY_XP.max)
-  })
-
-  it('can not be farmed: many entries on a day give one reward, into «Дело», via replay', () => {
+  it('1 XP per $10 of the month, into «Деньги»: many small entries give the same as one', () => {
     const d = makeData()
     d.profile!.onboardDay = '2026-11-23'
     const day = '2026-11-24'
+    // 20 × 100 ₽ = 2 000 ₽ = $25 at 80 ₽ → 2 XP; the leftover of each entry is not lost
     d.incomes = Array.from({ length: 20 }, (_, i) => inc(`x${i}`, day, 100, 10 + (i % 8)))
-    expect(moneyEvents(d)).toEqual([{ day, at: at(day, 10), xp: moneyXpFor(2000) }])
+    expect(moneyMonthEvents(d).xp.reduce((s, e) => s + e.xp, 0)).toBe(2)
     const one = makeData()
     one.profile!.onboardDay = '2026-11-23'
     one.incomes = [inc('y', day, 2000)]
     const a = computeState(d, nowAt(day, 20))
     const b = computeState(one, nowAt(day, 20))
     expect(a.xpByStat.deal).toBe(b.xpByStat.deal)
-    expect(a.xpByStat.deal).toBe(10)
+    expect(a.xpBySphere.money).toBe(2)
     // deterministic: same log → same state
     expect(computeState(d, nowAt(day, 20)).xp).toBe(a.xp)
   })
@@ -90,8 +83,8 @@ describe('money: privacy', () => {
     d.settings.moneyShare = true
     const now = nowAt('2026-11-25', 10)
     const s = buildPublicStats(d, computeState(d, now), now)
-    expect(s.money).toEqual({ week: 5321, arc: 5321, weekKey: '2026-11-23' })
-    expect(Object.keys(s.money!).sort()).toEqual(['arc', 'week', 'weekKey'])
+    expect(s.money).toEqual({ week: 5321, arc: 5321, weekKey: '2026-11-23', bosses: { month: '2026-11', killed: 0 } })
+    expect(Object.keys(s.money!).sort()).toEqual(['arc', 'bosses', 'week', 'weekKey'])
     expect(JSON.stringify(s)).not.toMatch(/СЕКРЕТ|4321|m1|m2/)
   })
 
@@ -106,6 +99,10 @@ describe('money: privacy', () => {
     expect(safeMoney({ week: 1, arc: 1, weekKey: '<script>' }, today)).toBeNull()
     expect(safeMoney(null, today)).toBeNull()
     expect(safeMoney('5000', today)).toBeNull()
+    // v0.17: the month's boss kills, only for this month, bad counts ignored
+    expect(safeMoney({ week: 1, arc: 1, weekKey: '2026-11-23', bosses: { month: '2026-11', killed: 3 } }, today)).toEqual({ week: 1, arc: 1, bosses: 3 })
+    expect(safeMoney({ week: 1, arc: 1, weekKey: '2026-11-23', bosses: { month: '2026-10', killed: 5 } }, today)?.bosses).toBe(0)
+    expect(safeMoney({ week: 1, arc: 1, weekKey: '2026-11-23', bosses: { month: '2026-11', killed: 9 } }, today)?.bosses).toBeUndefined()
   })
 
   it('board: by amount, ties share a place, hidden last with me first', () => {

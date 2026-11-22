@@ -2184,12 +2184,60 @@ body:has(.top-garland:not(.is-off)) .topbar::after {
 .fled { display: flex; flex-wrap: wrap; gap: 6px; }
 .fled-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px 3px 4px; border-radius: 99px; background: var(--surface-2); font-size: 0.78rem; font-weight: 900; color: var(--hp); }
 
-.money-path .mp-now { font-size: 1.8rem; font-weight: 900; color: var(--gold); }
-.mp-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-.mp-step { display: grid; justify-items: center; gap: 1px; padding: 6px 2px; border-radius: 12px; background: var(--surface-2); font-weight: 900; font-size: 0.82rem; color: var(--mist); }
-.mp-step small { font-size: 0.66rem; font-weight: 800; }
-.mp-step.cur { color: var(--ink); box-shadow: inset 0 0 0 2px var(--gold-mark); }
-.mp-step.got { background: var(--gold-soft); color: var(--gold); }
+/* v0.17 «Боссы месяца» */
+.mboss-card { border-color: color-mix(in srgb, var(--gold-mark) 55%, var(--line, transparent)); }
+.mboss-card.cleared { box-shadow: var(--shadow-1), inset 0 0 0 2px color-mix(in srgb, var(--gold-mark) 40%, transparent); }
+.mboss-target { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; }
+.mboss-art {
+  width: 92px; height: 92px; border-radius: 20px; display: grid; place-items: center; flex: none;
+  background: radial-gradient(circle at 50% 55%, color-mix(in srgb, var(--hp) 26%, var(--surface-2)), var(--surface-2) 70%);
+  box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.18);
+}
+.mboss-art .px { animation: mboss-idle 1.6s steps(2) infinite; }
+.mboss-art.dead { background: radial-gradient(circle at 50% 55%, color-mix(in srgb, var(--gold-bright) 30%, var(--surface-2)), var(--surface-2) 70%); }
+.mboss-art.dead .px { animation: none; filter: grayscale(1) opacity(0.55); transform: rotate(-8deg); }
+@keyframes mboss-idle { 50% { transform: translateY(-2px); } }
+.mboss-name { font-weight: 900; font-size: 1.02rem; line-height: 1.2; }
+.mboss-name.gold { color: var(--gold); }
+.mboss-hp { position: relative; height: 14px; border-radius: 99px; background: var(--surface-3); overflow: hidden; box-shadow: inset 0 2px 0 rgba(0, 0, 0, 0.18); }
+.mboss-hp > i { position: absolute; inset: 0 auto 0 0; display: block; border-radius: inherit; background: linear-gradient(90deg, var(--gold-mark), var(--gold-bright)); box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.18); transition: width 0.6s var(--ease-out); }
+.mboss-dmg { font-size: 0.84rem; font-weight: 800; color: var(--mist); }
+.mboss-dmg b { color: var(--gold); font-size: 1.05rem; font-weight: 900; }
+.mboss-ladder { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.mboss-step { display: grid; grid-template-columns: 30px 1fr auto; gap: 10px; align-items: center; padding: 3px 10px 3px 4px; border-radius: 12px; background: var(--surface-2); font-size: 0.84rem; font-weight: 800; }
+.mboss-step-name { min-width: 0; line-height: 1.2; }
+.mboss-step-hp { font-weight: 900; font-size: 0.8rem; color: var(--mist); }
+.mboss-step.dead { background: color-mix(in srgb, var(--gold-mark) 14%, var(--surface-2)); }
+.mboss-step.dead .mboss-step-name { text-decoration: line-through; text-decoration-thickness: 2px; color: var(--mist); }
+.mboss-step.dead .mboss-step-hp { color: var(--gold); font-size: 1rem; }
+.mboss-step.dead .px { filter: grayscale(1) opacity(0.5); }
+.mboss-step.next { opacity: 0.55; }
+.mboss-step.cur { box-shadow: inset 0 0 0 2px var(--gold-mark); }
+.mboss-step.cur .mboss-step-hp { color: var(--ink); }
+.mboss-step.main .mboss-step-name { font-weight: 900; }
+.mboss-goal { display: flex; align-items: center; gap: 10px; padding: 8px 12px 8px 8px; border-radius: 14px; background: var(--gold-soft); border: 2px dashed color-mix(in srgb, var(--gold-mark) 70%, transparent); }
+.mboss-goal .grow { display: grid; gap: 2px; min-width: 0; }
+.mboss-goal-k { font-weight: 900; color: var(--gold); text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.66rem; }
+.mboss-goal.done { border-style: solid; }
+.mboss-history { display: grid; gap: 6px; }
+.mboss-months { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.mboss-month { flex: none; display: grid; justify-items: center; gap: 1px; min-width: 74px; padding: 6px 8px; border-radius: 12px; background: var(--surface-2); font-size: 0.8rem; }
+.mboss-month b { text-transform: capitalize; font-weight: 900; }
+.mboss-month .num { font-weight: 900; font-size: 1rem; }
+.mboss-month small { font-size: 0.64rem; font-weight: 800; color: var(--mist); white-space: nowrap; }
+.mboss-month.main { background: var(--gold-soft); }
+.mboss-month.main small { color: var(--gold); }
+.mboss-month.live { box-shadow: inset 0 0 0 2px var(--gold-mark); }
+.td-mboss { margin: 0 10px 10px; }
+.td-mboss .mboss-card { box-shadow: none; }
+.money-kill { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 12px; background: var(--gold-soft); color: var(--gold); font-weight: 800; }
+.board-right { display: grid; justify-items: end; gap: 1px; }
+.board-kills { font-size: 0.7rem; font-weight: 900; color: var(--mist); }
+.board-kills.main { color: var(--gold); }
+.moment-boss { position: relative; display: grid; place-items: center; align-self: center; }
+.moment-ko { position: absolute; right: -6px; top: -6px; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-size: 1.4rem; font-weight: 900; color: #fff; background: var(--hp); border: 3px solid var(--surface); animation: moment-in 0.4s 0.35s var(--ease-out) backwards; }
+.moment-mboss .moment-ava { place-items: center; }
+@media (prefers-reduced-motion: reduce) { .mboss-art .px { animation: none; } }
 
 .trophy .trophy-item { display: block; height: 22px; }
 .trophy .trophy-item .px { filter: none; opacity: 1; }
@@ -2243,8 +2291,5 @@ body:has(.top-garland:not(.is-off)) .topbar::after {
   .moment-fx { display: none; }
   .moment-rays, .moment-card, .moment { animation: none; }
 }
-.mp-mini { display: flex; align-items: center; gap: 10px; margin: 2px 10px 10px; padding: 8px 12px; border-radius: 14px; background: var(--gold-soft); color: var(--ink); text-decoration: none; }
-.mp-mini b { font-size: 0.86rem; color: var(--gold); }
-.mp-mini .grow { display: grid; gap: 5px; }
 .bar.thin { height: 6px; display: block; }
 .title-chip { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 99px; background: var(--gold-soft); color: var(--gold); font-size: 0.72rem; font-weight: 900; }

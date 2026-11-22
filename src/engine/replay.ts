@@ -18,7 +18,7 @@ import {
 import { taskXp } from './tasks'
 import { duelEvents } from './duels'
 import { plinkoEvents } from './plinko'
-import { MILESTONES, milestoneEvents, moneyEvents } from './money'
+import { MAIN_BOSS_PRIZE, MAIN_MONEY_BOSS, moneyMonthEvents } from './moneyBosses'
 import { morningDone, morningEvents } from './morning'
 import { transitionEvents } from './plan'
 import { dumpEvents } from './journal'
@@ -142,8 +142,8 @@ export interface GameState {
   freezeMax: number
   /** v0.16 «Весенний босс»: plan HP + what the lost bosses brought */
   finalBoss: { base: number; bonus: number; hp: number }
-  /** v0.16 «Путь к $10k»: milestones reached (money.ts MILESTONES ids) with their day */
-  milestones: { id: string; day: DayKey }[]
+  /** v0.17 «Боссы месяца»: every money boss kill (moneyBosses.ts MONEY_BOSSES id), per month */
+  moneyKills: { month: string; id: string; day: DayKey; at: number }[]
 }
 
 interface Ev {
@@ -160,8 +160,8 @@ interface Ev {
   bossTask?: number
   skill?: string
   flow?: string
-  /** money milestone id */
-  ms?: string
+  /** a money boss kill */
+  mk?: { month: string; id: string }
 }
 
 export const emptyStats = (): Record<StatId, number> => ({ energy: 0, body: 0, mind: 0, will: 0, deal: 0 })
@@ -236,7 +236,7 @@ export function computeState(data: AppData, now: Date): GameState {
     perks: [],
     freezeMax: FREEZE.max,
     finalBoss: { base: 0, bonus: 0, hp: 0 },
-    milestones: [],
+    moneyKills: [],
   }
   const start = replayStartOf(data)
   if (!data.profile || today < start) return st
@@ -332,10 +332,12 @@ export function computeState(data: AppData, now: Date): GameState {
   for (const e of duelEvents(data)) push({ day: e.day, at: e.at, xp: e.xp, stat: 'will', shards: e.shards })
   // v0.6 «Судьба дня» Плинко: full reward in time, half after the timer
   for (const e of plinkoEvents(data)) push({ day: e.day, at: e.at, xp: e.xp, stat: e.stat, shards: e.shards })
-  // v0.7 «Заработано»: once a day into «Дело», by the order of the day's total
-  for (const e of moneyEvents(data)) push({ day: e.day, at: e.at, xp: e.xp, stat: 'deal' })
-  // v0.16 «Путь к $10k»: the first month over $1k / $2.5k / $5k / $10k
-  for (const e of milestoneEvents(data)) push({ day: e.day, at: e.at, xp: e.xp, stat: 'deal', shards: e.shards, ms: e.id })
+  // v0.17 «Деньги»: 1 XP per $10 of the month, and the five «Боссы месяца» (every month again)
+  {
+    const m = moneyMonthEvents(data)
+    for (const e of m.xp) push({ day: e.day, at: e.at, xp: e.xp, stat: 'deal' })
+    for (const e of m.kills) push({ day: e.day, at: e.at, xp: e.xp, stat: 'deal', shards: e.shards, mk: { month: e.month, id: e.id } })
+  }
   // «Утренняя инвестиция»: once per game day, when the program was finished
   for (const e of morningEvents(data)) push({ day: e.day, at: e.at, xp: e.xp, stat: e.stat, shards: e.shards, boss: hasWeak(weekOf(e.day), 'morning') ? e.xp * BOSS_RULES.weakMult : 0 })
   // v0.9 «Переход» before a plan block: once per block, at most TRANSITION.perDay a day
@@ -452,7 +454,7 @@ export function computeState(data: AppData, now: Date): GameState {
           f.xp += e.xp
         }
       }
-      if (e.ms) st.milestones.push({ id: e.ms, day: d })
+      if (e.mk) st.moneyKills.push({ ...e.mk, day: d, at: e.at })
       if (e.boss) info.boss += e.boss
       if (e.bossTask && d >= ARC_START) {
         // tasks deal at most a third of the boss HP a week
@@ -606,15 +608,15 @@ export function overallLevel(st: GameState) {
 }
 
 /** Hero titles, the most prestigious first: «Покоритель зимы», the $10k one, then the level title */
-export function heroTitles(st: Pick<GameState, 'xp' | 'trophies' | 'milestones'>): string[] {
+export function heroTitles(st: Pick<GameState, 'xp' | 'trophies' | 'moneyKills'>): string[] {
   const out: string[] = []
   if (st.trophies.includes(FINAL_WEEK)) out.push(FINAL_WIN.title)
-  for (const m of [...MILESTONES].reverse()) if (m.title && st.milestones.some((x) => x.id === m.id)) out.push(m.title)
+  if (st.moneyKills.some((k) => k.id === MAIN_MONEY_BOSS.id)) out.push(MAIN_BOSS_PRIZE.title)
   out.push(levelTitle(levelOf(st.xp).level))
   return out
 }
 
-export const heroTitle = (st: Pick<GameState, 'xp' | 'trophies' | 'milestones'>) => heroTitles(st)[0]
+export const heroTitle = (st: Pick<GameState, 'xp' | 'trophies' | 'moneyKills'>) => heroTitles(st)[0]
 
 /** Days that closed without a confession after the last acknowledgement */
 export function unacknowledgedMissed(st: GameState, missedThrough?: DayKey): DayKey[] {

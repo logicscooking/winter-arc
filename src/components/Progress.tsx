@@ -1,6 +1,6 @@
 /**
- * v0.16 «Прогрессия»: spheres on «Герой», the final boss card, «Путь к $10k» and the big-moment screen
- * («Новый уровень», a money milestone, «Весенний босс» повержен).
+ * v0.16 «Прогрессия»: spheres on «Герой», the final boss card and the big-moment screen
+ * («Новый уровень», v0.17 a money boss of the month killed, «Весенний босс» повержен).
  */
 import { useEffect, useMemo } from 'react'
 import {
@@ -9,25 +9,24 @@ import {
   FINAL_WIN,
   GEAR,
   LEVEL_TITLES,
-  MILESTONES,
   SPHERES,
   SPHERE_PERKS,
-  formatRub,
+  MAIN_BOSS_PRIZE,
+  MAIN_MONEY_BOSS,
+  addDays,
   formatUsd,
-  gameDayOf,
-  incomesOf,
+  moneyBossById,
   laggingSphere,
   levelOf,
   levelTitle,
-  moneyPath,
   plural,
   sphereLevelOf,
   wornOutfit,
 } from '../engine'
 import type { Area, GameState, GearItem, Outfit } from '../engine'
 import { useStore } from '../store/store'
-import { haptic, useGame, useNow } from '../store/hooks'
-import { BossSprite, PixelAvatar, Px } from '../pixel/Pixel'
+import { haptic, useGame } from '../store/hooks'
+import { BossSprite, MoneyBossSprite, PixelAvatar, Px } from '../pixel/Pixel'
 import { useWornOutfit } from '../pixel/useHero'
 import { AREA_ICON } from '../screens/todayItems'
 import { AREA_COLOR } from '../screens/TodayBlocks'
@@ -138,78 +137,20 @@ export function FinalBossCard({ game, compact }: { game: GameState; compact?: bo
   )
 }
 
-// ---------- «Путь к $10k» ----------
-
-/** Shown only once the user logs money; `compact`: one line for the «Деньги» area of «Сегодня» */
-export function MoneyPathCard({ compact }: { compact?: boolean }) {
-  const data = useStore((s) => s.data)
-  const today = gameDayOf(useNow())
-  const logged = incomesOf(data).length > 0
-  if (!logged) return null
-  const p = moneyPath(data, today)
-  if (compact)
-    return (
-      <a className="mp-mini" href="#/hero" aria-label="Путь к $10k">
-        <Px name="coin" size={20} />
-        <span className="grow">
-          <span className="row between">
-            <b>Путь к $10k</b>
-            <span className="num tiny">
-              {formatUsd(p.usd)} / {p.next ? formatUsd(p.next.usd) : '$10 000'}
-            </span>
-          </span>
-          <span className="bar gold thin">
-            <i style={{ width: `${Math.round(p.progress * 100)}%` }} />
-          </span>
-        </span>
-      </a>
-    )
-  return (
-    <section className="panel stack money-path" aria-label="Путь к $10k">
-      <div className="row between">
-        <h3 className="row" style={{ gap: 8 }}>
-          <Px name="coin" size={24} /> Путь к $10k
-        </h3>
-        <span className="tiny muted">в месяц · курс {p.rate} ₽</span>
-      </div>
-      <div className="row between" style={{ alignItems: 'baseline' }}>
-        <span className="num mp-now">{formatUsd(p.usd)}</span>
-        <span className="small muted num">{formatRub(p.rub)} за месяц</span>
-      </div>
-      <div className="bar gold" role="progressbar" aria-label={p.next ? `К ${formatUsd(p.next.usd)}` : '$10k взято'} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(p.progress * 100)}>
-        <i style={{ width: `${Math.max(p.progress > 0 ? 3 : 0, Math.round(p.progress * 100))}%` }} />
-      </div>
-      <div className="mp-steps">
-        {MILESTONES.map((m) => {
-          const got = p.reached.includes(m.id)
-          const cur = p.next?.id === m.id
-          return (
-            <span key={m.id} className={`mp-step${got ? ' got' : ''}${cur ? ' cur' : ''}`}>
-              <span className="num">{formatUsd(m.usd)}</span>
-              <small>+{m.xp} XP</small>
-            </span>
-          )
-        })}
-      </div>
-      <p className="tiny muted">
-        {p.next ? `До ${formatUsd(p.next.usd)} в этом месяце: ${formatUsd(p.next.usd - p.usd)}. Первая такая веха за арку — +${p.next.xp} XP и +${p.next.shards} ❄${p.next.item ? ', золотой костюм и титул' : ''}.` : 'Этот месяц уже за $10k. Легенда.'}
-      </p>
-    </section>
-  )
-}
-
 // ---------- the big-moment screen ----------
 
 interface Moment {
   key: string
-  kind: 'level' | 'milestone' | 'final'
+  kind: 'level' | 'mboss' | 'final'
   eyebrow: string
+  /** a money boss: its sprite instead of the hero */
+  boss?: string
   title: string
   text?: string
   chips: { cls: string; icon: 'shard' | 'star' | 'trophy'; text: string }[]
   items: GearItem[]
   /** acknowledging it */
-  ack: { levelSeen?: number; moment?: string }
+  ack: { levelSeen?: number; moments?: string[] }
 }
 
 const PARTY_COLORS = ['var(--gold-bright)', '#ff5a6a', '#43d57a', '#6cc6f2', '#ffffff']
@@ -234,6 +175,9 @@ function bits(seed: number) {
   })
 }
 
+/** ack key of one money boss kill: once per boss per month */
+export const moneyMomentKey = (k: { month: string; id: string }) => `mb:${k.month}:${k.id}`
+
 function pendingMoment(game: GameState, levelSeen: number | undefined, moments: string[]): Moment | null {
   if (game.trophies.includes(FINAL_WEEK) && !moments.includes('final')) {
     const item = GEAR.filter((g) => g.boss === FINAL_WEEK)
@@ -248,25 +192,37 @@ function pendingMoment(game: GameState, levelSeen: number | undefined, moments: 
         { cls: 'ice', icon: 'shard', text: `+${FINAL_WIN.shards}` },
       ],
       items: item,
-      ack: { moment: 'final' },
+      ack: { moments: ['final'] },
     }
   }
-  for (const m of game.milestones) {
-    if (moments.includes(m.id)) continue
-    const ms = MILESTONES.find((x) => x.id === m.id)
-    if (!ms) continue
+  // v0.17 «Боссы месяца»: kills of the last week not seen yet, all in one screen (the top boss leads)
+  const fresh = game.moneyKills.filter((k) => k.day >= addDays(game.today, -7) && !moments.includes(moneyMomentKey(k)))
+  if (fresh.length) {
+    const top = fresh.reduce((a, k) => ((moneyBossById(k.id)?.usd ?? 0) > (moneyBossById(a.id)?.usd ?? 0) ? k : a))
+    const tb = moneyBossById(top.id)!
+    const firstMain = top.id === MAIN_MONEY_BOSS.id && game.moneyKills.find((k) => k.id === MAIN_MONEY_BOSS.id) === top
+    const others = fresh.filter((k) => k !== top).map((k) => moneyBossById(k.id)?.name).filter(Boolean)
+    const xp = fresh.reduce((s, k) => s + (moneyBossById(k.id)?.xp ?? 0), 0)
+    const shards = fresh.reduce((s, k) => s + (moneyBossById(k.id)?.shards ?? 0), 0)
     return {
-      key: m.id,
-      kind: 'milestone',
-      eyebrow: 'Путь к $10k',
-      title: `${formatUsd(ms.usd)} за месяц`,
-      text: ms.title ? `Цель арки взята. Титул «${ms.title}».` : 'Первая такая веха за арку. Дальше — следующая.',
+      key: `mb:${fresh.map(moneyMomentKey).join(',')}`,
+      kind: 'mboss',
+      boss: tb.id,
+      eyebrow: tb.main ? 'Главный босс месяца' : 'Босс месяца повержен',
+      title: tb.name,
+      text: [
+        firstMain ? `${formatUsd(tb.usd)} за месяц. Титул «${MAIN_BOSS_PRIZE.title}» — твой.` : tb.main ? `${formatUsd(tb.usd)} за месяц. Снова в десятке.` : `${formatUsd(tb.usd)} за месяц — повержен.`,
+        others.length ? `И ещё: ${others.map((n) => `«${n}»`).join(', ')}.` : '',
+      ]
+        .filter(Boolean)
+        .join(' '),
       chips: [
-        { cls: 'gold', icon: 'star', text: `+${ms.xp} XP` },
-        { cls: 'ice', icon: 'shard', text: `+${ms.shards}` },
+        { cls: 'gold', icon: 'star', text: `+${xp} XP` },
+        { cls: 'ice', icon: 'shard', text: `+${shards}` },
+        ...(firstMain ? [{ cls: 'gold', icon: 'trophy' as const, text: MAIN_BOSS_PRIZE.title }] : []),
       ],
-      items: GEAR.filter((g) => g.milestone === m.id),
-      ack: { moment: m.id },
+      items: firstMain ? GEAR.filter((g) => g.moneyBoss === MAIN_MONEY_BOSS.id) : [],
+      ack: { moments: fresh.map(moneyMomentKey) },
     }
   }
   const level = levelOf(game.xp).level
@@ -314,7 +270,7 @@ export function MomentScreen() {
 
   const take = () => {
     if (m.ack.levelSeen !== undefined) setAck({ levelSeen: m.ack.levelSeen })
-    if (m.ack.moment) setAck({ moments: [...(ack.moments ?? []), m.ack.moment] })
+    if (m.ack.moments) setAck({ moments: [...(ack.moments ?? []), ...m.ack.moments] })
   }
   // the hero wears the first new item on the screen
   const first = m.items[0]
@@ -330,7 +286,16 @@ export function MomentScreen() {
         <span className="moment-eyebrow">{m.eyebrow}</span>
         <div className="moment-ava">
           <span className="moment-rays" aria-hidden />
-          <PixelAvatar outfit={look} size={150} title="Твой герой" />
+          {m.boss ? (
+            <span className="moment-boss">
+              <MoneyBossSprite id={m.boss} size={120} title={m.title} />
+              <span className="moment-ko" aria-hidden>
+                ✕
+              </span>
+            </span>
+          ) : (
+            <PixelAvatar outfit={look} size={150} title="Твой герой" />
+          )}
         </div>
         <div className="big-title">{m.title}</div>
         {m.text && <p className="moment-text">{m.text}</p>}

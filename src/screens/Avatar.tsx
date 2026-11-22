@@ -33,7 +33,7 @@ export function AvatarScreen() {
     }
     if (item.level !== undefined) return say(`Откроется на уровне ${item.level}. Сейчас ${level}.`)
     if (item.boss !== undefined) return say(`Трофей: победи босса недели ${item.boss} — ${bossOf(item.boss)}.`)
-    if (item.milestone !== undefined) return say('Откроется, когда месяц принесёт $10 000.')
+    if (item.moneyBoss !== undefined) return say('Откроется, когда убьёшь главного босса месяца: $10 000 за месяц.')
     const price = gearPrice(item, ch)
     const c = canBuy(game.shards, price, game.fallen)
     if (!c.ok) return say(c.reason!)
