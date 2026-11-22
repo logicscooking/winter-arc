@@ -2,7 +2,9 @@ import { DEFAULT_QUESTS, REELS_LIMIT } from './quests'
 import { migrateDayPlan, transitionReps } from './plan'
 import { isBoard, sanitizeDrop } from './plinko'
 import { validMorningAt } from './morning'
-import type { AppData, DayLog, PlinkoDrop } from './types'
+import { sanitizeDump, sanitizeJournal } from './journal'
+import { retitlePhone, sanitizeEvent } from './areas'
+import type { AppData, CalEvent, DayLog, PlinkoDrop } from './types'
 
 export const SCHEMA_VERSION = 1
 export const STORAGE_KEY = 'winter-arc-v1'
@@ -36,10 +38,11 @@ export function createInitialData(): AppData {
     chests: [],
     duels: [],
     incomes: [],
+    events: [],
   }
 }
 
-export const V04_COLLECTIONS = ['skills', 'traits', 'nodes', 'practices', 'goals', 'flows', 'bars', 'themes', 'extras', 'chests', 'duels', 'incomes'] as const
+export const V04_COLLECTIONS = ['skills', 'traits', 'nodes', 'practices', 'goals', 'flows', 'bars', 'themes', 'extras', 'chests', 'duels', 'incomes', 'events'] as const
 
 /** Accepts an exported backup (or persisted state) and fills any missing fields. */
 export function normalizeData(raw: unknown): AppData {
@@ -53,9 +56,12 @@ export function normalizeData(raw: unknown): AppData {
   const settings = { ...base.settings, theme: 'auto' as const, ...(r.settings ?? {}) }
   // v0.9 «Переход»: reps stay between the minimum for the sex (old 10 + 10 moves up) and 100
   if (settings.transition !== undefined) settings.transition = transitionReps(settings.transition, settings.morningFinal)
+  // «Сферы»: broken events are dropped
+  if (Array.isArray(r.events)) r.events = r.events.map(sanitizeEvent).filter((e): e is CalEvent => !!e)
   return migrateV03({
     ...base,
     ...r,
+    quests: retitlePhone(r.quests),
     schemaVersion: 1,
     // a backup without a theme was made before v0.3: keep it following the system, as it did
     settings,
@@ -73,7 +79,7 @@ function migrateV03(d: AppData): AppData {
   for (const [day, log] of Object.entries(d.days ?? {})) {
     if (!log) continue
     const plan = migrateDayPlan(log)
-    if (plan === log && log.destiny === undefined && log.plinko === undefined && log.plinkoBoard === undefined && log.morningAt === undefined && log.picks === undefined) continue
+    if (plan === log && log.destiny === undefined && log.plinko === undefined && log.plinkoBoard === undefined && log.morningAt === undefined && log.picks === undefined && log.journal === undefined && log.dump === undefined) continue
     // v0.9 «План дня»: legacy blocks become day blocks with their quest inside (engine/plan.ts)
     const next: DayLog = plan === log ? { ...log } : plan
     const z = log.destiny
@@ -94,6 +100,17 @@ function migrateV03(d: AppData): AppData {
       if (log.picks && typeof log.picks === 'object' && !Array.isArray(log.picks)) for (const [id, t] of Object.entries(log.picks)) if (typeof t === 'number' && Number.isFinite(t) && t > 0) picks[id] = t
       if (Object.keys(picks).length) next.picks = picks
       else delete next.picks
+    }
+    // «Сферы»: the diary and the dump are plain text, kept only when well-formed
+    if (log.journal !== undefined) {
+      const j = sanitizeJournal(log.journal)
+      if (j) next.journal = j
+      else delete next.journal
+    }
+    if (log.dump !== undefined) {
+      const x = sanitizeDump(log.dump)
+      if (x) next.dump = x
+      else delete next.dump
     }
     if (days === d.days) days = { ...d.days }
     days[day] = next

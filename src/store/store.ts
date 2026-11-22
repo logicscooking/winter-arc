@@ -11,6 +11,13 @@ import {
   normalizeData,
   statusFromValue,
   uid,
+  isSlotId,
+  migrateAreas,
+  shiftNow,
+  sanitizeEvent,
+  DUMP_TEXT_MAX,
+  JOURNAL_TEXT_MAX,
+  JOURNAL_PROMPTS,
 } from '../engine'
 import type {
   AppData,
@@ -49,6 +56,7 @@ import type {
   Trait,
   Trend,
   Duel,
+  CalEvent,
 } from '../engine'
 import { MAX_ACTIVE_SKILLS, MONEY_MAX, MONEY_NOTE_MAX, MONEY_SOURCE_MAX, PRACTICE_LIMIT, barMin, canStartFlow, chestsFor, extraUsed, pityCount, practicesToday, rollChest } from '../engine'
 
@@ -106,8 +114,18 @@ interface Store {
   setPlanBlocks: (day: DayKey, blocks: PlanBlock[]) => void
   /** put a plan item (`quest:id`, `task:id`, …) into a block, or back to «Без времени» (null) */
   assignPlan: (day: DayKey, key: string, blockId: string | null) => void
-  /** «Переход» before a block: done at (ms) or undo (null) */
+  /** «Переход»: a fixed slot (`t12`, `t15`, `t18`) or a legacy block: done at (ms) or undo (null) */
   setTransition: (day: DayKey, blockId: string, at: number | null) => void
+  // ---- «Сферы» ----
+  /** a one-off event of «Разное»; null when the title or the date is not valid */
+  addEvent: (x: { title: string; date: DayKey; time?: string; note?: string }, now: Date) => string | null
+  updateEvent: (id: string, patch: Partial<Pick<CalEvent, 'title' | 'date' | 'time' | 'note'>>, now: Date) => void
+  toggleEvent: (id: string, now: Date) => void
+  deleteEvent: (id: string) => void
+  /** «Вечерний дневник»: one answer; blank text removes it */
+  setJournal: (day: DayKey, promptId: string, text: string, now: Date) => void
+  /** «Выброс мыслей»: the day's free text; blank removes it */
+  setDump: (day: DayKey, text: string, now: Date) => void
   /** v0.10: a project task «на сегодня» for a day (on) or not (off) */
   setPick: (day: DayKey, taskId: string, on: boolean, now: Date) => void
   /** a custom task of a plan day: a daily task on that day (the same list as on «Сегодня») */
@@ -164,7 +182,8 @@ const dayLog = (d: AppData, day: DayKey): DayLog => (d.days[day] ??= { quests: {
 function dropPlanOrphans(log: DayLog) {
   const blocks = log.dayBlocks ?? {}
   for (const [k, v] of Object.entries(log.assign ?? {})) if (!blocks[v]) delete log.assign![k]
-  for (const id of Object.keys(log.transitions ?? {})) if (!blocks[id]) delete log.transitions![id]
+  // fixed «Сферы» slots (t12 / t15 / t18) are not tied to a block
+  for (const id of Object.keys(log.transitions ?? {})) if (!blocks[id] && !isSlotId(id)) delete log.transitions![id]
   if (log.dayBlocks && !Object.keys(log.dayBlocks).length) delete log.dayBlocks
   if (log.assign && !Object.keys(log.assign).length) delete log.assign
   if (log.transitions && !Object.keys(log.transitions).length) delete log.transitions
@@ -177,6 +196,9 @@ function applyReadingDelta(d: AppData, delta: number, day: DayKey) {
   if (book.current >= book.total && !book.finishedDay) book.finishedDay = day
   if (book.current < book.total) book.finishedDay = undefined
 }
+
+/** «Сферы»: new quests join from the current game day (the debug clock included) */
+const withAreas = (d: AppData) => migrateAreas(d, gameDayOf(shiftNow(new Date(), d.settings.debugOffsetDays ?? 0)))
 
 export const useStore = create<Store>()(
   persist(
@@ -426,7 +448,7 @@ export const useStore = create<Store>()(
         setTransition: (day, blockId, at) =>
           update((d) => {
             const log = dayLog(d, day)
-            if (at !== null && log.dayBlocks?.[blockId]) {
+            if (at !== null && (log.dayBlocks?.[blockId] || isSlotId(blockId))) {
               if (!log.transitions?.[blockId]) (log.transitions ??= {})[blockId] = at
             } else if (log.transitions) {
               delete log.transitions[blockId]
@@ -450,6 +472,50 @@ export const useStore = create<Store>()(
           })
           return id
         },
+        addEvent: (x, now) => {
+          const id = uid()
+          const ev = sanitizeEvent({ ...x, id, updatedAt: now.getTime() })
+          if (!ev) return null
+          update((d) => void (d.events ??= []).push(ev))
+          return id
+        },
+        updateEvent: (id, patch, now) =>
+          update((d) => {
+            const i = (d.events ?? []).findIndex((e) => e.id === id)
+            if (i < 0) return
+            const cur = d.events![i]
+            const ev = sanitizeEvent({ ...cur, ...patch, updatedAt: now.getTime() })
+            if (ev) d.events![i] = ev
+          }),
+        toggleEvent: (id, now) =>
+          update((d) => {
+            const ev = d.events?.find((e) => e.id === id)
+            if (!ev) return
+            if (ev.doneAt) delete ev.doneAt
+            else ev.doneAt = now.getTime()
+            ev.updatedAt = now.getTime()
+          }),
+        deleteEvent: (id) => update((d) => void (d.events = (d.events ?? []).filter((e) => e.id !== id))),
+        setJournal: (day, promptId, text, now) =>
+          update((d) => {
+            if (!JOURNAL_PROMPTS.some((p) => p.id === promptId)) return
+            const log = dayLog(d, day)
+            const t = text.slice(0, JOURNAL_TEXT_MAX)
+            if (t.trim()) {
+              if (log.journal?.[promptId]?.text === t) return
+              ;(log.journal ??= {})[promptId] = { text: t, at: now.getTime() }
+            } else if (log.journal) {
+              delete log.journal[promptId]
+              if (!Object.keys(log.journal).length) delete log.journal
+            }
+          }),
+        setDump: (day, text, now) =>
+          update((d) => {
+            const log = dayLog(d, day)
+            const t = text.slice(0, DUMP_TEXT_MAX)
+            if (!t.trim()) delete log.dump
+            else if (log.dump?.text !== t) log.dump = { text: t, at: log.dump?.at ?? now.getTime() }
+          }),
         setSettings: (patch) => update((d) => void Object.assign(d.settings, patch)),
         finishMorning: (day, at) =>
           update((d) => {
@@ -658,7 +724,7 @@ export const useStore = create<Store>()(
           return id
         },
         deleteIncome: (id) => update((d) => void (d.incomes = (d.incomes ?? []).filter((x) => x.id !== id))),
-        importData: (raw) => set({ data: normalizeData(raw) }),
+        importData: (raw) => set({ data: withAreas(normalizeData(raw)) }),
         resetAll: () => set({ data: createInitialData() }),
         finalize: (now) => {
           const d0 = get().data
@@ -682,7 +748,7 @@ export const useStore = create<Store>()(
         const p = persisted as { data?: unknown } | undefined
         if (!p?.data) return current
         try {
-          return { ...current, data: normalizeData(p.data) }
+          return { ...current, data: withAreas(normalizeData(p.data)) }
         } catch {
           return current
         }

@@ -1,4 +1,5 @@
 import { ARC_START, chapterOf, eveningMinutes, parseHM, wakeOnTarget, wakeTarget } from './time'
+import { journalAnswered, journalStatus } from './journal'
 import type { AppData, DayKey, DayLog, MarkStatus, PlannedQuest, Quest, Role } from './types'
 
 export const MAX_MAIN = 5
@@ -82,10 +83,27 @@ export const REELS_PACK_MIN = 15
 const M: Role = 'main'
 const S: Role = 'side'
 
+/** «Сферы»: the phone quest is now tied to the bedtime (BEDTIME_TARGET 23:30 − 30 min); the id stays, so history replays */
+export const PHONE_TITLE = 'Телефон отложен за 30 мин до сна'
+export const PHONE_IF_THEN = 'Когда до отбоя 30 минут → телефон на зарядку в коридоре'
+/** what the phone quest said before «Сферы»: only an untouched default is retitled */
+export const PHONE_OLD = { title: 'Телефон вне кровати к 22:15', ifThen: 'Когда выключил свет на кухне → телефон на зарядку в коридоре' }
+
+/**
+ * «Сферы»: quests that came with the life areas. Медитация and the diary («Разное») are for everyone; the two «Деньги»
+ * quests are off by default (friends use the app too) and are switched on in «Квесты».
+ */
+export const AREA_QUESTS: Quest[] = [
+  { id: 'meditation', title: 'Медитация 10 мин', stat: 'mind', kind: 'check', area: 'misc', ifThen: 'Когда умылся утром → 10 минут тишины с таймером', mini: '3 медленных вдоха', roles: [S, S, S, S], enabled: true, order: 12 },
+  { id: 'journal', title: 'Вечерний дневник', stat: 'mind', kind: 'journal', area: 'misc', ifThen: 'Когда лёг в кровать → 5 вопросов дневника, потом книга', mini: '1–2 ответа', roles: [S, S, S, S], enabled: true, order: 13 },
+  { id: 'twitter', title: 'Твиттер: посты', stat: 'deal', kind: 'number', area: 'money', unit: 'постов', min: 1, goal: 3, ifThen: 'Когда сел за стол → сначала пост, потом лента', mini: 'Черновик поста', roles: [S, S, S, S], enabled: false, order: 14 },
+  { id: 'leads', title: 'Рассылка лидам', stat: 'deal', kind: 'number', area: 'money', unit: 'сообщений', min: 10, goal: 20, ifThen: 'Когда открыл ноутбук → 10 сообщений лидам до почты', mini: 'Хотя бы 1 сообщение', roles: [S, S, S, S], enabled: false, order: 15 },
+]
+
 export const DEFAULT_QUESTS: Quest[] = [
   { id: 'wake', title: 'Подъём в целевое время', stat: 'energy', kind: 'wake', ifThen: 'Когда звенит будильник → сразу встаю и иду к окну', mini: 'Встал не позже часа от цели', roles: [M, M, M, M], enabled: true, order: 0 },
   { id: 'light', title: 'Свет 10 мин в первый час', stat: 'energy', kind: 'check', ifThen: 'Когда встал → стакан воды и 10 минут у окна или на улице', mini: '2 минуты у окна', roles: [S, M, S, S], enabled: true, order: 1 },
-  { id: 'phone', title: 'Телефон вне кровати к 22:15', stat: 'will', kind: 'check', ifThen: 'Когда выключил свет на кухне → телефон на зарядку в коридоре', mini: 'Телефон хотя бы на другом конце комнаты', roles: [M, M, S, S], enabled: true, order: 2 },
+  { id: 'phone', title: PHONE_TITLE, stat: 'will', kind: 'check', ifThen: PHONE_IF_THEN, mini: 'Телефон хотя бы на другом конце комнаты', roles: [M, M, S, S], enabled: true, order: 2 },
   { id: 'reading', title: 'Чтение', stat: 'mind', kind: 'reading', unit: 'стр', min: 10, goal: 25, ifThen: 'Когда лёг в кровать → книга вместо телефона', mini: '1 страница', roles: [S, M, M, M], enabled: true, order: 3 },
   { id: 'deal', title: 'Дело дня', stat: 'deal', kind: 'deal', ifThen: 'Когда сел за стол → 45 минут над Делом дня', mini: '10 минут над Делом дня', roles: [S, M, M, M], enabled: true, order: 4 },
   { id: 'workout', title: 'Тренировка дома 20 мин', stat: 'body', kind: 'check', ifThen: 'Когда пришёл домой → коврик и 20 минут', mini: '10 отжиманий', roles: [null, S, M, M], enabled: true, order: 5 },
@@ -95,6 +113,7 @@ export const DEFAULT_QUESTS: Quest[] = [
   { id: 'bedtime', title: 'Отбой до 23:30', stat: 'energy', kind: 'bedtime', ifThen: 'Когда 23:00 → свет выключен, книга', mini: 'Лёг до полуночи', roles: [S, S, S, S], enabled: true, order: 9 },
   { id: 'steps', title: 'Шаги 7000', stat: 'body', kind: 'number', unit: 'шагов', min: 7000, goal: 7000, ifThen: 'Когда звонок или подкаст → хожу, а не сижу', mini: '2000 шагов', roles: [null, S, S, S], enabled: true, order: 10 },
   { id: 'water', title: 'Вода 2 л', stat: 'body', kind: 'check', ifThen: 'Когда сел работать → бутылка воды на столе', mini: 'Стакан воды сейчас', roles: [S, S, S, S], enabled: true, order: 11 },
+  ...AREA_QUESTS,
 ]
 
 export function roleIn(q: Quest, chapter: number): Role | null {
@@ -183,6 +202,13 @@ export function resolveMark(q: Quest | undefined, log: DayLog | undefined, ctx: 
     case 'caffeine':
       if (log.confession?.colaAfter14) return { status: 'skip', at: log.confession.at, auto: true }
       return { auto: true }
+    case 'journal': {
+      // «Вечерний дневник»: ≥3 answers → done, 1–2 → mini (areas.ts)
+      const n = journalAnswered(log)
+      if (!n) return { auto: true }
+      const at = Math.max(...Object.values(log.journal ?? {}).map((a) => a.at))
+      return { status: journalStatus(n), at, auto: true }
+    }
     default:
       return { auto: true }
   }

@@ -46,7 +46,8 @@ describe('квесты по главам', () => {
     const qs: Quest[] = DEFAULT_QUESTS.map((q) => ({ ...q, roles: ['main', 'main', 'main', 'main'] }))
     const plan = activeQuestsFor(qs, '2026-12-10')
     expect(plan.filter((p) => p.role === 'main')).toHaveLength(5)
-    expect(plan.filter((p) => p.role === 'side')).toHaveLength(qs.length - 5)
+    // «Сферы»: Твиттер и Рассылка лидам выключены по умолчанию
+    expect(plan.filter((p) => p.role === 'side')).toHaveLength(qs.filter((q) => q.enabled).length - 5)
   })
   it('бывший main стал side → «база», XP ×0.5', () => {
     const light = DEFAULT_QUESTS.find((q) => q.id === 'light')!
@@ -185,7 +186,7 @@ describe('бэкап', () => {
     const { settings: _s, ...rest } = d
     const n = normalizeData(JSON.parse(JSON.stringify(rest)))
     expect(n.settings.reelsLimit).toBe(20)
-    expect(n.quests).toHaveLength(12)
+    expect(n.quests).toHaveLength(16)
   })
 })
 

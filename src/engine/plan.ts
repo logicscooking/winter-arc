@@ -180,7 +180,7 @@ export function migrateDayPlan(log: DayLog): DayLog {
   for (const [k, v] of Object.entries(assign)) if (!blocks[v]) delete assign[k]
   const transitions: Record<string, number> = {}
   if (log.transitions && typeof log.transitions === 'object' && !Array.isArray(log.transitions)) {
-    for (const [id, t] of Object.entries(log.transitions)) if (blocks[id] && typeof t === 'number' && Number.isFinite(t) && t > 0) transitions[id] = t
+    for (const [id, t] of Object.entries(log.transitions)) if ((blocks[id] || isSlotId(id)) && typeof t === 'number' && Number.isFinite(t) && t > 0) transitions[id] = t
   }
   if (Object.keys(blocks).length) next.dayBlocks = blocks
   else delete next.dayBlocks
@@ -299,6 +299,39 @@ export function transitionText(r: { push: number; squat: number }, sex?: Sex): s
   return sex === 'f' ? `${squat} + ${push}` : `${push} + ${squat}`
 }
 
+/**
+ * «Сферы»: three fixed transitions a day at 12:00, 15:00 and 18:00, stored in the same
+ * DayLog.transitions map under these keys (so sync and the XP stay as they were). They replace the
+ * one-per-block transitions on «Сегодня» and in «План дня»; old block transitions still replay.
+ */
+export const TRANSITION_SLOTS = [
+  { id: 't12', at: 12 * 60 },
+  { id: 't15', at: 15 * 60 },
+  { id: 't18', at: 18 * 60 },
+] as const
+export type TransitionSlot = (typeof TRANSITION_SLOTS)[number]
+export const isSlotId = (id: string) => TRANSITION_SLOTS.some((s) => s.id === id)
+
+/** Fixed transitions done today: [done, 3] */
+export function slotsDone(log: Pick<DayLog, 'transitions'> | undefined): [number, number] {
+  return [TRANSITION_SLOTS.filter((s) => !!log?.transitions?.[s.id]).length, TRANSITION_SLOTS.length]
+}
+
+/** The fixed transition due within the next 15 min or started in the last 15, still open */
+export function slotDue(log: Pick<DayLog, 'transitions'> | undefined, nowMin: number): { slot: TransitionSlot; inMin: number } | undefined {
+  for (const slot of TRANSITION_SLOTS) {
+    if (log?.transitions?.[slot.id]) continue
+    const inMin = slot.at - nowMin
+    if (inMin <= TRANSITION.leadMin && inMin >= -TRANSITION.lagMin) return { slot, inMin }
+  }
+  return undefined
+}
+
+/** «20 отж. + 20 присед.»: one line for a row of «Сегодня» (the sheet has the full text) */
+export function transitionShort(r: { push: number; squat: number }, sex?: Sex): string {
+  return sex === 'f' ? `${r.squat} присед. + ${r.push} отж.` : `${r.push} отж. + ${r.squat} присед.`
+}
+
 export interface TransitionEvent {
   day: DayKey
   at: number
@@ -307,13 +340,13 @@ export interface TransitionEvent {
   stat: StatId
 }
 
-/** One event per existing block with a done transition, the earliest `perDay` of each day */
+/** One event per existing block (or fixed slot) with a done transition, the earliest `perDay` of each day */
 export function transitionEvents(data: Pick<AppData, 'days'>): TransitionEvent[] {
   const out: TransitionEvent[] = []
   for (const [day, log] of Object.entries(data.days ?? {})) {
     if (!log?.transitions) continue
     const done = Object.entries(log.transitions)
-      .filter(([id, t]) => !!log.dayBlocks?.[id] && typeof t === 'number' && Number.isFinite(t) && t > 0)
+      .filter(([id, t]) => (!!log.dayBlocks?.[id] || isSlotId(id)) && typeof t === 'number' && Number.isFinite(t) && t > 0)
       .sort((a, b) => a[1] - b[1] || (a[0] < b[0] ? -1 : 1))
       .slice(0, TRANSITION.perDay)
     for (const [blockId, at] of done) out.push({ day, at, blockId, xp: TRANSITION.xp, stat: TRANSITION.stat })

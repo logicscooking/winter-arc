@@ -20,7 +20,7 @@ import {
   RU_WEEKDAYS,
   ARC_START,
 } from '../engine'
-import type { Quest, Role, StatId, ThemePref } from '../engine'
+import type { Area, Quest, Role, StatId, ThemePref } from '../engine'
 import { useStore } from '../store/store'
 import { refreshClock, useGame, useNow } from '../store/hooks'
 import { useUi } from '../store/ui'
@@ -28,7 +28,7 @@ import { MeasurementsForm } from '../components/MeasurementsForm'
 import { Field, Help } from '../components/ui'
 import { AiSettings } from '../components/ai'
 import { setTopGarlandPref, useTopGarlandPref } from '../components/festive'
-import { TRANSITION_MIN, transitionText } from '../engine'
+import { AREAS, TRANSITION_MIN, questArea, transitionText } from '../engine'
 import { Why } from './Why'
 
 /** game screens first, with their pixel icons */
@@ -245,7 +245,7 @@ function SexSettings() {
         </div>
       </div>
       <p className="tiny muted" style={{ marginTop: -4 }}>
-        Для финала зарядки и минимума перехода между блоками. М: {transitionText(TRANSITION_MIN.m, 'm')}. Ж: {transitionText(TRANSITION_MIN.f, 'f')}.
+        Для финала зарядки и минимума переходов в 12:00, 15:00 и 18:00. М: {transitionText(TRANSITION_MIN.m, 'm')}. Ж: {transitionText(TRANSITION_MIN.f, 'f')}.
       </p>
     </section>
   )
@@ -316,6 +316,15 @@ function QuestCard({ q }: { q: Quest }) {
                 ))}
               </select>
             </Field>
+            <Field label="Сфера">
+              <select className="select" value={questArea(q)} onChange={(e) => update(q.id, { area: e.target.value as Area })}>
+                {AREAS.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.title}
+                  </option>
+                ))}
+              </select>
+            </Field>
             {(q.kind === 'number' || q.kind === 'reading') && (
               <Field label={`Минимум, ${q.unit ?? ''}`}>
                 <input className="input num" type="number" min={1} value={q.min ?? 1} onChange={(e) => update(q.id, { min: Math.max(1, Number(e.target.value) || 1) })} />
@@ -347,7 +356,7 @@ function QuestCard({ q }: { q: Quest }) {
               ))}
             </div>
           </div>
-          {q.kind !== 'check' && <p className="tiny muted">Этот квест отмечается автоматически ({{ wake: 'по чек-ину', reading: 'по страницам', deal: 'по Делу дня', reels: 'по исповеди', bedtime: 'по исповеди', caffeine: 'вручную, кола после 14:00 — пропуск', number: 'по числу', check: '' }[q.kind]}).</p>}
+          {q.kind !== 'check' && <p className="tiny muted">Этот квест отмечается автоматически ({{ wake: 'по чек-ину', reading: 'по страницам', deal: 'по Делу дня', reels: 'по исповеди', bedtime: 'по исповеди', caffeine: 'вручную, кола после 14:00 — пропуск', number: 'по числу', journal: 'по ответам дневника: 3 из 5 — выполнено, 1–2 — мини', check: '' }[q.kind]}).</p>}
           {q.enabled && (
             <button className="btn sm ghost" onClick={() => remove(q.id)}>
               Отключить квест

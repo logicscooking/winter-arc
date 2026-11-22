@@ -13,6 +13,10 @@ export type QuestKind =
   | 'bedtime' // auto from confession bedtime
   | 'caffeine' // tap, auto-missed if cola after 14:00
   | 'number' // numeric (steps, minutes)
+  | 'journal' // «Вечерний дневник»: auto from the day's answers (≥3 → done, 1–2 → mini)
+
+/** «Сферы»: the life area a row of «Сегодня» belongs to */
+export type Area = 'health' | 'money' | 'growth' | 'misc'
 
 export interface Quest {
   id: string
@@ -32,6 +36,8 @@ export interface Quest {
   order: number
   /** quests added later are not active before this day (no retroactive penalties) */
   createdDay?: DayKey
+  /** «Сферы»: missing = the default for a built-in id (areas.ts), «Разное» for a custom quest */
+  area?: Area
 }
 
 export type MarkStatus = 'done' | 'mini' | 'skip'
@@ -98,6 +104,27 @@ export interface DayLog {
   plinkoBoard?: string[]
   /** «Утренняя инвестиция»: the warm-up program was finished at, ms (a partial run writes nothing) */
   morningAt?: number
+  /** «Вечерний дневник»: answers by prompt id (synced per answer). PRIVATE: never leaves the device except the own sync */
+  journal?: Record<string, JournalAnswer>
+  /** «Выброс мыслей»: free text of the day. PRIVATE, like the diary */
+  dump?: { text: string; at: number }
+}
+
+export interface JournalAnswer {
+  text: string
+  at: number
+}
+
+/** «Разное»: a one-off dated event (созвон, встреча). Synced per event */
+export interface CalEvent {
+  id: string
+  title: string
+  date: DayKey
+  /** HH:MM, 24h; missing = some time that day */
+  time?: string
+  note?: string
+  doneAt?: number
+  updatedAt: number
 }
 
 export interface Destiny {
@@ -340,6 +367,8 @@ export interface Ack {
   hints?: string[]
   /** days whose «perfect day» celebration was already shown */
   celebrated?: DayKey[]
+  /** «Сферы»: the one-time migration (new quests, retitled phone) ran on this data */
+  areasV?: number
 }
 
 // ---------- v0.4 «Навыки и прогрессия» ----------
@@ -575,4 +604,6 @@ export interface AppData {
   duels?: Duel[]
   /** v0.7 */
   incomes?: Income[]
+  /** «Сферы»: one-off events of «Разное» */
+  events?: CalEvent[]
 }

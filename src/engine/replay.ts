@@ -21,6 +21,7 @@ import { plinkoEvents } from './plinko'
 import { moneyEvents } from './money'
 import { morningDone, morningEvents } from './morning'
 import { transitionEvents } from './plan'
+import { dumpEvents } from './journal'
 import { FLOW, barMult, flowAt, flowWindows, skillEvents } from './skills'
 import {
   ARC_END,
@@ -274,6 +275,8 @@ export function computeState(data: AppData, now: Date): GameState {
   for (const e of morningEvents(data)) push({ day: e.day, at: e.at, xp: e.xp, stat: e.stat, shards: e.shards })
   // v0.9 «Переход» before a plan block: once per block, at most TRANSITION.perDay a day
   for (const e of transitionEvents(data)) push({ day: e.day, at: e.at, xp: e.xp, stat: e.stat })
+  // «Сферы» «Выброс мыслей»: a small bonus once a day, it never counts in the ring
+  for (const e of dumpEvents(data)) push({ day: e.day, at: e.at, xp: e.xp, stat: e.stat })
   for (const s of data.slips) {
     push({ day: s.day, at: s.at, hp: HP.slip })
     if (s.comebackAt && s.comebackAt >= s.at && s.comebackAt - s.at <= COMEBACK_WINDOW_MS) {

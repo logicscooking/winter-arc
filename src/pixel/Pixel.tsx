@@ -60,9 +60,13 @@ const QUEST_SPRITE: Record<string, SpriteName> = {
   bedtime: 'moon',
   steps: 'boot',
   water: 'water',
+  meditation: 'snowflake',
+  journal: 'pen',
+  twitter: 'speech',
+  leads: 'note',
 }
 
-const KIND_SPRITE: Partial<Record<QuestKind, SpriteName>> = { reading: 'book', wake: 'clock', bedtime: 'moon', caffeine: 'coffee', deal: 'hammer', reels: 'shield' }
+const KIND_SPRITE: Partial<Record<QuestKind, SpriteName>> = { reading: 'book', wake: 'clock', bedtime: 'moon', caffeine: 'coffee', deal: 'hammer', reels: 'shield', journal: 'pen' }
 
 export function questSprite(q: { id: string; kind?: QuestKind; stat: StatId }): SpriteName {
   return QUEST_SPRITE[q.id] ?? (q.kind && KIND_SPRITE[q.kind]) ?? STAT_SPRITE[q.stat]

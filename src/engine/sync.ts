@@ -10,7 +10,8 @@
  * Nothing here touches storage or the network.
  */
 import { V04_COLLECTIONS, normalizeData } from './data'
-import type { AppData, DayLog, Task } from './types'
+import { compareEvents } from './areas'
+import type { AppData, CalEvent, DayLog, Task } from './types'
 
 export type Atoms = Record<string, unknown>
 
@@ -36,7 +37,7 @@ const COLLECTIONS = ['quests', 'tasks', 'slips', 'cravings', 'purchases', 'rewar
 type CollectionKey = (typeof COLLECTIONS)[number]
 const SET_ACKS = ['reviewedWeeks', 'hints', 'celebrated'] as const
 /** Day-log maps whose entries are separate atoms: `days/<day>/<map>/<key>` */
-const DAY_MAPS = ['quests', 'plinko', 'dayBlocks', 'assign', 'transitions', 'picks'] as const
+const DAY_MAPS = ['quests', 'plinko', 'dayBlocks', 'assign', 'transitions', 'picks', 'journal'] as const
 const KNOWN = new Set<string>(['schemaVersion', 'profile', 'days', 'activeBookId', 'baseline', 'final', 'reviews', 'settings', 'ack', ...COLLECTIONS])
 
 // ---------- canonical JSON ----------
@@ -195,6 +196,8 @@ export function fromAtoms(atoms: Atoms, local: AppData): AppData {
   o.duels = (lists.duels as { createdAt: number; id: string }[]).sort((a, b) => a.createdAt - b.createdAt || byIdOnly(a, b))
   o.flows = (lists.flows as { startedAt: number; id: string }[]).sort((a, b) => a.startedAt - b.startedAt || byIdOnly(a, b))
   o.bars = (lists.bars as { id: string }[]).sort(byIdOnly)
+  // «Сферы»: events by their own date and time, the same on every device
+  o.events = (lists.events as CalEvent[]).sort(compareEvents)
   o.themes = (lists.themes as { id: string }[]).sort(byIdOnly)
   const tasks = (lists.tasks as Task[]).sort((a, b) => a.createdAt - b.createdAt || (a.id < b.id ? -1 : 1))
   // a subtask whose parent was deleted on the other device is kept as a top-level task

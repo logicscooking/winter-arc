@@ -48,6 +48,10 @@ const QUEST_PART: Record<string, DayPart> = {
   phone: 'evening',
   reels: 'evening',
   bedtime: 'evening',
+  meditation: 'morning',
+  journal: 'evening',
+  twitter: 'day',
+  leads: 'day',
 }
 export const questPart = (q: Pick<Quest, 'id' | 'kind'>): DayPart => QUEST_PART[q.id] ?? (q.kind === 'bedtime' || q.kind === 'reels' || q.kind === 'reading' ? 'evening' : q.kind === 'wake' ? 'morning' : 'day')
 
@@ -86,7 +90,8 @@ export function planItems(data: AppData, day: DayKey, { withAuto = false } = {})
     const q = data.quests.find((x) => x.id === p.id)
     if (!q || (!withAuto && AUTO_KINDS.has(q.kind))) continue
     if (q.kind === 'deal' && (dealTask || dealNode)) continue
-    const action: PlanAction = q.kind === 'deal' ? 'open' : q.kind === 'reading' || q.kind === 'number' ? 'value' : 'mark'
+    // the diary closes from its answers: it opens (on «Сегодня» — the diary sheet)
+    const action: PlanAction = q.kind === 'deal' || q.kind === 'journal' ? 'open' : q.kind === 'reading' || q.kind === 'number' ? 'value' : 'mark'
     const m = marks[p.id]
     out.push({
       key: itemKey('quest', q.id),
@@ -101,7 +106,7 @@ export function planItems(data: AppData, day: DayKey, { withAuto = false } = {})
       action,
       part: questPart(q),
       badge: q.kind === 'reading' || q.kind === 'number' ? `${q.goal ?? q.min} ${q.unit ?? ''}`.trim() : undefined,
-      href: q.kind === 'deal' ? '#/deal' : undefined,
+      href: q.kind === 'deal' ? '#/deal' : q.kind === 'journal' ? '#/today?journal=1' : undefined,
       quest: q,
       plan: p,
       status: m?.status,

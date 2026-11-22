@@ -30,15 +30,18 @@ import {
   sleepWindow,
   taskXp,
   templateBlocks,
-  transitionDue,
+  TRANSITION_SLOTS,
+  eventsView,
+  slotDue,
   transitionReps,
+  transitionShort,
   transitionText,
   TRANSITION_MIN,
   uid,
   weekday,
   workMinutes,
 } from '../engine'
-import type { BlockColor, DayKey, DayLog, PlanBlock, PlanTemplate } from '../engine'
+import type { BlockColor, DayKey, DayLog, PlanBlock, PlanTemplate, TransitionSlot } from '../engine'
 import { useStore } from '../store/store'
 import { go, nowWithOffset, reward, useFx, useGame, useNow, useRoute } from '../store/hooks'
 import { useUi } from '../store/ui'
@@ -356,36 +359,38 @@ export function ItemRow({ it, onCheck, onTap, canCheck, place, badge }: { it: Pl
   )
 }
 
-/** «Переход» before a block: checkbox (today only) + tap on the text opens the reps sheet */
-export function TransitionRow({ day, block, isToday }: { day: DayKey; block: PlanBlock; isToday: boolean }) {
-  const done = useStore((s) => !!s.data.days[day]?.transitions?.[block.id])
+/** «Переход» at a fixed time (12:00 · 15:00 · 18:00): checkbox (today only) + tap on the text opens the reps sheet */
+export function TransitionRow({ day, slot, isToday, inList }: { day: DayKey; slot: TransitionSlot; isToday: boolean; inList?: boolean }) {
+  const done = useStore((s) => !!s.data.days[day]?.transitions?.[slot.id])
   const cfg = useStore((s) => s.data.settings.transition)
   const sex = useStore((s) => s.data.settings.morningFinal)
   const setTransition = useStore((s) => s.setTransition)
   const say = useUi((s) => s.say)
   const [open, setOpen] = useState(false)
   const toggle = (el: HTMLElement) => {
-    if (!isToday) return say('Переход отмечается в день блока')
+    if (!isToday) return say('Переход отмечается в свой день')
     if (done) {
-      setTransition(day, block.id, null)
-      return say('Переход снят', () => useStore.getState().setTransition(day, block.id, nowWithOffset().getTime()))
+      setTransition(day, slot.id, null)
+      return say('Переход снят', () => useStore.getState().setTransition(day, slot.id, nowWithOffset().getTime()))
     }
-    setTransition(day, block.id, nowWithOffset().getTime())
+    setTransition(day, slot.id, nowWithOffset().getTime())
     reward(el, { xp: TRANSITION.xp })
-    say(`Переход сделан: +${TRANSITION.xp} XP Тела`, () => useStore.getState().setTransition(day, block.id, null))
+    say(`Переход сделан: +${TRANSITION.xp} XP Тела`, () => useStore.getState().setTransition(day, slot.id, null))
   }
+  const time = formatHM(slot.at)
+  // inList: a plain row inside a «Сегодня» section; otherwise the dashed timeline row of «План дня»
   return (
-    <div className={`pd-trans${done ? ' done' : ''}`}>
-      <button className="pd-check sm" onClick={(e) => toggle(e.currentTarget)} aria-pressed={done} disabled={!isToday} aria-label={`Переход перед «${block.title}»: ${done ? 'снять' : 'сделал'}`}>
-        <span>{done && <Check size={12} strokeWidth={3} />}</span>
+    <div className={inList ? `pd-item${done ? ' done' : ''}` : `pd-trans${done ? ' done' : ''}`}>
+      <button className={`pd-check${inList ? '' : ' sm'}`} onClick={(e) => toggle(e.currentTarget)} aria-pressed={done} disabled={!isToday} aria-label={`Переход в ${time}: ${done ? 'снять' : 'сделал'}`}>
+        <span>{done && <Check size={inList ? 14 : 12} strokeWidth={3} />}</span>
       </button>
-      <button className="pd-trans-main" onClick={() => setOpen(true)} aria-label="Переход: сколько повторов">
-        <Px name="dumbbell" size={18} />
+      <button className={inList ? 'pd-item-main' : 'pd-trans-main'} onClick={() => setOpen(true)} aria-label={`Переход в ${time}: сколько повторов`}>
+        <Px name="dumbbell" size={inList ? 22 : 18} />
         <span className="grow">
-          <b>Переход</b>
-          <small>{transitionText(transitionReps(cfg, sex), sex)}</small>
+          {inList ? <span className="pd-item-title">Переход · {time}</span> : <b>Переход · {time}</b>}
+          <small>{inList ? transitionShort(transitionReps(cfg, sex), sex) : transitionText(transitionReps(cfg, sex), sex)}</small>
         </span>
-        <span className="pd-xp num">+{TRANSITION.xp} XP</span>
+        <span className={inList ? `qrow-badge num${done ? ' on' : ''}` : 'pd-xp num'}>+{TRANSITION.xp} XP</span>
       </button>
       {open && <RepsSheet onClose={() => setOpen(false)} />}
     </div>
@@ -479,13 +484,20 @@ function PlanTab({ day, today }: { day: DayKey; today: DayKey }) {
       </>
     )
 
-  // timeline: wake → [gap] → transition → block … → sleep
+  // timeline: wake → [gap] → block … → sleep; the 3 fixed transitions sit at their time (before the next block)
   const rows: ReactNode[] = []
   let prevEnd = gameMin(sleep.wake)
+  const slots = [...TRANSITION_SLOTS]
+  const slotsBefore = (gm: number) => {
+    while (slots.length && gameMin(slots[0].at) < gm) {
+      const sl = slots.shift()!
+      rows.push(<TransitionRow key={sl.id} day={day} slot={sl} isToday={isToday} />)
+    }
+  }
   blocks.forEach((b) => {
     const gap = gameMin(b.start) - prevEnd
     if (gap >= 15) rows.push(<div key={`g${b.id}`} className="pd-gap">свободно {fmtDur(gap)}</div>)
-    rows.push(<TransitionRow key={`t${b.id}`} day={day} block={b} isToday={isToday} />)
+    slotsBefore(gameMin(b.start))
     const list = inBlock(b.id)
     const isNow = current?.id === b.id
     rows.push(
@@ -520,6 +532,7 @@ function PlanTab({ day, today }: { day: DayKey; today: DayKey }) {
     )
     prevEnd = gameMin(b.start) + b.dur
   })
+  slotsBefore(Infinity)
 
   const skills = loose.filter((it) => it.group === 'skill')
   const shownSkills = moreSkills ? skills : skills.slice(0, 3)
@@ -546,7 +559,7 @@ function PlanTab({ day, today }: { day: DayKey; today: DayKey }) {
           text={[
             'День — это несколько блоков: «Утро · фокус», «Дела», «Вечер». Нажми на свободное место кольца — блок начнётся с этого времени.',
             'Дела из списка «Без времени» ставятся в блок тапом. Галочки здесь те же, что на «Сегодня».',
-            `Перед каждым блоком — переход: ${transitionText(reps, sex)}. +${TRANSITION.xp} XP Тела, один раз на блок.`,
+            `Переходы в 12:00, 15:00 и 18:00: ${transitionText(reps, sex)}. +${TRANSITION.xp} XP Тела за каждый. Те же галочки, что на «Сегодня».`,
             'Сон на кольце — по целям подъёма и отбоя. Работа: не больше 6 ч и до 17:00.',
           ]}
         />
@@ -966,10 +979,10 @@ function RepsSheet({ onClose }: { onClose: () => void }) {
     </div>
   )
   return (
-    <Sheet title="Переход между блоками" onClose={onClose}>
+    <Sheet title="Переход" onClose={onClose}>
       <div className="stack">
         <p className="small" style={{ color: 'var(--ink-2)' }}>
-          Перед каждым блоком — разогнать кровь и переключить голову. Минимум: {transitionText(min, sex)}, больше — по желанию. <b>+{TRANSITION.xp} XP Тела</b>, один раз на блок.
+          В 12:00, 15:00 и 18:00 — разогнать кровь и переключить голову. Минимум: {transitionText(min, sex)}, больше — по желанию. <b>+{TRANSITION.xp} XP Тела</b> за каждый.
         </p>
         {sex === 'f' ? (
           <>
@@ -1047,8 +1060,10 @@ function PlanCalendar({ day, today }: { day: DayKey; today: DayKey }) {
       el.scrollTop = Math.max(0, y(gameMin(sleep.wake) - 45))
     }
   }
+  // «Сферы»: the day's events of «Разное» — timed ones on the grid, the rest above it
+  const events = eventsView(data.events, day).today
   const onGrid = (e: MouseEvent<HTMLDivElement>) => {
-    if ((e.target as HTMLElement).closest('.pd-cal-block')) return
+    if ((e.target as HTMLElement).closest('.pd-cal-block, .pd-cal-ev')) return
     const r = e.currentTarget.getBoundingClientRect()
     const gm = Math.floor((((e.clientY - r.top) / HOUR_PX) * 60) / 15) * 15
     setEdit({ mode: 'new', start: (gm + 240) % 1440 })
@@ -1058,6 +1073,11 @@ function PlanCalendar({ day, today }: { day: DayKey; today: DayKey }) {
   const hours = Array.from({ length: 24 }, (_, i) => (i + 4) % 24)
   return (
     <>
+      {events.some((e) => !e.time) && (
+        <p className="pd-cal-allday small">
+          <Px name="clock" size={16} /> Весь день: {events.filter((e) => !e.time).map((e) => e.title).join(' · ')}
+        </p>
+      )}
       <div className="pd-hours" ref={scroller} aria-label="Часы дня">
         <div className="pd-hgrid" style={{ height: y(1440) }} onClick={onGrid}>
           {hours.map((h, i) => (
@@ -1082,7 +1102,6 @@ function PlanCalendar({ day, today }: { day: DayKey; today: DayKey }) {
                 <span className="pd-cal-head">
                   <Px name={blockIcon(b)} size={18} />
                   <b>{b.title}</b>
-                  {log?.transitions?.[b.id] ? <Check size={14} strokeWidth={3} className="pd-cal-tr" aria-label="переход сделан" /> : null}
                 </span>
                 {h >= 34 && <small className="num">{range(b)}</small>}
                 {list.slice(0, room).map((it) => (
@@ -1095,6 +1114,13 @@ function PlanCalendar({ day, today }: { day: DayKey; today: DayKey }) {
               </button>
             )
           })}
+          {events
+            .filter((e) => e.time)
+            .map((e) => (
+              <a key={e.id} className={`pd-cal-ev${e.doneAt ? ' done' : ''}`} style={{ top: y(gameMin(parseHM(e.time!))) + 2 }} href="#/today" aria-label={`Событие ${e.time} ${e.title}`}>
+                <span className="num">{e.time}</span> {e.title}
+              </a>
+            ))}
           {isToday && <div className="pd-hnow" style={{ top: y(gameMin(minOf(now))) }} aria-label={`Сейчас ${formatHM(minOf(now))}`} />}
         </div>
       </div>
@@ -1106,7 +1132,7 @@ function PlanCalendar({ day, today }: { day: DayKey; today: DayKey }) {
 
 // ---------- «Сегодня»: the transition card ----------
 
-/** «Новый блок «…» — сначала переход»: 15 min before a block starts and 15 min after */
+/** «Переход в 15:00»: 15 min before a fixed transition and 15 min after, until it is done */
 export function TransitionCard() {
   const now = useNow()
   const today = gameDayOf(now)
@@ -1115,28 +1141,28 @@ export function TransitionCard() {
   const sex = useStore((s) => s.data.settings.morningFinal)
   const setTransition = useStore((s) => s.setTransition)
   const say = useUi((s) => s.say)
-  const due = transitionDue(log, minOf(now))
+  const due = slotDue(log, minOf(now))
   if (!due) return null
   const r = transitionReps(repsCfg, sex)
-  const { block, inMin } = due
-  const when = inMin > 0 ? `через ${inMin} мин` : inMin === 0 ? 'начинается' : `идёт ${-inMin} мин`
+  const { slot, inMin } = due
+  const when = inMin > 0 ? `через ${inMin} мин` : inMin === 0 ? 'сейчас' : `${-inMin} мин назад`
   return (
-    <div className="pd-today" style={{ '--bc': colorOf(block) } as CSSProperties}>
+    <div className="pd-today" style={{ '--bc': 'var(--st-body)' } as CSSProperties}>
       <Px name="dumbbell" size={32} />
-      <a className="grow" href="#/plan">
-        <b>Новый блок «{block.title}»</b>
+      <span className="grow">
+        <b>Переход в {formatHM(slot.at)}</b>
         <small>
-          сначала переход: {transitionText(r, sex)} · {when} · +{TRANSITION.xp} XP
+          {transitionText(r, sex)} · {when} · +{TRANSITION.xp} XP
         </small>
-      </a>
+      </span>
       <button
         className="pd-check"
         aria-pressed={false}
-        aria-label={`Переход перед «${block.title}»: сделал`}
+        aria-label={`Переход в ${formatHM(slot.at)}: сделал`}
         onClick={(e) => {
-          setTransition(today, block.id, nowWithOffset().getTime())
+          setTransition(today, slot.id, nowWithOffset().getTime())
           reward(e.currentTarget, { xp: TRANSITION.xp })
-          say(`Переход сделан: +${TRANSITION.xp} XP Тела`, () => useStore.getState().setTransition(today, block.id, null))
+          say(`Переход сделан: +${TRANSITION.xp} XP Тела`, () => useStore.getState().setTransition(today, slot.id, null))
         }}
       >
         <span />

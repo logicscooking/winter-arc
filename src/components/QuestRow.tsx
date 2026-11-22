@@ -92,6 +92,9 @@ export function QuestRow({ plan, quest, status, auto, day, game, locked, wakeTar
       case 'bedtime':
         say('Отметится сам по вечерней исповеди')
         return
+      case 'journal':
+        go('/today?journal=1')
+        return
     }
     complete(el, 'done')
   }

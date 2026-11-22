@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { AlertTriangle, BookOpen, Check, ChevronRight, Hammer, ListChecks, Play, Plus, Ruler, Snowflake, Waves, X, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, BookOpen, Check, ChevronRight, Hammer, ListChecks, Plus, Ruler, Snowflake, Waves, X, type LucideIcon } from 'lucide-react'
 import { Px, questSprite } from '../pixel/Pixel'
 import type { SpriteName } from '../pixel/sprites'
 import {
@@ -7,7 +7,6 @@ import {
   ARC_START,
   COMEBACK_WINDOW_MS,
   FINAL_MEASURE_FROM,
-  MORNING,
   addDays,
   childrenOf,
   confessionOpensAt,
@@ -17,7 +16,6 @@ import {
   isConfessionOpen,
   isPastDeadline,
   marksFor,
-  morningDone,
   planFor,
   redFlag,
   replayStartOf,
@@ -30,13 +28,12 @@ import { useUi } from '../store/ui'
 import { BossCard, Hud } from '../components/Hud'
 import { QuestRow } from '../components/QuestRow'
 import { AddTask, TaskTree } from '../components/TaskTree'
-import { Help, formatMMSS } from '../components/ui'
+import { Help, Hint, formatMMSS } from '../components/ui'
 import { Spark } from '../components/Spark'
 import { PAGES_GOAL, WAKE_GOAL, pagesValues, wakeValues, window7 } from '../store/trends'
 import { BAR_LADDERS, BAR_STEP_BONUS, barStep, barSuggestion } from '../engine'
 import { ThemeCard } from '../components/skills'
 import { MoneySheet } from '../components/Money'
-import { buildProgram, programMinutes } from '../morning/program'
 import { useWhySeen } from './Why'
 import { TransitionCard } from './PlanDay'
 import { DayRingCard, TodayBlocks } from './TodayBlocks'
@@ -206,6 +203,14 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
       <div style={{ marginBottom: 22 }}>
         <DayRingCard progress={progress} />
       </div>
+      <div style={{ marginBottom: 16 }}>
+        <Hint id="areas-v1" title="Новое: сферы" art={['heart', 'coin']}>
+          Включи свои квесты — например Твиттер и Рассылку лидам в Деньгах.{' '}
+          <a className="link-btn" href="#/more/quests">
+            Квесты →
+          </a>
+        </Hint>
+      </div>
       <div className="cols">
         <div className="stack-lg">
           <WhyCard />
@@ -264,7 +269,6 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
           )}
 
           <TransitionCard />
-          <MorningCard />
           <BarOffers />
           <ThemeCard compact />
 
@@ -368,26 +372,6 @@ function WhyCard() {
         <X size={18} strokeWidth={3} />
       </button>
     </div>
-  )
-}
-
-/** «Утренняя инвестиция»: the daily warm-up, ▶ until it is finished today */
-function MorningCard() {
-  const today = gameDayOf(useNow())
-  const done = useStore((s) => morningDone(s.data.days[today]))
-  const final = useStore((s) => s.data.settings.morningFinal)
-  const min = programMinutes(buildProgram(final ?? 'm'))
-  return (
-    <a className={`mi-card${done ? ' done' : ''}`} href="#/morning" aria-label={done ? 'Утренняя инвестиция: сделано сегодня' : `Утренняя инвестиция, около ${min} минут: начать`}>
-      <Px name="sun" size={34} />
-      <span>
-        <b>Утренняя инвестиция</b>
-        <small>{done ? `Сделано · +${MORNING.xp} XP, +${MORNING.shards} ❄` : `~${min} мин · +${MORNING.xp} XP · +${MORNING.shards} ❄`}</small>
-      </span>
-      <span className="mi-play" aria-hidden>
-        {done ? <Check size={24} strokeWidth={3} /> : <Play size={22} fill="currentColor" />}
-      </span>
-    </a>
   )
 }
 

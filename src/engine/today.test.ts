@@ -94,7 +94,8 @@ describe('«Сегодня» по блокам', () => {
     const l = log(d, D)
     l.dayBlocks = { a: { id: 'a', title: 'Утро · фокус', start: 9 * 60, dur: 120 }, b: { id: 'b', title: 'Вечер', start: 19 * 60 + 30, dur: 60 } }
     l.assign = { 'quest:water': 'a', 'quest:reading': 'b' }
-    l.transitions = { a: 5 }
+    // «Сферы»: переходы — три фиксированных слота, не по блокам
+    l.transitions = { t12: 5 }
     l.quests.water = { status: 'done', at: 5 }
     l.quests.light = { status: 'skip', at: 5 }
     d.skills = [{ id: 's', title: 'Код', stat: 'mind', value: 'x', status: 'active', createdAt: 1, order: 0 }]
@@ -103,11 +104,13 @@ describe('«Сегодня» по блокам', () => {
     expect(sections.map((s) => s.id)).toEqual(['p:morning', 'b:a', 'p:day', 'b:b', 'p:evening'])
     expect(sections.find((s) => s.id === 'b:a')!.items.map((it) => it.id)).toEqual(['water'])
     expect(sections.flatMap((s) => s.items).some((it) => it.kind === 'node')).toBe(false)
-    expect(progress.transitions).toEqual([1, 2])
-    // the skipped quest is out of the total
+    expect(progress.transitions).toEqual([1, 3])
+    // the skipped quest is out of the total; + warm-up and 3 transitions, the dump is not counted
     const shown = sections.flatMap((s) => s.items).filter((it) => it.status !== 'skip').length
-    expect(progress.total).toBe(shown + 2)
+    expect(progress.total).toBe(shown + 1 + 3)
     expect(progress.done).toBe(2)
+    // the 12:00 transition sits in the day part (no block runs then)
+    expect(sections.find((s) => s.id === 'p:day')!.rows.map((r) => r.key)).toEqual(expect.arrayContaining(['slot:t12', 'slot:t15']))
     // a node put into a block shows up there
     l.assign['node:n'] = 'b'
     expect(todaySections(d, D).sections.find((s) => s.id === 'b:b')!.items.map((it) => it.id)).toEqual(['reading', 'n'])
