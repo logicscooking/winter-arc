@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { questStreak } from './analysis'
-import { bossHpFor, chapterRank, computeState, daysNeedingSnapshot, unacknowledgedMissed } from './replay'
+import { chapterRank, computeState, daysNeedingSnapshot, unacknowledgedMissed } from './replay'
 import { addDays } from './time'
 import { at, confess, doMains, log, makeData, mark, nowAt, perfectDays } from './testkit'
 
@@ -246,28 +246,14 @@ describe('XP, осколки, ранг', () => {
   })
 })
 
-describe('босс недели', () => {
-  it('HP = 7 × main × 20', () => {
-    const data = makeData()
-    expect(bossHpFor(data, 1)).toBe(7 * 2 * 20)
-    expect(bossHpFor(data, 2)).toBe(7 * 5 * 20)
-  })
-  it('идеальная неделя побеждает босса: +15❄ и трофей', () => {
+describe('неделя без босса', () => {
+  it('идеальная неделя: только квесты, исповеди и уровни, без награды босса', () => {
     const data = makeData()
     perfectDays(data, D1, 7)
     const st = computeState(data, nowAt(addDays(D1, 6), 22))
-    expect(st.bosses[1]).toMatchObject({ name: 'Хаос', hp: 280, damage: 280, done: true, won: true })
-    expect(st.trophies).toEqual([1])
-    // v0.16: the win also gives +100 XP; levels 2 and 3 give 6 + 9 ❄
-    expect(st.shards).toBe(7 * (3 + 3 + 1) + 15 + 6 + 9)
-    const live = computeState(data, nowAt(addDays(D1, 5), 22))
-    expect(live.bosses[1]).toMatchObject({ done: false, damage: 240 })
-  })
-  it('слабая неделя — босс выжил', () => {
-    const data = makeData()
-    perfectDays(data, D1, 3)
-    const st = computeState(data, nowAt(addDays(D1, 7), 17))
-    expect(st.bosses[1]).toMatchObject({ done: true, won: false, damage: 120 })
+    // levels 2 and 3 give 6 + 9 ❄
+    expect(st.shards).toBe(7 * (3 + 3 + 1) + 6 + 9)
+    expect(st.conqueror.closed).toBe(7)
   })
 })
 
@@ -324,12 +310,11 @@ describe('Разминка: дни до старта арки', () => {
     expect(unacknowledgedMissed(st)).toEqual([])
   })
 
-  it('воскресенье разминки не закрывает бой с боссом первой недели', () => {
+  it('идеальные дни разминки не идут в счёт «Покорителя зимы»', () => {
     const data = makeData()
     perfectDays(data, W1, 3)
     const st = computeState(data, nowAt(ARC_START_DAY, 10))
-    expect(st.bosses[1]).toMatchObject({ done: false, damage: 0 })
-    expect(st.trophies).toEqual([])
+    expect(st.conqueror).toEqual({ closed: 0, need: 70, won: false })
   })
 
   it('пропуск в последний день разминки не делает первый пропуск арки двойным', () => {

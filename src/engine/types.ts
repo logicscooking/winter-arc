@@ -342,7 +342,7 @@ export interface Settings {
   theme?: ThemePref
   snow?: boolean
   /** v0.2: what goes to the party feed (missing = on) */
-  share?: Partial<Record<'slips' | 'perfect' | 'boss' | 'level' | 'book', boolean>>
+  share?: Partial<Record<'slips' | 'perfect' | 'level' | 'book', boolean>>
   /** v0.5 «ИИ-помощник»: off by default, turned on only after the consent screen */
   ai?: { on: boolean; consentAt?: number }
   /** v0.6 Плинко: last chosen risk */
@@ -377,7 +377,7 @@ export interface Ack {
   areasV?: number
   /** v0.16: the highest hero level whose «Новый уровень» screen was shown (missing = set silently on first run) */
   levelSeen?: number
-  /** v0.16: big moments already shown once: `usd1k`, `final`… */
+  /** v0.16: big moments already shown once: `mb:<month>:<id>`, `conqueror`… (v0.18: an old `final` is ignored) */
   moments?: string[]
 }
 

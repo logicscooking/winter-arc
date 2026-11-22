@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Snowflake } from 'lucide-react'
-import { ARC_START, BOSS_WIN, FINAL_WEEK, GEAR, computeState, formatDayRu, gameDayOf, isCompleted, marksFor, planFor, reelsLimitFor, uid, weekOf } from '../engine'
+import { ARC_START, CONQUEROR, computeState, formatDayRu, gameDayOf, isCompleted, marksFor, planFor, reelsLimitFor, uid } from '../engine'
 import type { AppData, Confession, DayKey, GameState, MarkStatus, SugarAnswer } from '../engine'
 import { useStore } from '../store/store'
 import { haptic, nowWithOffset, useFx } from '../store/hooks'
@@ -23,14 +23,12 @@ function applyDraft(data: AppData, day: DayKey, c: Draft, res: Record<string, Ma
 
 function Summary({ before, after, day, onClose }: { before: GameState; after: GameState; day: DayKey; onClose: () => void }) {
   const r = after.days[day]
-  const w = weekOf(day)
   const warmup = day < ARC_START
-  const dmg = after.bosses[w]?.damage ?? 0
   const rows: [string, string, string][] = [
     ['XP за день', `+${r?.xp ?? 0}`, 'var(--gold)'],
     warmup ? ['HP', 'в разминке не тратится', 'var(--mist)'] : ['HP', `${after.hp - before.hp >= 0 ? '+' : ''}${after.hp - before.hp} → ${after.hp}`, after.hp >= before.hp ? 'var(--pine)' : 'var(--hp)'],
     ['Осколки', `${after.shards - before.shards >= 0 ? '+' : ''}${after.shards - before.shards} ❄`, 'var(--frost)'],
-    ...(warmup ? [] : [['Урон боссу за неделю', `${dmg} / ${after.bosses[w]?.hp ?? 0}`, 'var(--ink)'] as [string, string, string]]),
+    ...(warmup ? [] : [['Закрыто дней арки', `${after.conqueror.closed} / ${CONQUEROR.need}`, 'var(--ink)'] as [string, string, string]]),
   ]
   return (
     <div className="stack-lg">
@@ -46,7 +44,6 @@ function Summary({ before, after, day, onClose }: { before: GameState; after: Ga
         ))}
       </div>
       {after.fallen && !before.fallen && <p style={{ color: 'var(--hp)' }}>HP на нуле. Падение: 3 идеальных дня подряд вернут 50 HP.</p>}
-      {!warmup && after.bosses[w]?.done && <p>{after.bosses[w].won ? `Босс «${after.bosses[w].name}» повержен: +15 ❄ и трофей.` : `Босс «${after.bosses[w].name}» выстоял. Новая неделя — новый бой.`}</p>}
       <button className="btn primary block" onClick={onClose}>
         Спокойной ночи
       </button>
@@ -107,9 +104,7 @@ export function ConfessionSheet({ day }: { day: DayKey }) {
     const after = computeState(useStore.getState().data, at)
     haptic([15, 40, 15])
     setDone({ before: b, after })
-    const w = weekOf(day)
-    if (!warmup && after.bosses[w]?.won && after.bosses[w]?.done && !b.bosses[w]?.done) celebrate({ kind: 'boss', title: `${after.bosses[w].name} повержен`, text: w === FINAL_WEEK ? 'Финал арки взят.' : `+${BOSS_WIN.xp} XP, +${BOSS_WIN.shards} ❄ и ${GEAR.find((g) => g.boss === w)?.title ?? 'трофей'} в гардероб.` })
-    else if (after.days[day]?.perfect) celebrate({ kind: 'perfect', title: 'Идеальный день', text: warmup ? 'Разминка закрыта на все главные.' : '+5 HP за все главные квесты.' })
+    if (after.days[day]?.perfect) celebrate({ kind: 'perfect', title: 'Идеальный день', text: warmup ? 'Разминка закрыта на все главные.' : '+5 HP за все главные квесты.' })
   }
 
   const isLate = day !== gameDayOf(now)

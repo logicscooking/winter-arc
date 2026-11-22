@@ -112,7 +112,7 @@ export function Shop({ tab: initialTab }: { tab?: string } = {}) {
           <span className="num">{game.shards}</span>
         </div>
         <small style={{ textAlign: 'right', maxWidth: 130 }}>
-          Откуда ❄ <Help title="Откуда осколки" text="За квесты, исповедь, камбэк, Судьбу дня, победу над боссом, каждый новый уровень, бонусы сфер и вехи «Путь к $10k»." />
+          Откуда ❄ <Help title="Откуда осколки" text="За квесты, исповедь, камбэк, Судьбу дня, каждый новый уровень, бонусы сфер, вехи «Путь к $10k» и «Покоритель зимы» в конце арки." />
         </small>
       </div>
 
@@ -269,7 +269,7 @@ export function Shop({ tab: initialTab }: { tab?: string } = {}) {
                 <span className="tiny muted">цены ×{String(mult).replace('.', ',')}</span>
               </div>
               <div className="tile-grid">{shopGear.map(gearTile)}</div>
-              <p className="small muted">Остальное открывают уровни, боссы и «Путь к $10k» — в «Образе».</p>
+              <p className="small muted">Остальное открывают уровни, «Путь к $10k» и финал арки — в «Образе».</p>
               <a className="btn block" href="#/avatar">
                 <Px name="hero" size={22} /> Открыть гардероб
               </a>

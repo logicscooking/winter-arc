@@ -16,8 +16,8 @@ export interface GearItem {
   price?: number
   /** colors can't be changed (e.g. the ice crown) */
   fixed?: boolean
-  /** earned by beating the boss of this arc week (14 = «Весенний босс») */
-  boss?: number
+  /** earned by «Покоритель зимы» (conqueror.ts): ≥ 70 perfect arc days when the arc ends */
+  conqueror?: boolean
   /** earned by the first kill of a money boss (moneyBosses.ts MONEY_BOSSES id) */
   moneyBoss?: string
   /** «легенда»: shown with a gold frame; a priced legendary keeps its price in every chapter */
@@ -72,22 +72,22 @@ export const GEAR: GearItem[] = [
   { id: 'stormvisor', slot: 'glasses', title: 'Визор бурана', level: 20, fixed: true },
   { id: 'wintercloak', slot: 'coat', title: 'Мантия хозяина зимы', level: 25, fixed: true },
   { id: 'legendcrown', slot: 'hat', title: 'Венец легенды', level: 30, fixed: true, legendary: true },
-  // boss trophies: one per arc week, the final one is legendary
-  { id: 'b_compass', slot: 'extra', title: 'Компас порядка', boss: 1, fixed: true },
-  { id: 'b_alarm', slot: 'extra', title: 'Будильник Зомби', boss: 2, fixed: true },
-  { id: 'b_sleepmask', slot: 'glasses', title: 'Маска для сна', boss: 3 },
-  { id: 'b_ghost', slot: 'extra', title: 'Призрачок', boss: 4, fixed: true },
-  { id: 'b_snowman', slot: 'extra', title: 'Снеговичок', boss: 5, fixed: true },
-  { id: 'b_horns', slot: 'hat', title: 'Рожки Рилс-демона', boss: 6, fixed: true },
-  { id: 'b_candycane', slot: 'extra', title: 'Леденцовая трость', boss: 7, fixed: true },
-  { id: 'b_boxing', slot: 'mitts', title: 'Боксёрские перчатки', boss: 8 },
-  { id: 'b_slime', slot: 'extra', title: 'Слизень-питомец', boss: 9, fixed: true },
-  { id: 'b_hourglass', slot: 'extra', title: 'Песочные часы', boss: 10, fixed: true },
-  { id: 'b_foglights', slot: 'glasses', title: 'Противотуманные очки', boss: 11, fixed: true },
-  { id: 'b_cape', slot: 'coat', title: 'Плащ дедлайна', boss: 12 },
-  { id: 'b_shield', slot: 'extra', title: 'Щит смелости', boss: 13, fixed: true },
-  { id: 'b_springcrown', slot: 'hat', title: 'Венок весны', boss: 14, fixed: true, legendary: true },
-  // «Путь к $10k»
+  // v0.18: the old weekly-boss trophies, now plain ❄ gear (60…120 ❄, × the chapter like other gear)
+  { id: 'b_compass', slot: 'extra', title: 'Компас порядка', price: 60, fixed: true },
+  { id: 'b_alarm', slot: 'extra', title: 'Громкий будильник', price: 65, fixed: true },
+  { id: 'b_sleepmask', slot: 'glasses', title: 'Маска для сна', price: 70 },
+  { id: 'b_ghost', slot: 'extra', title: 'Призрачок', price: 75, fixed: true },
+  { id: 'b_snowman', slot: 'extra', title: 'Снеговичок', price: 80, fixed: true },
+  { id: 'b_horns', slot: 'hat', title: 'Дьявольские рожки', price: 85, fixed: true },
+  { id: 'b_candycane', slot: 'extra', title: 'Леденцовая трость', price: 90, fixed: true },
+  { id: 'b_boxing', slot: 'mitts', title: 'Боксёрские перчатки', price: 95 },
+  { id: 'b_slime', slot: 'extra', title: 'Слизень-питомец', price: 100, fixed: true },
+  { id: 'b_hourglass', slot: 'extra', title: 'Песочные часы', price: 105, fixed: true },
+  { id: 'b_foglights', slot: 'glasses', title: 'Противотуманные очки', price: 110, fixed: true },
+  { id: 'b_cape', slot: 'coat', title: 'Плащ дедлайна', price: 115 },
+  { id: 'b_shield', slot: 'extra', title: 'Щит смелости', price: 120, fixed: true },
+  // «Покоритель зимы»: the arc closed with ≥ 70 perfect days
+  { id: 'b_springcrown', slot: 'hat', title: 'Венок весны', conqueror: true, fixed: true, legendary: true },
   { id: 'goldsuit', slot: 'coat', title: 'Золотой костюм', moneyBoss: 'mb5', fixed: true, legendary: true },
   // legendary ❄ sinks: the price never scales with the chapter
   { id: 'shuba', slot: 'coat', title: 'Царская шуба', price: 180, fixed: true, legendary: true },
@@ -109,15 +109,15 @@ export const OUTFIT_SLOTS: { id: OutfitSlot; title: string }[] = [
 export const gearItem = (id: string | undefined) => GEAR.find((g) => g.id === id)
 export const gearPurchaseId = (id: string) => `av:${id}`
 
-/** v0.16: what the replay earned besides levels: boss trophies (weeks) and money boss kills */
+/** v0.16: what the replay earned besides levels: «Покоритель зимы» and money boss kills */
 export interface Earned {
-  trophies: number[]
+  conqueror?: { won: boolean }
   moneyKills: { id: string }[]
 }
 
 export function ownsGear(item: GearItem, level: number, purchases: Pick<Purchase, 'itemId' | 'kind'>[], earned?: Earned): boolean {
   if (item.level !== undefined && level >= item.level) return true
-  if (item.boss !== undefined) return !!earned?.trophies.includes(item.boss)
+  if (item.conqueror) return !!earned?.conqueror?.won
   if (item.moneyBoss !== undefined) return !!earned?.moneyKills?.some((m) => m.id === item.moneyBoss)
   return item.price !== undefined && purchases.some((p) => p.kind === 'avatar' && p.itemId === gearPurchaseId(item.id))
 }
@@ -129,9 +129,9 @@ export function gearPrice(item: GearItem, chapter: ChapterId): number {
 }
 
 /** How a locked item opens, for its tile */
-export function gearUnlockLabel(item: GearItem, bossName: (week: number) => string): string {
+export function gearUnlockLabel(item: GearItem): string {
   if (item.level !== undefined) return `ур ${item.level}`
-  if (item.boss !== undefined) return bossName(item.boss)
+  if (item.conqueror) return '70 дней'
   if (item.moneyBoss !== undefined) return '$10k/мес'
   return ''
 }

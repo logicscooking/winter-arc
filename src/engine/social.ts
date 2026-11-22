@@ -18,15 +18,14 @@ import type { MoneyTotals } from './money'
 import type { DuelPub } from './duels'
 import { publicRecap, publicWeek } from './week'
 import type { PubGoal, PubRecap } from './week'
-import { ARC_START, chapterOf, gameDayOf, weekDays } from './time'
+import { ARC_START, chapterOf, gameDayOf } from './time'
 import type { AppData, DayKey, Outfit, SlipWhat } from './types'
 
-export type ShareKey = 'slips' | 'perfect' | 'boss' | 'level' | 'book'
-export const SHARE_KEYS: ShareKey[] = ['slips', 'perfect', 'boss', 'level', 'book']
+export type ShareKey = 'slips' | 'perfect' | 'level' | 'book'
+export const SHARE_KEYS: ShareKey[] = ['slips', 'perfect', 'level', 'book']
 export const SHARE_LABEL: Record<ShareKey, { title: string; hint: string }> = {
   slips: { title: 'Срывы и камбэки', hint: 'Только категория: «рилсы», «шоколад». Причина и заметка — никогда' },
   perfect: { title: 'Идеальные дни', hint: 'Все главные квесты закрыты' },
-  boss: { title: 'Побеждённые боссы', hint: 'Итог недели' },
   level: { title: 'Новый уровень', hint: 'Общий уровень персонажа' },
   book: { title: 'Дочитанные книги', hint: 'Название книги' },
 }
@@ -39,7 +38,7 @@ export function shareSettings(data: Pick<AppData, 'settings'>): Record<ShareKey,
 /** 2-minute swaps that may appear in the feed; a custom swap is the user's own text and stays private */
 export const PRESET_SWAPS = ['10 отжиманий', '2 страницы', 'Стакан воды', 'Выйти на свет']
 
-export type FeedKind = 'slip' | 'comeback' | 'perfect' | 'boss' | 'level' | 'book' | 'check' | 'join'
+export type FeedKind = 'slip' | 'comeback' | 'perfect' | 'level' | 'book' | 'check' | 'join'
 
 export interface FeedDraft {
   kind: FeedKind
@@ -69,7 +68,6 @@ export interface PublicStats {
   mains: { t: string; n: number }[]
   honesty: number
   freezes: number
-  boss: { week: number; name: string; hp: number; damage: number; won: boolean } | null
   /** worn pixel-hero look (owned gear only). Missing in snapshots from older app versions */
   outfit?: Outfit
   /** v0.16: the hero title («Снежинка» … «Покоритель зимы»). Missing in older snapshots */
@@ -106,7 +104,6 @@ export function buildPublicStats(data: AppData, game: GameState, now: Date): Pub
     const on = isCompleted(marks[p.id]?.status)
     return p.role === 'main' ? (on ? 'M' : 'm') : on ? 'S' : 's'
   })
-  const bossWeek = Object.values(game.bosses).sort((a, b) => b.week - a.week)[0]
   const level = levelOf(game.xp).level
   return {
     v: 1,
@@ -127,7 +124,6 @@ export function buildPublicStats(data: AppData, game: GameState, now: Date): Pub
     })),
     honesty: game.honestyStreak,
     freezes: game.freezes,
-    boss: bossWeek ? { week: bossWeek.week, name: bossWeek.name, hp: bossWeek.hp, damage: bossWeek.damage, won: bossWeek.won } : null,
     outfit: wornOutfit(data.profile?.outfit, level, data.purchases, game),
     // «Десятка в месяц» tells the income: public only with the money opt-in
     title: heroTitles(game).filter((t) => moneyShareOn(data) || t !== MAIN_BOSS_PRIZE.title)[0],
@@ -192,13 +188,6 @@ export function detectFeedEvents(data: AppData, game: GameState, ctx: FeedContex
     }
   }
 
-  if (share.boss) {
-    for (const b of Object.values(game.bosses)) {
-      if (!b.done || !b.won || weekDays(b.week)[6] < sinceDay) continue
-      out.push({ kind: 'boss', key: `boss:${b.week}`, payload: { week: b.week, name: b.name }, at: data.days[weekDays(b.week)[6]]?.confession?.at ?? ctx.since })
-    }
-  }
-
   if (share.level) {
     const lvl = levelOf(game.xp).level
     if (lvl > ctx.levelAtSince) out.push({ kind: 'level', key: `level:${lvl}`, payload: { level: lvl }, at: Date.now() })
@@ -257,8 +246,6 @@ export function feedText(kind: string, payload: Record<string, unknown>, comebac
       return `Камбэк после срыва ${what}${payload.swap ? `: ${String(payload.swap).toLowerCase()}` : ''} ✅`.replace(/\s+/g, ' ')
     case 'perfect':
       return 'Идеальный день: все главные квесты закрыты'
-    case 'boss':
-      return `Победил босса недели ${payload.week}: ${payload.name}`
     case 'level':
       if (typeof payload.mb === 'string') {
         const b = moneyBossById(payload.mb)

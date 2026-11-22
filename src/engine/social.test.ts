@@ -78,7 +78,7 @@ describe('feed events', () => {
     const now = nowAt('2026-11-25', 10)
     const game = computeState(d, now)
     expect(detectFeedEvents(d, game, ctx(at('2026-11-25', 9), 99))).toEqual([])
-    const off = detectFeedEvents(d, game, { since: at(D, 0), levelAtSince: 1, share: { slips: false, perfect: false, boss: false, level: false, book: false } })
+    const off = detectFeedEvents(d, game, { since: at(D, 0), levelAtSince: 1, share: { slips: false, perfect: false, level: false, book: false } })
     expect(off).toEqual([])
   })
 

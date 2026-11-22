@@ -202,7 +202,7 @@ export function ThemeCard({ compact }: { compact?: boolean }) {
           </div>
         </div>
         <p className="small">
-          Босс — <b>{due.boss}</b>. Навык-тема даст ×1,5 XP всю главу.
+          {next.focus}. Навык-тема даст ×1,5 XP всю главу.
         </p>
         {chooser(due.next)}
       </section>

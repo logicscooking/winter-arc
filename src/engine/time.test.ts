@@ -5,7 +5,6 @@ import {
   ARC_START,
   addDays,
   arcDayNumber,
-  bossOf,
   chapterOf,
   confessionDeadline,
   diffDays,
@@ -77,12 +76,6 @@ describe('недели и боссы', () => {
     expect(weekOf('2027-02-28')).toBe(14)
     expect(weekDays(14)[6]).toBe(ARC_END)
     expect(weekDays(2)[0]).toBe('2026-11-30')
-  })
-  it('у каждой недели свой босс', () => {
-    expect(bossOf(1)).toBe('Хаос')
-    expect(bossOf(2)).toBe('Зомби')
-    expect(bossOf(10)).toBe('Потом')
-    expect(bossOf(14)).toBe('Весенний босс')
   })
 })
 

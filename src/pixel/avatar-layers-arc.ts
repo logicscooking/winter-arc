@@ -1,5 +1,5 @@
 /**
- * v0.16 «Прогрессия»: level items, boss trophies, the $10k suit and the legendary ❄ items.
+ * v0.16 «Прогрессия»: level items, the old boss trophies (now ❄ gear and the «Покоритель зимы» wreath), the $10k suit and the legendary ❄ items.
  * Same 20×24 grid and X/Y/Z swatch rules as avatar-layers.ts.
  * `fixed` items paint X/Y/Z as the white swatch, so they use PAL colors directly.
  */
@@ -66,7 +66,7 @@ export const AV_LAYERS_ARC: Record<string, string[]> = {
     '..khhhhhhhhhhhhhhk..',
   ]),
 
-  // ---------- boss trophies ----------
+  // ---------- ex-boss trophies: ❄ gear, b_springcrown = «Покоритель зимы» ----------
   b_compass: L(15, [
     '...............kgk..',
     '..............kGGGk.',

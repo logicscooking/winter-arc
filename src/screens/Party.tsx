@@ -16,7 +16,7 @@ import { Bar, Help, HpBar, Sheet } from '../components/ui'
 import { RankBadge } from '../components/skills'
 import { RANKS } from '../engine'
 import type { Rank } from '../engine'
-import { BossSprite, PixelAvatar, Px } from '../pixel/Pixel'
+import { PixelAvatar, Px } from '../pixel/Pixel'
 import type { SpriteName } from '../pixel/sprites'
 import { DuelArea, useDuelReconcile, useTheirDuels } from '../components/Duels'
 import { MoneyBoard, MoneyCard } from '../components/Money'
@@ -249,7 +249,7 @@ function PartyIntro() {
                 <Check size={16} aria-hidden /> Героя, уровень, HP, квесты дня и серии «X из 7»
               </li>
               <li>
-                <Check size={16} aria-hidden /> Бой с боссом недели и серию честности
+                <Check size={16} aria-hidden /> Серию честности и закрытые дни арки
               </li>
               <li>
                 <Check size={16} aria-hidden /> Срывы — только категорию, и сразу камбэк ✅
@@ -638,8 +638,6 @@ function MemberCard({ m, isMe, owner, onNudge }: { m: Member; isMe: boolean; own
 
       {s && <MemberWeek s={s} name={m.display_name} />}
 
-      {s?.boss && !s.warmup && <MemberBoss boss={s.boss} />}
-
       <div className="member-foot">
         <span className="tiny muted grow">{updated}</span>
         {!isMe && (
@@ -773,24 +771,6 @@ function PartyWeek({ members, party }: { members: Member[]; party: PartyT }) {
   )
 }
 
-function MemberBoss({ boss }: { boss: NonNullable<PublicStats['boss']> }) {
-  const left = Math.max(0, boss.hp - boss.damage)
-  return (
-    <div className="member-boss">
-      <span className="boss-mini">{boss.won ? <Px name="trophy" size={24} /> : <BossSprite name={boss.name} size={26} />}</span>
-      <div className="grow stack" style={{ gap: 5 }}>
-        <div className="row between tiny" style={{ gap: 8 }}>
-          <span className="boss-name">{boss.name}</span>
-          <span className="num muted">{boss.won ? 'повержен' : `${left}/${boss.hp}`}</span>
-        </div>
-        <div className="boss-bar thin">
-          <i className={boss.won ? 'won' : ''} style={{ width: `${boss.hp ? (boss.won ? 100 : (left / boss.hp) * 100) : 0}%` }} />
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function NudgeSheet({ to, onClose }: { to: Member; onClose: () => void }) {
   const say = useUi((s) => s.say)
   const [busy, setBusy] = useState<string>()
@@ -862,7 +842,8 @@ function Feed({ events, members, meId, party }: { events: FeedEvent[]; members: 
   const comebacks = new Map<string, FeedEvent>()
   for (const e of events) if (e.kind === 'comeback' && typeof e.payload.slip === 'string') comebacks.set(`${e.user_id}|${e.payload.slip}`, e)
   const slipKeys = new Set(events.filter((e) => e.kind === 'slip').map((e) => `${e.user_id}|${e.key}`))
-  const shown = events.filter((e) => !(e.kind === 'comeback' && slipKeys.has(`${e.user_id}|${e.payload.slip}`)))
+  // v0.18: weekly bosses are gone; old «boss» events (friends on older versions) stay hidden
+  const shown = events.filter((e) => e.kind !== 'boss' && !(e.kind === 'comeback' && slipKeys.has(`${e.user_id}|${e.payload.slip}`)))
 
   if (!shown.length) return <FeedEmpty party={party} alone={members.length <= 1} />
 

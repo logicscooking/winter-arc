@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-import { GEAR, OUTFIT_SLOTS, bossOf, canBuy, chapterOf, gearPrice, gearPurchaseId, gearUnlockLabel, levelOf, ownsGear, wornOutfit } from '../engine'
+import { CONQUEROR, GEAR, OUTFIT_SLOTS, canBuy, chapterOf, gearPrice, gearPurchaseId, gearUnlockLabel, levelOf, ownsGear, wornOutfit } from '../engine'
 import type { GearItem, Outfit, OutfitSlot } from '../engine'
 import { useStore } from '../store/store'
 import { nowWithOffset, reward, useGame } from '../store/hooks'
@@ -32,7 +32,7 @@ export function AvatarScreen() {
       return
     }
     if (item.level !== undefined) return say(`Откроется на уровне ${item.level}. Сейчас ${level}.`)
-    if (item.boss !== undefined) return say(`Трофей: победи босса недели ${item.boss} — ${bossOf(item.boss)}.`)
+    if (item.conqueror) return say(`Награда «${CONQUEROR.title}»: закрой ${CONQUEROR.need} из 98 дней арки.`)
     if (item.moneyBoss !== undefined) return say('Откроется, когда убьёшь главного босса месяца: $10 000 за месяц.')
     const price = gearPrice(item, ch)
     const c = canBuy(game.shards, price, game.fallen)
@@ -54,7 +54,7 @@ export function AvatarScreen() {
         <section className="panel dress-stage" aria-label="Предпросмотр">
           <PixelAvatar outfit={worn} size={220} title="Твой герой" />
           <p className="small muted center" style={{ marginTop: 8 }}>
-            Уровень {level}. Вещи открывают уровни, боссы, «Путь к $10k» и ❄ в магазине.
+            Уровень {level}. Вещи открывают уровни, «Путь к $10k», финал арки и ❄ в магазине.
           </p>
         </section>
 
@@ -110,7 +110,7 @@ export function AvatarScreen() {
                 </button>
                 {slotItems.map((item) => {
                   const owned = owns(item)
-                  const lockLabel = gearUnlockLabel(item, bossOf)
+                  const lockLabel = gearUnlockLabel(item)
                   const preview: Outfit = { hair: worn.hair, skin: worn.skin, colors: worn.colors, [item.slot]: item.id }
                   return (
                     <button key={item.id} className={`tile ${owned ? '' : 'locked'}${item.legendary ? ' legend' : ''}`} aria-pressed={worn[tab] === item.id} onClick={(e) => onTile(e.currentTarget, item)}>

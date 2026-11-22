@@ -3,7 +3,7 @@
  *
  * The log keeps one field per game day, DayLog.morningAt: the moment the program was finished.
  * A partial run writes nothing, so it gives nothing. One field per day = once per game day by
- * construction; the replay pays it like a main quest (no boss damage, no crit). Sync merges it as
+ * construction; the replay pays it like a main quest (no crit). Sync merges it as
  * a day atom; when two devices both finished, the earliest finish wins (engine/sync.ts).
  */
 import type { AppData, DayKey, DayLog, StatId } from './types'

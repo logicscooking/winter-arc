@@ -3,7 +3,7 @@
  * Everything here derives from the stored log, so replay (replay.ts) stays deterministic.
  */
 import { hash32 } from './quests'
-import { ARC_START, CHAPTERS, addDays, bossOf, chapterOf, diffDays, gameDayOf, weekOf, weekday } from './time'
+import { ARC_START, CHAPTERS, addDays, chapterOf, diffDays, gameDayOf, weekday } from './time'
 import type {
   AppData,
   ChapterId,
@@ -560,21 +560,18 @@ export const flowEnd = (f: FlowSession) => Math.min(f.endedAt ?? Infinity, f.sta
 
 // ---------- season theme ----------
 
-/** The boss that opens a chapter: the weekly boss of the chapter's first week (0 Хаос, I Зомби, II Сахарный голем, III Туман) */
-export const CHAPTER_BOSS: Record<ChapterId, string> = Object.fromEntries(CHAPTERS.map((c) => [c.id, bossOf(weekOf(c.start))])) as Record<ChapterId, string>
-
 export function themeOf(data: Pick<AppData, 'themes'>, chapter: ChapterId): string | undefined {
   return (data.themes ?? []).find((t) => t.chapter === chapter)?.skillId
 }
 
-/** «Завязка перед развязкой»: 3 days before a chapter ends, show the next boss and ask for the next theme */
-export function setupDue(today: DayKey): { next: ChapterId; boss: string; daysLeft: number } | null {
+/** «Завязка перед развязкой»: 3 days before a chapter ends, ask for the next chapter's theme */
+export function setupDue(today: DayKey): { next: ChapterId; daysLeft: number } | null {
   const ch = chapterOf(today)
   if (ch >= 3 || today < CHAPTERS[0].start) return null
   const left = diffDays(today, CHAPTERS[ch].end)
   if (left < 0 || left > 3) return null
   const next = (ch + 1) as ChapterId
-  return { next, boss: CHAPTER_BOSS[next], daysLeft: left }
+  return { next, daysLeft: left }
 }
 
 // ---------- XP events for replay ----------

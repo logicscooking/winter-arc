@@ -109,23 +109,6 @@ export function chapterOf(day: DayKey): ChapterId {
   return 0
 }
 
-export const BOSSES = [
-  'Хаос',
-  'Зомби',
-  'Ночной скролл',
-  'Кофеиновый призрак',
-  'Снежный ком',
-  'Рилс-демон',
-  'Сахарный голем',
-  'Диванный тролль',
-  'Кола-слизень',
-  'Потом',
-  'Туман',
-  'Прокрастинатор',
-  'Страх начать',
-  'Весенний босс',
-]
-
 export function isInArc(day: DayKey): boolean {
   return day >= ARC_START && day <= ARC_END
 }
@@ -144,10 +127,6 @@ export function weekOf(day: DayKey): number {
 export function weekDays(week: number): DayKey[] {
   const start = addDays(ARC_START, (week - 1) * 7)
   return Array.from({ length: 7 }, (_, i) => addDays(start, i))
-}
-
-export function bossOf(week: number): string {
-  return BOSSES[Math.min(ARC_WEEKS, Math.max(1, week)) - 1]
 }
 
 export function daysRange(from: DayKey, to: DayKey): DayKey[] {

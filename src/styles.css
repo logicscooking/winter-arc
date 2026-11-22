@@ -1023,11 +1023,6 @@ a.hud-cell:active { transform: translateY(2px); }
 .list-btn .grow { display: flex; flex-direction: column; }
 .list-btn .grow small { color: var(--mist); font-weight: 700; font-size: 0.82rem; }
 .back { display: flex; width: fit-content; align-items: center; gap: 6px; color: var(--ink-2); font-weight: 800; min-height: 44px; margin-bottom: 6px; }
-.trophy { display: grid; place-items: center; gap: 2px; padding: 8px 2px 6px; border-radius: 12px; background: var(--surface-2); text-align: center; font-size: 0.74rem; color: var(--mist); font-weight: 800; }
-.trophy .px { filter: grayscale(1) brightness(0.6); opacity: 0.5; }
-.trophy.won { color: var(--gold); background: var(--gold-soft); }
-.trophy.won .px { filter: none; opacity: 1; }
-.trophies { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
 .card-calm { background: var(--frost-soft); border-radius: var(--r-lg); padding: 16px; }
 .quote-card { margin: 0; padding: 18px 20px; border-radius: var(--r-lg); background: var(--surface); border-left: 4px solid var(--frost); }
 .quote-card blockquote { margin: 0; font-weight: 800; font-size: 1.02rem; line-height: 1.45; color: var(--ink); }
@@ -1080,20 +1075,6 @@ details summary { cursor: pointer; min-height: 32px; display: flex; align-items:
 .switch[aria-checked='true'] { background: var(--pine); }
 .switch[aria-checked='true']::after { transform: translateX(22px); }
 
-/* boss */
-.boss { display: grid; gap: 10px; }
-.boss-head > div > .tiny { font-family: var(--pixel); font-weight: 700; font-size: 0.95rem; letter-spacing: 0.02em; }
-.boss-head { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; }
-.boss-sprite { width: 58px; height: 58px; border-radius: 16px; display: grid; place-items: center; background: var(--surface-2); box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.18); }
-.boss-sprite.hit .px { animation: shake 0.5s steps(5) 1; }
-@keyframes shake { 20% { transform: translateX(-3px); } 40% { transform: translateX(3px); } 60% { transform: translateX(-2px); } 80% { transform: translateX(2px); } }
-.boss-bar { height: 12px; border-radius: 99px; background: var(--surface-3); overflow: hidden; position: relative; }
-.boss-bar > i {
-  position: absolute; inset: 0 auto 0 0; border-radius: inherit;
-  background: repeating-linear-gradient(90deg, var(--hp) 0 8px, color-mix(in srgb, var(--hp) 75%, #000) 8px 10px);
-  transition: width 0.7s var(--ease-out);
-}
-.boss-bar > i.won { background: var(--gold-bright); }
 @media (min-width: 1024px) { .mobile-only { display: none !important; } }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1200,10 +1181,6 @@ details summary { cursor: pointer; min-height: 32px; display: flex; align-items:
 .member-mains .grow { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); font-weight: 700; }
 .member-mains .num { font-size: 0.8rem; white-space: nowrap; color: var(--mist); }
 .member-mains .num.xp-v { color: var(--pine); }
-.member-boss { display: flex; align-items: center; gap: 10px; }
-.boss-mini { width: 38px; height: 38px; flex: none; border-radius: 12px; display: grid; place-items: center; background: var(--surface-2); box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.16); }
-.boss-name { font-weight: 800; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.boss-bar.thin { height: 7px; }
 .member-foot { display: flex; align-items: center; gap: 10px; min-height: 28px; }
 
 /* empty feed */
@@ -1235,7 +1212,7 @@ details summary { cursor: pointer; min-height: 32px; display: flex; align-items:
   display: flex; gap: 12px; align-items: flex-start; padding: 12px 12px 8px;
   background: var(--surface); border: var(--bw) solid var(--card-line); border-radius: var(--r-md); box-shadow: var(--shadow-1);
 }
-.feed-item.k-perfect, .feed-item.k-boss, .feed-item.k-level { border-color: color-mix(in srgb, var(--gold-bright) 45%, var(--line-soft)); }
+.feed-item.k-perfect, .feed-item.k-level { border-color: color-mix(in srgb, var(--gold-bright) 45%, var(--line-soft)); }
 .feed-item.won { border-color: var(--pine-line); }
 .feed-item.k-slip:not(.won) { border-color: var(--hp-dim); }
 .feed-who { font-weight: 900; }
@@ -1934,8 +1911,6 @@ h3 { font-family: var(--display); font-weight: 700; font-size: 1.08rem; letter-s
 .flow-rules span { border-radius: 18px; }
 .flow-node { border-radius: 18px; }
 .block-row, .pick { border-radius: 18px; }
-.boss-sprite { background: none; }
-.boss-head h3 { font-size: 1.15rem; }
 .card-calm { border-radius: var(--r-lg); }
 .sheet { border-radius: 28px 28px 0 0; }
 .sheet-head h2 { font-size: 1.45rem; }
@@ -2172,17 +2147,10 @@ body:has(.top-garland:not(.is-off)) .topbar::after {
 .perk-dot.on { background: var(--gold-mark); color: #2a1c00; }
 .perk-next { margin-left: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.boss-weak { display: flex; gap: 6px; align-items: baseline; font-size: 0.82rem; font-weight: 800; color: var(--ink-2); }
-.boss-weak b { color: var(--crit); font-weight: 900; flex: none; }
-.final-line { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.final-plus { color: var(--hp); font-weight: 900; }
 .final-card.won { border-color: var(--gold-mark); }
 .final-bar { height: 12px; border-radius: 99px; background: var(--surface-3); overflow: hidden; display: flex; }
 .final-bar i { display: block; height: 100%; }
-.final-bar .base { background: var(--hp); }
-.final-bar .plus { background: repeating-linear-gradient(-45deg, var(--hp) 0 5px, color-mix(in srgb, var(--hp) 55%, var(--surface-3)) 5px 10px); }
-.fled { display: flex; flex-wrap: wrap; gap: 6px; }
-.fled-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px 3px 4px; border-radius: 99px; background: var(--surface-2); font-size: 0.78rem; font-weight: 900; color: var(--hp); }
+.final-bar .base { background: var(--gold-mark); border-radius: inherit; transition: width 0.6s var(--ease-out); }
 
 /* v0.17 «Боссы месяца» */
 .mboss-card { border-color: color-mix(in srgb, var(--gold-mark) 55%, var(--line, transparent)); }
@@ -2239,9 +2207,6 @@ body:has(.top-garland:not(.is-off)) .topbar::after {
 .moment-mboss .moment-ava { place-items: center; }
 @media (prefers-reduced-motion: reduce) { .mboss-art .px { animation: none; } }
 
-.trophy .trophy-item { display: block; height: 22px; }
-.trophy .trophy-item .px { filter: none; opacity: 1; }
-.trophy.lost { color: var(--hp); }
 
 .tile.legend { border-color: var(--gold-mark); background: linear-gradient(180deg, color-mix(in srgb, var(--gold-mark) 16%, var(--surface)), var(--surface)); }
 .tile.legend .tile-art { background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--gold-bright) 30%, transparent), transparent 70%); border-radius: 14px; }

@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, type CSSProperties } from 'react'
-import { Check, ChevronLeft, ChevronRight, ClipboardPaste, Copy, Lock, Pencil, Plus, Share2, Sparkles, Trash2, Trophy, X } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, ClipboardPaste, Copy, Lock, Pencil, Plus, Share2, Sparkles, Trash2, X } from 'lucide-react'
 import { BackBtn, TopBar } from '../components/TopBar'
 import {
   ARC_END,
@@ -9,7 +9,6 @@ import {
   WEEK_LIMITS,
   WEEK_XP,
   addDays,
-  bossOf,
   formatRub,
   gameDayOf,
   goalAmount,
@@ -43,20 +42,19 @@ import { Chart } from '../components/Chart'
 import { Field } from '../components/ui'
 import { WeeklyCheck } from '../components/WeeklyCheck'
 import { cloudConfigured } from '../cloud/client'
-import { BOSS_WIN, FINAL_WEEK, FINAL_WIN, GEAR, activeSkills, frozenDays, isCompleted, skillView, weaknessOf } from '../engine'
+import { activeSkills, frozenDays, isCompleted, skillView } from '../engine'
 import type { AppData, GameState } from '../engine'
 import { weekTask } from '../ai/prompts'
 import type { WeekNumbers } from '../ai/prompts'
 import { useAi, useAiOn } from '../ai/useAi'
 import { AiButton, AiPreview, AiStatus } from '../components/ai'
 
-/** Only numbers go to the AI: quest %, perfect days, confessions count, XP, boss, numbered skills */
+/** Only numbers go to the AI: quest %, perfect days, confessions count, XP, numbered skills */
 export function weekNumbers(data: AppData, game: GameState, week: number): WeekNumbers {
   const days = weekDays(week)
   const results = days.map((d) => game.days[d]).filter(Boolean)
   const planned = results.reduce((s, r) => s + r.plan.length, 0)
   const closed = results.reduce((s, r) => s + r.plan.filter((p) => isCompleted(r.marks[p.id])).length, 0)
-  const b = game.bosses[week]
   const frozen = frozenDays(game)
   return {
     week,
@@ -64,7 +62,6 @@ export function weekNumbers(data: AppData, game: GameState, week: number): WeekN
     perfectDays: results.filter((r) => r.perfect).length,
     confessions: results.filter((r) => r.confession).length,
     xp: results.reduce((s, r) => s + r.xp, 0),
-    bossWon: b?.done ? b.won : null,
     skills: activeSkills(data).map((sk, i) => ({
       n: i + 1,
       xp: game.skillXp[sk.id] ?? 0,
@@ -156,7 +153,7 @@ export function WeekReview({ param }: { param?: string }) {
   )
 }
 
-/** The arc part of the weekly review: the boss, XP/HP charts, the AI helper and the three questions */
+/** The arc part of the weekly review: the week's numbers, XP/HP charts, the AI helper and the three questions */
 function ArcWeek({ week, onReviewed }: { week: number; onReviewed: () => void }) {
   const game = useGame()
   const data = useStore((s) => s.data)
@@ -167,7 +164,6 @@ function ArcWeek({ week, onReviewed }: { week: number; onReviewed: () => void })
   const [remove, setRemove] = useState(saved?.remove ?? '')
   const [simplify, setSimplify] = useState(saved?.simplify ?? '')
 
-  const b = game.bosses[week]
   const days = weekDays(week)
   const results = days.map((d) => game.days[d]).filter(Boolean)
   const perfect = results.filter((r) => r.perfect).length
@@ -177,28 +173,6 @@ function ArcWeek({ week, onReviewed }: { week: number; onReviewed: () => void })
 
   return (
     <>
-      <div className="section-title" style={{ marginBottom: -8 }}>
-        <h2>Бой недели</h2>
-      </div>
-      <section className={`panel ${b?.won ? 'glow' : ''}`} style={b?.won ? { borderColor: 'var(--gold)' } : undefined}>
-        <div className="row">
-          <Trophy color={b?.won ? 'var(--gold)' : 'var(--mist)'} aria-hidden />
-          <div className="grow">
-            <h2>{b?.done ? (b.won ? `${bossOf(week)} повержен` : `${bossOf(week)} выстоял`) : `Бой с «${bossOf(week)}» ещё идёт`}</h2>
-            <p className="small muted">
-              Урон {b?.damage ?? 0} из {b?.hp ?? 0}.
-              {b?.won
-                ? week === FINAL_WEEK
-                  ? ` +${FINAL_WIN.xp} XP, +${FINAL_WIN.shards} ❄, легендарная вещь и титул «${FINAL_WIN.title}».`
-                  : ` +${BOSS_WIN.xp} XP, +${BOSS_WIN.shards} ❄ и «${GEAR.find((g) => g.boss === week)?.title ?? 'трофей'}» в гардероб.`
-                : b?.done
-                  ? `${b.damage >= b.hp * 0.7 ? ' Не хватило совсем немного.' : ' Значит, квесты пока тяжелее, чем неделя. Упрости или опирайся на мини-версии.'}${b.carry ? ` Он ушёл к финальному боссу: +${b.carry} HP Весеннему боссу.` : ''}`
-                  : ` Слабость: ${weaknessOf(week).label}.`}
-            </p>
-          </div>
-        </div>
-      </section>
-
       <div className="grid-2" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
         {(
           [

@@ -283,7 +283,6 @@ export interface WeekNumbers {
   perfectDays: number
   confessions: number
   xp: number
-  bossWon: boolean | null
   skills: { n: number; xp: number; rank: string; practices: number }[]
 }
 
@@ -294,7 +293,6 @@ export function weekTask(w: WeekNumbers): AiTask<string> {
     `Идеальных дней: ${w.perfectDays} из 7`,
     `Исповедей: ${w.confessions} из 7`,
     `XP за неделю: ${w.xp}`,
-    `Босс недели: ${w.bossWon === null ? 'бой идёт' : w.bossWon ? 'повержен' : 'выстоял'}`,
     ...w.skills.map((s) => `Навык ${s.n}: ранг ${s.rank}, XP ${s.xp}, практик ${s.practices}`),
   ]
   return {

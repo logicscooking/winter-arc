@@ -78,29 +78,6 @@ export const REWARD_ICONS: SpriteName[] = ['gift', 'star', 'trophy', 'fir', 'cam
 
 export const SHOP_SPRITE: Record<string, SpriteName> = { chocolate: 'choco', cola: 'cola', reels: 'phone' }
 
-/** Boss sprite per week name; reuses a few base monsters with recolors */
-const BOSS_LOOK: Record<string, { name: SpriteName; swap?: Record<string, string> }> = {
-  Хаос: { name: 'slime', swap: { r: '#b48cff', R: '#6f49c2', m: '#e2d0ff' } },
-  Зомби: { name: 'zombie' },
-  'Ночной скролл': { name: 'ghost', swap: { w: '#9cc8ff', W: '#5a8fd6' } },
-  'Кофеиновый призрак': { name: 'ghost', swap: { w: '#e2c39a', W: '#a0713f' } },
-  'Снежный ком': { name: 'snowmonster' },
-  'Рилс-демон': { name: 'demon' },
-  'Сахарный голем': { name: 'golem' },
-  'Диванный тролль': { name: 'troll' },
-  'Кола-слизень': { name: 'slime' },
-  Потом: { name: 'blob' },
-  Туман: { name: 'ghost', swap: { w: '#c9d2d8', W: '#8b98a2' } },
-  Прокрастинатор: { name: 'blob', swap: { e: '#8fd0a0', E: '#4f9a66' } },
-  'Страх начать': { name: 'demon', swap: { p: '#59626c', P: '#30363d', y: '#ff5a6a' } },
-  'Весенний босс': { name: 'yeti' },
-}
-
-export function BossSprite({ name, size = 48, className }: { name: string; size?: number; className?: string }) {
-  const look = BOSS_LOOK[name] ?? { name: 'slime' as SpriteName }
-  return <Px name={look.name} swap={look.swap} size={size} className={className} />
-}
-
 /** v0.17 «Боссы месяца»: one of the five money bosses (moneyBosses.ts ids mb1…mb5), 24×24 */
 export const MoneyBossSprite = memo(function MoneyBossSprite({ id, size = 48, className, title }: { id: string; size?: number; className?: string; title?: string }) {
   const grid = MONEY_BOSS_SPRITES[id] ?? MONEY_BOSS_SPRITES.mb1

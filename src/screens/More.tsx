@@ -11,7 +11,9 @@ import {
   WHY_LABEL,
   analyzeTriggers,
   booksFinishedInArc,
-  bossOf,
+  ARC_WEEKS,
+  weekDays,
+  weekLabel,
   diffDays,
   formatDayRu,
   formatDayShort,
@@ -44,7 +46,7 @@ const PAGES: { id: string; title: string; hint: string; icon: typeof ListChecks;
   { id: 'quests', title: 'Квесты', hint: 'Редактор квестов', icon: ListChecks },
   { id: 'measurements', title: 'Замеры', hint: 'Старт и финал', icon: Ruler },
   { id: 'triggers', title: 'Триггеры', hint: 'Когда срываешься', icon: Activity },
-  { id: 'reviews', title: 'Обзоры недель', hint: 'Боссы и ответы', icon: ScrollText },
+  { id: 'reviews', title: 'Обзоры недель', hint: 'Цифры и ответы', icon: ScrollText },
   { id: 'books', title: 'Книги', hint: 'Что читаю', icon: BookOpen },
   { id: 'pause', title: 'Пауза перед рилсами', hint: 'Настройка «Команд»', icon: Hand },
   { id: 'backup', title: 'Бэкап', hint: 'Экспорт и импорт', icon: Download },
@@ -518,16 +520,17 @@ function BarRow({ label, value, max }: { label: string; value: number; max: numb
 function ReviewsPage() {
   const reviews = useStore((s) => s.data.reviews)
   const game = useGame()
-  const weeks = Object.values(game.bosses).filter((b) => b.done).sort((a, b) => b.week - a.week)
+  // a week is reviewable once its Sunday is closed
+  const weeks = Array.from({ length: ARC_WEEKS }, (_, i) => ARC_WEEKS - i).filter((w) => game.days[weekDays(w)[6]]?.closed)
   return (
     <Sub title="Обзоры недель">
       {weeks.length === 0 && <div className="empty">Первый обзор — в воскресенье после исповеди.</div>}
-      {weeks.map((b) => (
-        <a key={b.week} className="list-btn" href={`#/review/${b.week}`}>
+      {weeks.map((w) => (
+        <a key={w} className="list-btn" href={`#/review/${w}`}>
           <ScrollText aria-hidden />
           <span className="grow">
-            Неделя {b.week}: {bossOf(b.week)} {b.won ? '— повержен' : '— выстоял'}
-            <small>{reviews[b.week] ? `Сработало: ${reviews[b.week].worked || '—'}` : 'Ответы не записаны'}</small>
+            Неделя {w}: {weekLabel(weekDays(w)[0])}
+            <small>{reviews[w] ? `Сработало: ${reviews[w].worked || '—'}` : 'Ответы не записаны'}</small>
           </span>
           <ChevronRight size={18} color="var(--mist)" aria-hidden />
         </a>

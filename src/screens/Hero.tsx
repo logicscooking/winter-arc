@@ -1,13 +1,13 @@
 import { ChevronRight } from 'lucide-react'
-import { ARC_START, ARC_WEEKS, CHAPTERS, GEAR, bossOf, chapterOf, chapterRank, heroTitles, levelOf, nextTitle, rankTitle } from '../engine'
+import { ARC_START, CHAPTERS, chapterOf, chapterRank, heroTitles, levelOf, nextTitle, rankTitle } from '../engine'
 import { useStore } from '../store/store'
 import { useGame } from '../store/hooks'
 import { Spark } from '../components/Spark'
-import { FinalBossCard, SphereList } from '../components/Progress'
+import { ConquerorCard, SphereList } from '../components/Progress'
 import { MoneyBossesCard } from '../components/MoneyBosses'
 import { MiniTrends } from './Today'
 import { hpValues, window7, xpValues } from '../store/trends'
-import { BossSprite, PixelAvatar, Px } from '../pixel/Pixel'
+import { PixelAvatar, Px } from '../pixel/Pixel'
 import { useWornOutfit } from '../pixel/useHero'
 
 export function Hero() {
@@ -177,33 +177,7 @@ export function Hero() {
             <ChevronRight size={18} color="var(--mist)" aria-hidden />
           </a>
 
-          <section className="stack">
-            <div className="section-title">
-              <h2>Трофеи боссов</h2>
-              <span className="num small muted">
-                {game.trophies.length}/{ARC_WEEKS}
-              </span>
-            </div>
-            <div className="trophies">
-              {Array.from({ length: ARC_WEEKS }, (_, i) => i + 1).map((w) => {
-                const b = game.bosses[w]
-                const item = GEAR.find((g) => g.boss === w)
-                const lost = b?.done && !b.won
-                return (
-                  <div key={w} className={`trophy ${b?.won ? 'won' : ''} ${lost ? 'lost' : ''}`} title={`${bossOf(w)}${b?.won ? ` — повержен, ${item?.title ?? 'трофей'}` : lost ? ' — ушёл к финальному' : item ? ` — награда: ${item.title}` : ''}`}>
-                    <BossSprite name={bossOf(w)} size={28} />
-                    <span className="num">{w}</span>
-                  </div>
-                )
-              })}
-            </div>
-            <p className="tiny muted">
-              Победа над боссом: +100 XP, +15 ❄ и его вещь в гардероб
-              {game.trophies.length > 0 && <> — уже: {GEAR.filter((g) => g.boss !== undefined && game.trophies.includes(g.boss)).map((g) => g.title).join(', ')}</>}.
-            </p>
-          </section>
-
-          <FinalBossCard game={game} />
+          <ConquerorCard game={game} />
 
           <a className="list-btn" href="#/party">
             <Px name="campfire" size={28} />

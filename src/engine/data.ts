@@ -57,6 +57,12 @@ export function normalizeData(raw: unknown): AppData {
   // v0.4 collections: anything that is not an array (corrupt or from a future shape) becomes empty
   for (const k of V04_COLLECTIONS) if (k in r && !Array.isArray(r[k])) delete (r as Record<string, unknown>)[k]
   const settings = { ...base.settings, theme: 'auto' as const, ...(r.settings ?? {}) }
+  // v0.18: the weekly bosses are gone, so is their feed toggle (an old `final` moment ack is simply never read)
+  if (settings.share && 'boss' in settings.share) {
+    const { boss: _boss, ...share } = settings.share as Record<string, boolean>
+    void _boss
+    settings.share = share
+  }
   // v0.9 «Переход»: reps stay between the minimum for the sex (old 10 + 10 moves up) and 100
   if (settings.transition !== undefined) settings.transition = transitionReps(settings.transition, settings.morningFinal)
   // «Сферы»: broken events are dropped

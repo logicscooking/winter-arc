@@ -127,14 +127,14 @@ describe('next step validator', () => {
 })
 
 describe('week validator', () => {
-  const task = weekTask({ week: 2, questsPct: 71, perfectDays: 3, confessions: 6, xp: 640, bossWon: true, skills: [{ n: 1, xp: 120, rank: 'C', practices: 9 }] })
+  const task = weekTask({ week: 2, questsPct: 71, perfectDays: 3, confessions: 6, xp: 640, skills: [{ n: 1, xp: 120, rank: 'C', practices: 9 }] })
   it('sends only numbers, no skill names', () => {
     const user = task.messages[1].content
     expect(user).toContain('71%')
     expect(user).toContain('Навык 1: ранг C, XP 120, практик 9')
   })
   it('keeps 2–4 sentences', () => {
-    const v = task.validate('{"text":"Квесты на 71%, это крепко. Идеальных дней три. Исповеди почти каждый день. Босс пал. Лишнее предложение."}')
+    const v = task.validate('{"text":"Квесты на 71%, это крепко. Идеальных дней три. Исповеди почти каждый день. Серия держится. Лишнее предложение."}')
     expect(v?.match(/[.!?]/g)).toHaveLength(4)
     expect(task.validate('{"text":"Одно предложение без точки и длинное достаточно чтобы пройти"}')).toBeNull()
   })

@@ -34,7 +34,7 @@ describe('CRITICAL ×1.5', () => {
     expect(CRIT.mult).toBe(1.5)
   })
 
-  it('replay: крит попадает в XP и в список crits, урон боссу — базовый', () => {
+  it('replay: крит попадает в XP и в список crits', () => {
     const data = makeData()
     let day = D1
     for (let i = 0; i < 90 && !isCrit(day, 'phone'); i++) day = addDays(D1, i)
@@ -45,7 +45,6 @@ describe('CRITICAL ×1.5', () => {
     const full = phone.role === 'main' ? 20 : 10
     expect(st.days[day].crits).toContain('phone')
     expect(st.xpByStat.will).toBe(Math.round((phone.base ? full / 2 : full) * 1.5))
-    expect(st.days[day].bossDamage).toBe(phone.role === 'main' ? (phone.base ? full / 2 : full) : 0)
     // stable across replays
     expect(computeState(data, nowAt(day, 14)).xpByStat.will).toBe(st.xpByStat.will)
   })

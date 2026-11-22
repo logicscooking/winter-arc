@@ -22,23 +22,19 @@ import { MAIN_BOSS_PRIZE, MAIN_MONEY_BOSS, moneyMonthEvents } from './moneyBosse
 import { morningDone, morningEvents } from './morning'
 import { transitionEvents } from './plan'
 import { dumpEvents } from './journal'
-import { isGoalDone, weekEvents } from './week'
+import { weekEvents } from './week'
 import { questArea } from './areas'
 import { SPHERE_PERKS, emptySpheres, hasPerk, sphereOfStat } from './spheres'
-import { BOSS_RULES, BOSS_WIN, FINAL_WEEK, FINAL_WIN, carryOf, hasWeak, isWeakQuest, taskCap } from './bosses'
+import { CONQUEROR, type ConquerorState } from './conqueror'
 import { FLOW, barMult, flowAt, flowWindows, skillEvents } from './skills'
 import {
   ARC_END,
   ARC_START,
   addDays,
-  bossOf,
   chapterOf,
   dayStart,
   gameDayOf,
   isPastDeadline,
-  weekDays,
-  weekOf,
-  weekday,
 } from './time'
 import type { AppData, Area, ChapterId, DayKey, MarkStatus, PlannedQuest, StatId } from './types'
 
@@ -61,30 +57,12 @@ export interface DayResult {
   hpEnd: number
   xp: number
   shards: number
-  bossDamage: number
   /** quests that rolled CRITICAL ×1.5 */
   crits: string[]
   /** «Судьба дня» finished before the timer ran out */
   destinyWon: boolean
   /** «Утренняя инвестиция» finished */
   morning: boolean
-}
-
-export interface BossState {
-  week: number
-  name: string
-  hp: number
-  damage: number
-  /** the week's Sunday is closed */
-  done: boolean
-  won: boolean
-  /** the plan's own HP; the final boss adds `bonus` from the bosses that got away */
-  base?: number
-  bonus?: number
-  /** tasks' share of the damage (capped at a third of the HP) */
-  taskDamage?: number
-  /** a lost boss: the HP it took to the final boss */
-  carry?: number
 }
 
 /** Anti-farm caps per game day (v0.16) */
@@ -121,8 +99,6 @@ export interface GameState {
   days: Record<DayKey, DayResult>
   hpByDay: Record<DayKey, number>
   xpByDay: Record<DayKey, number>
-  bosses: Record<number, BossState>
-  trophies: number[]
   falls: FallEvent[]
   honestyStreak: number
   bestHonesty: number
@@ -140,8 +116,8 @@ export interface GameState {
   perks: string[]
   /** v0.16: freeze slots (2, 3 with «Здоровье 10») */
   freezeMax: number
-  /** v0.16 «Весенний босс»: plan HP + what the lost bosses brought */
-  finalBoss: { base: number; bonus: number; hp: number }
+  /** «Покоритель зимы»: perfect arc days towards the arc-end title (conqueror.ts) */
+  conqueror: ConquerorState
   /** v0.17 «Боссы месяца»: every money boss kill (moneyBosses.ts MONEY_BOSSES id), per month */
   moneyKills: { month: string; id: string; day: DayKey; at: number }[]
 }
@@ -155,9 +131,6 @@ interface Ev {
   sphere?: Area
   shards?: number
   hp?: number
-  boss?: number
-  /** task damage: counts toward the weekly task cap */
-  bossTask?: number
   skill?: string
   flow?: string
   /** a money boss kill */
@@ -201,10 +174,6 @@ export function marksFor(data: AppData, day: DayKey, plan = planFor(data, day)) 
   return out
 }
 
-export function bossHpFor(data: AppData, week: number): number {
-  return weekDays(week).reduce((s, d) => s + planFor(data, d).filter((p) => p.role === 'main').length * XP.main, 0)
-}
-
 export function computeState(data: AppData, now: Date): GameState {
   const today = gameDayOf(now)
   const st: GameState = {
@@ -222,8 +191,6 @@ export function computeState(data: AppData, now: Date): GameState {
     days: {},
     hpByDay: {},
     xpByDay: {},
-    bosses: {},
-    trophies: [],
     falls: [],
     honestyStreak: 0,
     bestHonesty: 0,
@@ -235,7 +202,7 @@ export function computeState(data: AppData, now: Date): GameState {
     levelUps: [],
     perks: [],
     freezeMax: FREEZE.max,
-    finalBoss: { base: 0, bonus: 0, hp: 0 },
+    conqueror: { closed: 0, need: CONQUEROR.need, won: false },
     moneyKills: [],
   }
   const start = replayStartOf(data)
@@ -252,7 +219,7 @@ export function computeState(data: AppData, now: Date): GameState {
     else events.set(e.day, [e])
   }
 
-  const dayInfo = new Map<DayKey, { plan: PlannedQuest[]; marks: Record<string, MarkStatus | undefined>; xp: number; shards: number; boss: number; crits: string[]; destinyWon: boolean }>()
+  const dayInfo = new Map<DayKey, { plan: PlannedQuest[]; marks: Record<string, MarkStatus | undefined>; xp: number; shards: number; crits: string[]; destinyWon: boolean }>()
 
   // quest completions
   for (let d = start; d <= today; d = addDays(d, 1)) {
@@ -276,17 +243,7 @@ export function computeState(data: AppData, now: Date): GameState {
       const at = m.at ?? (dealTask?.doneDay === d ? dealTask.doneAt : undefined) ?? dealPractice?.at ?? dealTask?.doneAt ?? log?.confession?.at ?? dayStart(d).getTime()
       // «Планка»: +10% XP per step on a full completion
       const xp = m.status === 'done' ? Math.round(r.xp * barMult(data, p.id, d)) : r.xp
-      // boss: mains and «Дело дня» hit for the base XP, the boss's weakness ×2 whatever the role
-      const weak = isWeakQuest(weekOf(d), p.id)
-      push({
-        day: d,
-        at,
-        xp,
-        stat: p.stat,
-        sphere: q ? questArea(q) : undefined,
-        shards: r.shards,
-        boss: weak ? r.baseXp * BOSS_RULES.weakMult : p.role === 'main' || q?.kind === 'deal' ? r.baseXp : 0,
-      })
+      push({ day: d, at, xp, stat: p.stat, sphere: q ? questArea(q) : undefined, shards: r.shards })
       if (dz?.ref === 'quest' && dz.id === p.id && !m.auto && inDestiny(m.at)) {
         destinyWon = true
         push({ day: d, at: m.at!, shards: SHARDS.destiny })
@@ -299,18 +256,14 @@ export function computeState(data: AppData, now: Date): GameState {
         push({ day: d, at: t.doneAt!, shards: SHARDS.destiny })
       }
     }
-    dayInfo.set(d, { plan, marks: flat, xp: 0, shards: 0, boss: 0, crits, destinyWon })
+    dayInfo.set(d, { plan, marks: flat, xp: 0, shards: 0, crits, destinyWon })
     if (log?.confession) {
       push({ day: d, at: log.confession.at, xp: XP.confession, stat: 'will', shards: SHARDS.confession })
-      // «Сахарный голем», «Кола-слизень»: an honest «не было» hits
-      const w = weekOf(d)
-      if (hasWeak(w, 'sugar') && log.confession.sugar === 'none') push({ day: d, at: log.confession.at, boss: BOSS_RULES.answerHit })
-      if (hasWeak(w, 'cola') && !log.confession.colaAfter14) push({ day: d, at: log.confession.at, boss: BOSS_RULES.answerHit })
     }
   }
 
-  // v0.4 «Поток»: tasks closed inside a valid flow give ×2 XP (boss damage stays base)
-  // v0.16: own («daily») tasks give at most CAPS.dailyTaskXp a day; deal-tree tasks hit the boss within its task cap
+  // v0.4 «Поток»: tasks closed inside a valid flow give ×2 XP
+  // v0.16: own («daily») tasks give at most CAPS.dailyTaskXp a day
   const windows = flowWindows(data.flows)
   const dailyUsed = new Map<DayKey, number>()
   for (const t of [...data.tasks].sort((a, b) => (a.doneAt ?? 0) - (b.doneAt ?? 0) || (a.id < b.id ? -1 : 1))) {
@@ -323,8 +276,7 @@ export function computeState(data: AppData, now: Date): GameState {
       xp = Math.max(0, Math.min(xp, CAPS.dailyTaskXp - used))
       dailyUsed.set(t.doneDay, used + xp)
     }
-    const bossTask = t.scope === 'deal' ? base * (hasWeak(weekOf(t.doneDay), 'tasks') ? BOSS_RULES.weakMult : 1) : 0
-    if (xp || bossTask) push({ day: t.doneDay, at: t.doneAt, xp, stat: t.stat, bossTask, flow: xp ? flow?.id : undefined })
+    if (xp) push({ day: t.doneDay, at: t.doneAt, xp, stat: t.stat, flow: flow?.id })
   }
   // v0.4 skills: practices, goals, «Сделал больше плана»
   for (const e of skillEvents(data, windows)) push({ day: e.day, at: e.at, xp: e.xp, stat: e.stat, shards: e.shards, skill: e.skillId, flow: e.flowId })
@@ -339,24 +291,13 @@ export function computeState(data: AppData, now: Date): GameState {
     for (const e of m.kills) push({ day: e.day, at: e.at, xp: e.xp, stat: 'deal', shards: e.shards, mk: { month: e.month, id: e.id } })
   }
   // «Утренняя инвестиция»: once per game day, when the program was finished
-  for (const e of morningEvents(data)) push({ day: e.day, at: e.at, xp: e.xp, stat: e.stat, shards: e.shards, boss: hasWeak(weekOf(e.day), 'morning') ? e.xp * BOSS_RULES.weakMult : 0 })
+  for (const e of morningEvents(data)) push({ day: e.day, at: e.at, xp: e.xp, stat: e.stat, shards: e.shards })
   // v0.9 «Переход» before a plan block: once per block, at most TRANSITION.perDay a day
-  for (const e of transitionEvents(data)) push({ day: e.day, at: e.at, xp: e.xp, stat: e.stat, boss: hasWeak(weekOf(e.day), 'transition') ? e.xp * BOSS_RULES.weakMult : 0 })
+  for (const e of transitionEvents(data)) push({ day: e.day, at: e.at, xp: e.xp, stat: e.stat })
   // «Сферы» «Выброс мыслей»: a small bonus once a day, it never counts in the ring
   for (const e of dumpEvents(data)) push({ day: e.day, at: e.at, xp: e.xp, stat: e.stat })
   // «Неделя»: goals set for the week, a finished «Итог недели» (once per week each, in time)
   for (const e of weekEvents(data)) push({ day: e.day, at: e.at, xp: e.xp, stat: e.stat, shards: e.shards })
-  // v0.16 «Потом», «Страх начать»: a done week goal hits, on the day it was last touched (inside its week)
-  for (const g of data.weekGoals ?? []) {
-    if (!g?.week || !isGoalDone(g) || g.week < ARC_START || g.week > ARC_END) continue
-    const w = weekOf(g.week)
-    if (!hasWeak(w, 'goals')) continue
-    const days = weekDays(w)
-    const t = g.updatedAt || g.createdAt
-    const gd = gameDayOf(new Date(t))
-    const day = gd < days[0] ? days[0] : gd > days[6] ? days[6] : gd
-    push({ day, at: gd === day ? t : dayStart(day).getTime(), boss: BOSS_RULES.goalHit })
-  }
   for (const s of data.slips) {
     push({ day: s.day, at: s.at, hp: HP.slip })
     if (s.comebackAt && s.comebackAt >= s.at && s.comebackAt - s.at <= COMEBACK_WINDOW_MS) {
@@ -372,7 +313,7 @@ export function computeState(data: AppData, now: Date): GameState {
   }
   for (const c of [...data.cravings].sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1))) {
     if (c.result !== 'won' || !capped(`c|${c.day}`, CAPS.craving)) continue
-    push({ day: c.day, at: c.at, xp: XP.craving, stat: 'will', shards: SHARDS.craving, boss: hasWeak(weekOf(c.day), 'craving') ? XP.craving * BOSS_RULES.weakMult : 0 })
+    push({ day: c.day, at: c.at, xp: XP.craving, stat: 'will', shards: SHARDS.craving })
   }
   for (const p of [...data.pauses].sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1))) {
     if (p.result === 'resisted' && capped(`p|${p.day}`, CAPS.pause)) push({ day: p.day, at: p.at, xp: XP.pause, stat: 'will' })
@@ -397,14 +338,7 @@ export function computeState(data: AppData, now: Date): GameState {
 
   let prevMissed = new Set<string>()
   const lastDay = today
-  const bossHp = new Map<number, number>()
-  const hpOfWeek = (w: number) => {
-    let v = bossHp.get(w)
-    if (v === undefined) bossHp.set(w, (v = bossHpFor(data, w)))
-    return v
-  }
-  const taskDmg = new Map<number, number>()
-  let carried = 0
+  let perfectArcDays = 0
   let level = 1
   const perkSeen = new Set<string>()
 
@@ -455,15 +389,6 @@ export function computeState(data: AppData, now: Date): GameState {
         }
       }
       if (e.mk) st.moneyKills.push({ ...e.mk, day: d, at: e.at })
-      if (e.boss) info.boss += e.boss
-      if (e.bossTask && d >= ARC_START) {
-        // tasks deal at most a third of the boss HP a week
-        const w = weekOf(d)
-        const used = taskDmg.get(w) ?? 0
-        const add = Math.max(0, Math.min(e.bossTask, taskCap(hpOfWeek(w) + (w === FINAL_WEEK ? carried : 0)) - used))
-        taskDmg.set(w, used + add)
-        info.boss += add
-      }
       if (e.shards) addShards(e.shards, info)
       if (e.hp) applyHp(e.hp, d, e.at)
     }
@@ -490,7 +415,6 @@ export function computeState(data: AppData, now: Date): GameState {
       hpEnd: st.hp,
       xp: info.xp,
       shards: info.shards,
-      bossDamage: info.boss,
       crits: info.crits,
       destinyWon: info.destinyWon,
       morning: morningDone(log),
@@ -538,50 +462,24 @@ export function computeState(data: AppData, now: Date): GameState {
       }
       prevMissed = frozen ? new Set() : new Set(missed)
 
-      if (weekday(d) === 6 && d <= ARC_END) {
-        const w = weekOf(d)
-        const base = hpOfWeek(w)
-        const bonus = w === FINAL_WEEK ? carried : 0
-        const hp = base + bonus
-        const damage = weekDays(w).reduce((s, x) => s + (st.days[x]?.bossDamage ?? (x === d ? info.boss : 0)), 0)
-        const won = hp > 0 && damage >= hp
-        const b: BossState = { week: w, name: bossOf(w), hp, base, bonus, damage, taskDamage: taskDmg.get(w) ?? 0, done: true, won }
-        st.bosses[w] = b
-        if (won) {
-          // a win: XP, ❄, the trophy and the boss's pixel item (avatar.ts GEAR `boss`)
-          const prize = w === FINAL_WEEK ? FINAL_WIN : BOSS_WIN
-          addShards(prize.shards, info)
-          gainXp(d, endAt, prize.xp, info)
-          st.trophies.push(w)
-        } else if (w < FINAL_WEEK) {
-          // it got away: half of its HP left waits in «Весенний босс»
-          b.carry = carryOf(hp, damage)
-          carried += b.carry
+      if (d === ARC_END) {
+        // «Покоритель зимы»: the arc closed with ≥ CONQUEROR.need perfect days
+        st.conqueror.won = perfectArcDays + (perfect ? 1 : 0) >= CONQUEROR.need
+        if (st.conqueror.won) {
+          addShards(CONQUEROR.shards, info)
+          gainXp(d, endAt, CONQUEROR.xp, info)
         }
         res.xp = info.xp
         res.shards = info.shards
       }
     }
     res.hpEnd = st.hp
+    if (perfect && d >= ARC_START && d <= ARC_END) perfectArcDays++
     st.days[d] = res
     st.hpByDay[d] = st.hp
   }
 
-  // live boss for the current week
-  if (today <= ARC_END) {
-    const w = weekOf(today)
-    if (!st.bosses[w]) {
-      const damage = weekDays(w).reduce((s, x) => s + (st.days[x]?.bossDamage ?? 0), 0)
-      const base = hpOfWeek(w)
-      const bonus = w === FINAL_WEEK ? carried : 0
-      const hp = base + bonus
-      st.bosses[w] = { week: w, name: bossOf(w), hp, base, bonus, damage, taskDamage: taskDmg.get(w) ?? 0, done: false, won: damage >= hp && hp > 0 }
-    }
-  }
-  {
-    const base = hpOfWeek(FINAL_WEEK)
-    st.finalBoss = { base, bonus: carried, hp: base + carried }
-  }
+  st.conqueror.closed = perfectArcDays
 
   // honesty streak: days in a row with a confession; open days don't break it
   let run = 0
@@ -608,15 +506,15 @@ export function overallLevel(st: GameState) {
 }
 
 /** Hero titles, the most prestigious first: «Покоритель зимы», the $10k one, then the level title */
-export function heroTitles(st: Pick<GameState, 'xp' | 'trophies' | 'moneyKills'>): string[] {
+export function heroTitles(st: Pick<GameState, 'xp' | 'conqueror' | 'moneyKills'>): string[] {
   const out: string[] = []
-  if (st.trophies.includes(FINAL_WEEK)) out.push(FINAL_WIN.title)
+  if (st.conqueror?.won) out.push(CONQUEROR.title)
   if (st.moneyKills.some((k) => k.id === MAIN_MONEY_BOSS.id)) out.push(MAIN_BOSS_PRIZE.title)
   out.push(levelTitle(levelOf(st.xp).level))
   return out
 }
 
-export const heroTitle = (st: Pick<GameState, 'xp' | 'trophies' | 'moneyKills'>) => heroTitles(st)[0]
+export const heroTitle = (st: Pick<GameState, 'xp' | 'conqueror' | 'moneyKills'>) => heroTitles(st)[0]
 
 /** Days that closed without a confession after the last acknowledgement */
 export function unacknowledgedMissed(st: GameState, missedThrough?: DayKey): DayKey[] {

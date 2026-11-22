@@ -327,7 +327,7 @@ export function TopGarland({ hidden }: { hidden?: boolean }) {
 
 const PARTY_COLORS = ['var(--gold-bright)', '#ff5a6a', '#43d57a', '#6cc6f2', '#ffffff']
 
-/** One authored moment: a burst of garland light and snow, plus a card. Perfect day / boss defeated. */
+/** One authored moment: a burst of garland light and snow, plus a card. Perfect day. */
 export function Party() {
   const party = useFx((s) => s.party)
   const bits = useMemo(

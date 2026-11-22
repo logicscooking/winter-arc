@@ -60,7 +60,7 @@ export interface Celebration {
   id: number
   title: string
   text?: string
-  kind: 'perfect' | 'boss' | 'level' | 'final'
+  kind: 'perfect' | 'level' | 'final'
 }
 
 /** Bottom card after a completion: stat progress, XP, ❄, CRITICAL */

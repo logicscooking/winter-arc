@@ -22,7 +22,6 @@ export const SHARDS = {
   confession: 1,
   comeback: 2,
   craving: 2,
-  boss: 15,
   /** «Судьба дня» done before the focus timer ran out */
   destiny: 3,
 } as const
@@ -30,7 +29,7 @@ export const SHARDS = {
 /**
  * CRITICAL: ~15% of full completions give ×1.5 XP. The roll is a hash of day + quest,
  * so replaying the log (or syncing to another device) always gives the same result.
- * Mini versions never crit; boss damage uses the base XP.
+ * Mini versions never crit.
  */
 export const CRIT = { chance: 0.15, mult: 1.5 } as const
 

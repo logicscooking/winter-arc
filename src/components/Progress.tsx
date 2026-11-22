@@ -1,12 +1,12 @@
 /**
- * v0.16 «Прогрессия»: spheres on «Герой», the final boss card and the big-moment screen
- * («Новый уровень», v0.17 a money boss of the month killed, «Весенний босс» повержен).
+ * v0.16 «Прогрессия»: spheres on «Герой», the «Покоритель зимы» card and the big-moment screen
+ * («Новый уровень», v0.17 a money boss of the month killed, v0.18 «Покоритель зимы» at the arc end).
  */
 import { useEffect, useMemo } from 'react'
 import {
-  BOSSES,
-  FINAL_WEEK,
-  FINAL_WIN,
+  ARC_END,
+  ARC_START,
+  CONQUEROR,
   GEAR,
   LEVEL_TITLES,
   SPHERES,
@@ -14,6 +14,7 @@ import {
   MAIN_BOSS_PRIZE,
   MAIN_MONEY_BOSS,
   addDays,
+  diffDays,
   formatUsd,
   moneyBossById,
   laggingSphere,
@@ -26,7 +27,7 @@ import {
 import type { Area, GameState, GearItem, Outfit } from '../engine'
 import { useStore } from '../store/store'
 import { haptic, useGame } from '../store/hooks'
-import { BossSprite, MoneyBossSprite, PixelAvatar, Px } from '../pixel/Pixel'
+import { MoneyBossSprite, PixelAvatar, Px } from '../pixel/Pixel'
 import { useWornOutfit } from '../pixel/useHero'
 import { AREA_ICON } from '../screens/todayItems'
 import { AREA_COLOR } from '../screens/TodayBlocks'
@@ -82,57 +83,49 @@ function SphereRow({ area, title, xp, lagging }: { area: Area; title: string; xp
   )
 }
 
-// ---------- the final boss ----------
+// ---------- «Покоритель зимы» ----------
 
-/** «Весенний босс»: its HP grows with every boss that got away */
-export function FinalBossCard({ game, compact }: { game: GameState; compact?: boolean }) {
-  const fled = Object.values(game.bosses).filter((b) => b.done && !b.won && (b.carry ?? 0) > 0 && b.week < FINAL_WEEK)
-  const fb = game.finalBoss
-  const won = game.trophies.includes(FINAL_WEEK)
-  const pctBonus = fb.hp ? fb.bonus / fb.hp : 0
-  if (compact)
-    return (
-      <p className="tiny muted final-line">
-        <BossSprite name={BOSSES[FINAL_WEEK - 1]} size={18} /> Весенний босс: <span className="num">{fb.hp}</span> HP
-        {fb.bonus > 0 && <b className="final-plus"> +{fb.bonus} от сбежавших</b>}
-      </p>
-    )
+/** «Покоритель зимы»: closed (perfect) arc days towards the arc-end title */
+export function ConquerorCard({ game }: { game: GameState }) {
+  const c = game.conqueror
+  const ended = game.today > ARC_END || (game.today === ARC_END && !!game.days[ARC_END]?.closed)
+  // arc days still open (the warm-up counts from the arc start; today counts while it is not closed yet)
+  const from = game.today < ARC_START ? ARC_START : game.today
+  const left = Math.max(0, diffDays(from, ARC_END) + (from === game.today && game.days[from]?.perfect ? 0 : 1))
+  const still = Math.max(0, c.need - c.closed)
+  const item = GEAR.find((g) => g.conqueror)
   return (
-    <section className={`panel stack final-card${won ? ' won' : ''}`} aria-label="Финальный босс">
-      <div className="boss-head">
-        <span className="boss-sprite">{won ? <Px name="trophy" size={40} /> : <BossSprite name={BOSSES[FINAL_WEEK - 1]} size={44} />}</span>
-        <div>
-          <span className="tiny muted">Финальный босс · неделя {FINAL_WEEK}</span>
-          <h3>Весенний босс</h3>
+    <section className={`panel stack final-card${c.won ? ' won' : ''}`} aria-label={CONQUEROR.title}>
+      <div className="row" style={{ gap: 10 }}>
+        <Px name="trophy" size={36} className={c.won ? undefined : 'dim'} />
+        <div className="grow">
+          <span className="tiny muted">Финал арки · 28 февраля</span>
+          <h3>{CONQUEROR.title}</h3>
         </div>
-        <span className="num small muted">{fb.hp} HP</span>
+        <span className="num small muted">
+          {c.closed}/{c.need}
+        </span>
       </div>
-      <div className="final-bar" role="img" aria-label={`Своё HP ${fb.base}, от сбежавших боссов ${fb.bonus}`}>
-        <i className="base" style={{ width: `${(1 - pctBonus) * 100}%` }} />
-        <i className="plus" style={{ width: `${pctBonus * 100}%` }} />
+      <div className="final-bar" role="progressbar" aria-label={`Закрыто ${c.closed} из ${c.need} нужных дней`} aria-valuemin={0} aria-valuemax={c.need} aria-valuenow={Math.min(c.closed, c.need)}>
+        <i className="base" style={{ width: `${Math.min(1, c.closed / c.need) * 100}%` }} />
       </div>
-      {won ? (
-        <p className="tiny" style={{ color: 'var(--gold)' }}>
-          Повержен. Титул «{FINAL_WIN.title}» твой.
-        </p>
-      ) : fled.length ? (
-        <>
-          <p className="tiny muted">Каждый непобеждённый босс уходит к финальному: половина его остатка HP.</p>
-          <div className="fled">
-            {fled.map((b) => (
-              <span key={b.week} className="fled-chip" title={`${b.name}: +${b.carry} HP`}>
-                <BossSprite name={b.name} size={18} />
-                <span className="num">+{b.carry}</span>
-              </span>
-            ))}
-          </div>
-        </>
-      ) : (
-        <p className="tiny muted">Побеждай боссов недель — иначе они уходят к финальному и он растёт.</p>
-      )}
-      <p className="tiny muted">
-        Награда: легендарная вещь, титул «{FINAL_WIN.title}», +{FINAL_WIN.xp} XP и +{FINAL_WIN.shards} ❄.
+      <p className="small">
+        {CONQUEROR.title}: закрыто <b className="num">{c.closed}</b> из <span className="num">{c.need}</span> нужных
       </p>
+      <p className="tiny muted">
+        {c.won
+          ? `Зима взята. Титул «${CONQUEROR.title}» твой.`
+          : ended
+            ? `Арка закрыта: ${c.closed} из ${c.need}. В этот раз не хватило.`
+            : still > left
+              ? `Даже если закрыть все ${left} оставшихся дней, до ${c.need} не дотянуть. Но каждый закрытый день всё равно в счёт.`
+              : `Закрытый день — все главные квесты сделаны. Ещё ${still} ${plural(still, 'день', 'дня', 'дней')} из ${left} оставшихся.`}
+      </p>
+      {!c.won && (
+        <p className="tiny muted">
+          Награда в конце арки: {item ? `легендарный «${item.title}», ` : ''}титул, +{CONQUEROR.xp} XP и +{CONQUEROR.shards} ❄.
+        </p>
+      )}
     </section>
   )
 }
@@ -179,20 +172,21 @@ function bits(seed: number) {
 export const moneyMomentKey = (k: { month: string; id: string }) => `mb:${k.month}:${k.id}`
 
 function pendingMoment(game: GameState, levelSeen: number | undefined, moments: string[]): Moment | null {
-  if (game.trophies.includes(FINAL_WEEK) && !moments.includes('final')) {
-    const item = GEAR.filter((g) => g.boss === FINAL_WEEK)
+  // v0.18: its own ack key ('conqueror'); an old 'final' ack of the weekly bosses means nothing now
+  if (game.conqueror?.won && !moments.includes('conqueror')) {
     return {
-      key: 'final',
+      key: 'conqueror',
       kind: 'final',
       eyebrow: 'Финал арки',
-      title: 'Весенний босс повержен',
-      text: `Зима твоя. Титул «${FINAL_WIN.title}» — навсегда.`,
+      title: CONQUEROR.title,
+      text: `${game.conqueror.closed} закрытых дней из 98. Зима твоя — титул навсегда.`,
       chips: [
-        { cls: 'gold', icon: 'star', text: `+${FINAL_WIN.xp} XP` },
-        { cls: 'ice', icon: 'shard', text: `+${FINAL_WIN.shards}` },
+        { cls: 'gold', icon: 'star', text: `+${CONQUEROR.xp} XP` },
+        { cls: 'ice', icon: 'shard', text: `+${CONQUEROR.shards}` },
+        { cls: 'gold', icon: 'trophy', text: CONQUEROR.title },
       ],
-      items: item,
-      ack: { moments: ['final'] },
+      items: GEAR.filter((g) => g.conqueror),
+      ack: { moments: ['conqueror'] },
     }
   }
   // v0.17 «Боссы месяца»: kills of the last week not seen yet, all in one screen (the top boss leads)

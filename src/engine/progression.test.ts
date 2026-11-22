@@ -1,17 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import { LEVEL_CAP, LEVEL_UP_SHARDS, levelOf, levelTitle, nextTitle, sphereLevelOf, xpForLevel } from './levels'
 import { CAPS, computeState, heroTitle, heroTitles } from './replay'
-import { BOSS_RULES, BOSS_WIN, FINAL_WIN, taskCap, weaknessOf } from './bosses'
+import { CONQUEROR } from './conqueror'
+import { normalizeData } from './data'
 import { GEAR, gearPrice, ownsGear, wornOutfit } from './avatar'
 import { usdRateOf } from './money'
 import { MAIN_BOSS_PRIZE, MONEY_BOSSES, moneyLadder, moneyMonthEvents, moneyMonths, moneyXpDelta, monthEnd } from './moneyBosses'
 import { MONEY_BOSS_HP } from './money'
-import { SHOP_CHEST, rollChest, setupDue, CHAPTER_BOSS, PRACTICE_XP } from './skills'
+import { SHOP_CHEST, rollChest, setupDue, PRACTICE_XP } from './skills'
 import { STAT_SPHERE, laggingSphere } from './spheres'
 import { buildPublicStats, detectFeedEvents, feedText, shareSettings } from './social'
 import { dopaminePrice } from './shop'
-import { ARC_START, addDays, gameDayOf, weekDays } from './time'
-import { at, confess, log, makeData, mark, nowAt, perfectDays } from './testkit'
+import { ARC_END, ARC_START, addDays, gameDayOf } from './time'
+import { at, log, makeData, mark, nowAt, perfectDays } from './testkit'
 import type { AppData, Income, Reward, Task } from './types'
 
 const D1 = ARC_START
@@ -109,81 +110,81 @@ describe('сферы', () => {
   })
 })
 
-describe('боссы', () => {
-  it('слабость бьёт ×2: Зомби — подъём и отбой', () => {
-    const W2 = weekDays(2)[0]
-    const data = makeData()
-    mark(data, W2, 'wake') // main 20 → 40
-    confess(data, W2, { bedtime: '23:00' }) // bedtime side 10 → 20
-    const st = computeState(data, nowAt(W2, 22))
-    const wake = st.days[W2].crits.includes('wake')
-    void wake
-    expect(st.days[W2].bossDamage).toBe(20 * BOSS_RULES.weakMult + 10 * BOSS_RULES.weakMult)
-    expect(weaknessOf(2).label).toContain('подъём')
-  })
-
-  it('исповедь «сахара не было» бьёт Сахарного голема', () => {
-    const W7 = weekDays(7)[0]
-    const data = makeData()
-    confess(data, W7, { sugar: 'none' })
-    const st = computeState(data, nowAt(W7, 22))
-    expect(st.days[W7].bossDamage).toBe(BOSS_RULES.answerHit)
-    confess(data, W7, { sugar: 'outside' })
-    expect(computeState(data, nowAt(W7, 22)).days[W7].bossDamage).toBe(0)
-  })
-
-  it('задачи бьют не больше трети HP за неделю', () => {
-    const data = makeData()
-    const project = task({ title: 'Проект' })
-    data.tasks = [project, ...Array.from({ length: 10 }, (_, i) => task({ parentId: project.id, doneAt: at(D1, 9 + i), doneDay: D1 }))]
-    const st = computeState(data, nowAt(D1, 22))
-    expect(st.bosses[1].taskDamage).toBe(taskCap(280))
-    expect(st.bosses[1].damage).toBe(93)
-    // XP is not capped for project tasks
-    expect(st.xpByStat.deal).toBe(300)
-  })
-
-  it('победа: +100 XP, +15 ❄, трофей и вещь босса', () => {
+describe('v0.18: без недельных боссов', () => {
+  it('в GameState и DayResult нет полей боссов недели', () => {
     const data = makeData()
     perfectDays(data, D1, 7)
     const st = computeState(data, nowAt(addDays(D1, 6), 22))
-    const before = computeState(data, nowAt(addDays(D1, 5), 22))
-    expect(st.bosses[1].won).toBe(true)
-    // Sunday: its quests (~45) + the win
-    expect(st.days[addDays(D1, 6)].xp).toBeGreaterThanOrEqual(BOSS_WIN.xp + 40)
-    expect(st.xpByDay[addDays(D1, 6)]).toBe(st.days[addDays(D1, 6)].xp)
-    const item = GEAR.find((g) => g.boss === 1)!
-    expect(ownsGear(item, 1, [], st)).toBe(true)
-    expect(ownsGear(item, 30, [], before)).toBe(false)
-    expect(wornOutfit({ extra: item.id }, 1, [], st).extra).toBe(item.id)
+    expect(Object.keys(st).filter((k) => /boss|troph|final/i.test(k))).toEqual([])
+    for (const r of Object.values(st.days)) expect(Object.keys(r).filter((k) => /boss/i.test(k))).toEqual([])
   })
 
-  it('сбежавший босс уходит к финальному: +50% его остатка', () => {
+  it('публичные статы не шлют босса, лента не знает «boss»', () => {
     const data = makeData()
-    perfectDays(data, D1, 3) // 120 of 280
-    const st = computeState(data, nowAt(addDays(D1, 8), 12))
-    expect(st.bosses[1]).toMatchObject({ done: true, won: false, carry: 80 })
-    expect(st.finalBoss.bonus).toBe(80)
-    expect(st.finalBoss.hp).toBe(st.finalBoss.base + 80)
+    perfectDays(data, D1, 7)
+    const st = computeState(data, nowAt(addDays(D1, 6), 22))
+    const pub = buildPublicStats(data, st, nowAt(addDays(D1, 6), 22))
+    expect('boss' in pub).toBe(false)
+    expect(JSON.stringify(pub)).not.toMatch(/"boss"/)
+    expect(Object.keys(shareSettings(data))).not.toContain('boss')
+    const ev = detectFeedEvents(data, st, { since: at(D1, 0), levelAtSince: 1, share: shareSettings(data) })
+    expect(ev.map((e) => e.kind)).not.toContain('boss')
   })
 
-  it('финальный босс: легендарная вещь, титул, +300 XP, +50 ❄', () => {
+  it('бывшие трофеи боссов — вещи за ❄: 60…120, цена растёт с главой', () => {
+    const items = GEAR.filter((g) => g.id.startsWith('b_') && !g.conqueror)
+    expect(items).toHaveLength(13)
+    for (const g of items) {
+      expect(g.price).toBeGreaterThanOrEqual(60)
+      expect(g.price).toBeLessThanOrEqual(120)
+      expect(g.legendary).toBeFalsy()
+      expect(gearPrice(g, 3)).toBeGreaterThan(gearPrice(g, 1))
+      expect(ownsGear(g, 30, [], computeState(makeData(), nowAt(D1, 12)))).toBe(false)
+      expect(ownsGear(g, 1, [{ kind: 'avatar', itemId: `av:${g.id}` }])).toBe(true)
+    }
+    expect(gearPrice(GEAR.find((g) => g.id === 'b_compass')!, 1)).toBe(60)
+  })
+
+  it('«Покоритель зимы»: ≥ 70 закрытых дней, награда только после 28 февраля', () => {
+    const last = ARC_END
     const data = makeData()
-    perfectDays(data, D1, 98)
-    const last = addDays(D1, 97)
-    const st = computeState(data, nowAt(last, 22))
-    expect(Object.values(st.bosses).filter((b) => b.won)).toHaveLength(14)
-    expect(st.bosses[14]).toMatchObject({ won: true, bonus: 0 })
-    expect(st.trophies).toContain(14)
-    expect(st.days[last].xp).toBeGreaterThanOrEqual(FINAL_WIN.xp + 100)
-    expect(ownsGear(GEAR.find((g) => g.boss === 14)!, 1, [], st)).toBe(true)
-    expect(GEAR.find((g) => g.boss === 14)!.legendary).toBe(true)
-    expect(heroTitle(st)).toBe(FINAL_WIN.title)
+    perfectDays(data, D1, CONQUEROR.need)
+    const mid = computeState(data, nowAt(last, 12))
+    expect(mid.conqueror).toEqual({ closed: CONQUEROR.need, need: 70, won: false })
+    expect(heroTitles(mid)).not.toContain(CONQUEROR.title)
+    const crown = GEAR.find((g) => g.conqueror)!
+    expect(crown).toMatchObject({ id: 'b_springcrown', legendary: true })
+    expect(ownsGear(crown, 30, [], mid)).toBe(false)
+
+    const st = computeState(data, nowAt(addDays(last, 2), 12))
+    expect(st.days[last].closed).toBe(true)
+    expect(st.conqueror.won).toBe(true)
+    expect(heroTitle(st)).toBe(CONQUEROR.title)
+    expect(st.days[last].xp).toBe(CONQUEROR.xp)
+    expect(st.days[last].shards).toBeGreaterThanOrEqual(CONQUEROR.shards)
+    expect(st.xp - mid.xp).toBe(CONQUEROR.xp)
+    expect(ownsGear(crown, 1, [], st)).toBe(true)
+    expect(wornOutfit({ hat: crown.id }, 1, [], st).hat).toBe(crown.id)
+
+    const short = makeData()
+    perfectDays(short, D1, CONQUEROR.need - 1)
+    const lost = computeState(short, nowAt(addDays(last, 2), 12))
+    expect(lost.conqueror).toEqual({ closed: 69, need: 70, won: false })
+    expect(heroTitles(lost)).not.toContain(CONQUEROR.title)
+    expect(ownsGear(crown, 30, [], lost)).toBe(false)
   })
 
-  it('CHAPTER_BOSS совпадает с боссом первой недели главы', () => {
-    expect(CHAPTER_BOSS).toEqual({ 0: 'Хаос', 1: 'Зомби', 2: 'Сахарный голем', 3: 'Туман' })
-    expect(setupDue('2027-01-29')?.boss).toBe('Туман')
+  it('миграция: старый тумблер «boss» и ack «final» безвредны', () => {
+    const raw = { ...makeData(), settings: { ...makeData().settings, share: { boss: false, perfect: false } }, ack: { ...makeData().ack, moments: ['final'] } }
+    const d = normalizeData(JSON.parse(JSON.stringify(raw)))
+    expect(d.settings.share).toEqual({ perfect: false })
+    expect(shareSettings(d)).toEqual({ slips: true, perfect: false, level: true, book: true })
+    const st = computeState(d, nowAt(D1, 12))
+    expect(st.conqueror.won).toBe(false)
+  })
+
+  it('завязка главы — без босса', () => {
+    expect(setupDue('2027-01-29')).toEqual({ next: 3, daysLeft: 2 })
   })
 })
 

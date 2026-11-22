@@ -1,9 +1,8 @@
-import { ARC_DAYS, ARC_START, BOSS_WIN, CHAPTERS, FINAL_WEEK, FINAL_WIN, GEAR, addDays, arcDayNumber, bossOf, chapterOf, diffDays, heroTitle, levelOf, plural, taskCap, weaknessOf, weekOf } from '../engine'
+import { ARC_DAYS, ARC_START, CHAPTERS, addDays, arcDayNumber, chapterOf, diffDays, heroTitle, levelOf, plural, weekOf } from '../engine'
 import type { GameState } from '../engine'
 import { useStore } from '../store/store'
 import { Banner, useHint } from './ui'
-import { FinalBossCard } from './Progress'
-import { BossSprite, PixelAvatar, Px } from '../pixel/Pixel'
+import { PixelAvatar, Px } from '../pixel/Pixel'
 import { useWornOutfit } from '../pixel/useHero'
 
 const NEW_YEAR = '2027-01-01'
@@ -137,67 +136,5 @@ export function ArcStrip({ game }: { game: GameState }) {
         })}
       </div>
     </div>
-  )
-}
-
-export function BossCard({ game }: { game: GameState }) {
-  if (game.today < ARC_START) {
-    return (
-      <section className="panel boss" aria-label="Босс первой недели">
-        <div className="boss-head">
-          <span className="boss-sprite">
-            <BossSprite name={bossOf(1)} size={44} />
-          </span>
-          <h3 className="grow">Первый босс: {bossOf(1)}</h3>
-        </div>
-        <p className="small muted">Бой с 23 ноября: бьют главные квесты и Дело дня.</p>
-        <p className="boss-weak">
-          <b>Слабость:</b> {weaknessOf(1).label} — урон ×2
-        </p>
-      </section>
-    )
-  }
-  const w = weekOf(game.today)
-  const b = game.bosses[w]
-  if (!b) return null
-  const left = Math.max(0, b.hp - b.damage)
-  const pct = b.hp ? left / b.hp : 0
-  const final = w === FINAL_WEEK
-  const weak = weaknessOf(w)
-  const item = GEAR.find((g) => g.boss === w)
-  const cap = taskCap(b.hp)
-  const prize = final ? `+${FINAL_WIN.xp} XP, +${FINAL_WIN.shards} ❄, ${item?.title ?? 'легенда'} и титул` : `+${BOSS_WIN.xp} XP, +${BOSS_WIN.shards} ❄ и ${item?.title ?? 'трофей'}`
-  return (
-    <section className="panel boss" aria-label="Босс недели">
-      <div className="boss-head">
-        <span className="boss-sprite">{b.won ? <Px name="trophy" size={40} /> : <BossSprite name={b.name} size={44} />}</span>
-        <div>
-          <span className="tiny muted">Босс недели {w}</span>
-          <h3>{b.name}</h3>
-        </div>
-        <span className="num small muted">
-          {left}/{b.hp}
-        </span>
-      </div>
-      <div className="boss-bar" role="progressbar" aria-label="HP босса" aria-valuemin={0} aria-valuemax={b.hp} aria-valuenow={left}>
-        <i className={b.won ? 'won' : ''} style={{ width: `${pct * 100}%` }} />
-      </div>
-      {final && (b.bonus ?? 0) > 0 && (
-        <p className="tiny final-line">
-          <span className="final-plus">+{b.bonus} HP</span> принесли боссы, которые ушли от тебя.
-        </p>
-      )}
-      {!b.won && weak.quests.length + (weak.extra?.length ?? 0) > 0 && (
-        <p className="boss-weak">
-          <b>Слабость:</b> {weak.label} — урон ×2
-        </p>
-      )}
-      <p className="tiny muted">
-        {b.won
-          ? `Повержен${b.done ? '' : ' — награда придёт в воскресенье'}. ${prize}.`
-          : `Бьют главные квесты и Дело дня · урон ${b.damage} · задачи до ${cap} (${b.taskDamage ?? 0}/${cap}). Победа: ${prize}.`}
-      </p>
-      {!final && !b.won && <FinalBossCard game={game} compact />}
-    </section>
   )
 }

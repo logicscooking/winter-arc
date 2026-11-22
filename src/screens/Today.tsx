@@ -5,6 +5,7 @@ import type { SpriteName } from '../pixel/sprites'
 import {
   ARC_END,
   ARC_START,
+  ARC_WEEKS,
   COMEBACK_WINDOW_MS,
   FINAL_MEASURE_FROM,
   addDays,
@@ -20,12 +21,13 @@ import {
   redFlag,
   replayStartOf,
   wakeTargetFor,
+  weekDays,
 } from '../engine'
 import type { AppData, DayKey, Quest } from '../engine'
 import { useStore } from '../store/store'
 import { go, useFx, useGame, useNow } from '../store/hooks'
 import { useUi } from '../store/ui'
-import { BossCard, Hud } from '../components/Hud'
+import { Hud } from '../components/Hud'
 import { QuestRow } from '../components/QuestRow'
 import { AddTask, TaskTree } from '../components/TaskTree'
 import { Help, Hint, formatMMSS } from '../components/ui'
@@ -47,10 +49,8 @@ export function Today() {
   const game = useGame()
   const today = gameDayOf(useNow())
 
-  const pendingReview = Object.values(game.bosses)
-    .filter((b) => b.done && !data.ack.reviewedWeeks.includes(b.week))
-    .map((b) => b.week)
-    .sort((a, b) => a - b)[0]
+  // a week asks for its «Итог недели» once its Sunday is closed
+  const pendingReview = Array.from({ length: ARC_WEEKS }, (_, i) => i + 1).find((w) => game.days[weekDays(w)[6]]?.closed && !data.ack.reviewedWeeks.includes(w))
 
   useEffect(() => {
     if (!pendingReview) return
@@ -282,14 +282,13 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
         <div className="stack-lg" style={{ marginTop: 4 }}>
           <QuoteCard />
           <MiniTrends />
-          <BossCard game={game} />
           {warmup && <Prep />}
           {pendingReview && (
             <a className="list-btn" href={`#/review/${pendingReview}`}>
               <Waves aria-hidden />
               <span className="grow">
-                Бой недели {pendingReview}
-                <small>Итог боя и 3 вопроса</small>
+                Итог недели {pendingReview}
+                <small>Цифры недели и 3 вопроса</small>
               </span>
             </a>
           )}
@@ -488,7 +487,7 @@ function SupportQuests() {
   const marks = marksFor(data, today, plan)
   return (
     <section className="stack">
-      <p className="small muted">Режим поддержки: база из главы III, только XP, без HP и боссов.</p>
+      <p className="small muted">Режим поддержки: база из главы III, только XP, без HP.</p>
       <div className="quests">
         {plan.map((p) => {
           const q = data.quests.find((x) => x.id === p.id)

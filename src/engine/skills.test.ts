@@ -388,8 +388,8 @@ describe('планка', () => {
 })
 
 describe('завязка', () => {
-  it('за 3 дня до конца главы показывает следующую главу и её босса', () => {
-    expect(setupDue('2027-01-01')).toMatchObject({ next: 2, boss: 'Сахарный голем', daysLeft: 2 })
+  it('за 3 дня до конца главы показывает следующую главу', () => {
+    expect(setupDue('2027-01-01')).toEqual({ next: 2, daysLeft: 2 })
     expect(setupDue('2026-12-25')).toBeNull()
     expect(setupDue('2027-02-27')).toBeNull()
   })
