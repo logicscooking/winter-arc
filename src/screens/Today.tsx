@@ -37,6 +37,7 @@ import { MoneySheet } from '../components/Money'
 import { useWhySeen } from './Why'
 import { TransitionCard } from './PlanDay'
 import { DayRingCard, TodayBlocks } from './TodayBlocks'
+import { WeekGoalsCard } from '../components/Week'
 import { todaySections } from './todayItems'
 import '../morning/morning.css'
 
@@ -271,6 +272,7 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
           <TransitionCard />
           <BarOffers />
           <ThemeCard compact />
+          <WeekGoalsCard />
 
           <TodayBlocks game={game} locked={locked} />
         </div>
@@ -283,7 +285,7 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
             <a className="list-btn" href={`#/review/${pendingReview}`}>
               <Waves aria-hidden />
               <span className="grow">
-                Обзор недели {pendingReview}
+                Бой недели {pendingReview}
                 <small>Итог боя и 3 вопроса</small>
               </span>
             </a>

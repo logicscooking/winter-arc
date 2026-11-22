@@ -1,7 +1,8 @@
 /**
  * What friends see. Pure builders for the public snapshot and the party feed.
  * Privacy rule: nothing here may read confession text, measurements, slip reasons or notes,
- * review answers, check-in ratings or screen-time numbers.
+ * review answers, check-in ratings or screen-time numbers, the diary or the dump. «Неделя» goals and the
+ * finished итог are the exception the user writes for the party (week.ts filters «только мне»).
  */
 import { questStreak } from './analysis'
 import { wornOutfit } from './avatar'
@@ -14,6 +15,8 @@ import { publicDuels } from './duels'
 import { publicMoney } from './money'
 import type { MoneyTotals } from './money'
 import type { DuelPub } from './duels'
+import { publicRecap, publicWeek } from './week'
+import type { PubGoal, PubRecap } from './week'
 import { ARC_START, chapterOf, gameDayOf, weekDays } from './time'
 import type { AppData, DayKey, Outfit, SlipWhat } from './types'
 
@@ -74,6 +77,10 @@ export interface PublicStats {
   duels?: DuelPub[]
   /** v0.7 «Заработано»: only with the opt-in, only totals. Friends validate it with safeMoney */
   money?: MoneyTotals
+  /** «Неделя»: this week's goals without «только мне». Friends validate it with safeWeek */
+  week?: { key: DayKey; goals: PubGoal[] }
+  /** «Неделя»: the latest finished итог (not hidden). Friends validate it with safeRecap */
+  recap?: PubRecap
   at: number
 }
 
@@ -127,6 +134,11 @@ export function buildPublicStats(data: AppData, game: GameState, now: Date): Pub
     ...(() => {
       const money = publicMoney(data, today)
       return money ? { money } : {}
+    })(),
+    ...(() => {
+      const week = publicWeek(data, today)
+      const recap = publicRecap(data, today)
+      return { ...(week ? { week } : {}), ...(recap ? { recap } : {}) }
     })(),
     at: now.getTime(),
   }

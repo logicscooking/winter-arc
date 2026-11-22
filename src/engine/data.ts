@@ -4,7 +4,8 @@ import { isBoard, sanitizeDrop } from './plinko'
 import { validMorningAt } from './morning'
 import { sanitizeDump, sanitizeJournal } from './journal'
 import { retitlePhone, sanitizeEvent } from './areas'
-import type { AppData, CalEvent, DayLog, PlinkoDrop } from './types'
+import { sanitizeRecap, sanitizeWeekGoal } from './week'
+import type { AppData, CalEvent, DayLog, PlinkoDrop, WeekGoal, WeekRecap } from './types'
 
 export const SCHEMA_VERSION = 1
 export const STORAGE_KEY = 'winter-arc-v1'
@@ -39,10 +40,12 @@ export function createInitialData(): AppData {
     duels: [],
     incomes: [],
     events: [],
+    weekGoals: [],
+    weekRecaps: [],
   }
 }
 
-export const V04_COLLECTIONS = ['skills', 'traits', 'nodes', 'practices', 'goals', 'flows', 'bars', 'themes', 'extras', 'chests', 'duels', 'incomes', 'events'] as const
+export const V04_COLLECTIONS = ['skills', 'traits', 'nodes', 'practices', 'goals', 'flows', 'bars', 'themes', 'extras', 'chests', 'duels', 'incomes', 'events', 'weekGoals', 'weekRecaps'] as const
 
 /** Accepts an exported backup (or persisted state) and fills any missing fields. */
 export function normalizeData(raw: unknown): AppData {
@@ -58,6 +61,13 @@ export function normalizeData(raw: unknown): AppData {
   if (settings.transition !== undefined) settings.transition = transitionReps(settings.transition, settings.morningFinal)
   // «Сферы»: broken events are dropped
   if (Array.isArray(r.events)) r.events = r.events.map(sanitizeEvent).filter((e): e is CalEvent => !!e)
+  // «Неделя»: broken goals and итоги are dropped, one итог per week
+  if (Array.isArray(r.weekGoals)) r.weekGoals = r.weekGoals.map(sanitizeWeekGoal).filter((g): g is WeekGoal => !!g)
+  if (Array.isArray(r.weekRecaps)) {
+    const byWeek = new Map<string, WeekRecap>()
+    for (const x of r.weekRecaps.map(sanitizeRecap)) if (x && (byWeek.get(x.id)?.updatedAt ?? -1) <= x.updatedAt) byWeek.set(x.id, x)
+    r.weekRecaps = [...byWeek.values()].sort((a, b) => (a.id < b.id ? -1 : 1))
+  }
   return migrateV03({
     ...base,
     ...r,

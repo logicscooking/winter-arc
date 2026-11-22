@@ -189,7 +189,7 @@ function Shell({ top }: { top: string }) {
       screen = <More sub={route.parts[1]} />
       break
     case 'review':
-      screen = <WeekReview week={Number(route.parts[1])} />
+      screen = <WeekReview param={route.parts[1]} />
       break
     case 'finale':
       screen = <Finale />

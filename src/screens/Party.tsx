@@ -20,6 +20,9 @@ import { BossSprite, PixelAvatar, Px } from '../pixel/Pixel'
 import type { SpriteName } from '../pixel/sprites'
 import { DuelArea, useDuelReconcile, useTheirDuels } from '../components/Duels'
 import { MoneyBoard, MoneyCard } from '../components/Money'
+import { PubGoals, RecapSummary, copyPrompt } from '../components/Week'
+import { goalsTally, recapPrompt, safeRecap, safeWeek, viewFromPub, weekLabel } from '../engine'
+import type { RecapView } from '../engine'
 
 /** the three sections of «Пати»: friends, duels, money; the old #/duels and #/money land here too */
 export type PartyTab = 'friends' | 'duels' | 'money'
@@ -433,6 +436,7 @@ function PartyHome({ initialCode }: { initialCode?: string }) {
             ))}
             {members.length === 0 && <div className="empty">Загружаю участников…</div>}
           </div>
+          <PartyWeek members={sorted} party={party} />
           <CodeCard party={party} isOwner={party.owner === me.id} />
         </section>
         <section className="stack">
@@ -627,6 +631,8 @@ function MemberCard({ m, isMe, owner, onNudge }: { m: Member; isMe: boolean; own
 
       {s && <MemberDay s={s} fresh={fresh} />}
 
+      {s && <MemberWeek s={s} name={m.display_name} />}
+
       {s?.boss && !s.warmup && <MemberBoss boss={s.boss} />}
 
       <div className="member-foot">
@@ -687,6 +693,78 @@ function MemberDay({ s, fresh }: { s: PublicStats; fresh: boolean }) {
         </div>
       )}
     </div>
+  )
+}
+
+/** «Неделя»: a friend's goals of this week and the latest итог (only what they shared) */
+function MemberWeek({ s, name }: { s: PublicStats; name: string }) {
+  const today = useToday()
+  const [open, setOpen] = useState(false)
+  const goals = safeWeek(s.week, today)
+  const recap = safeRecap(s.recap, today)
+  if (!goals && !recap) return null
+  const t = goals ? goalsTally(goals.map((g) => ({ done: !!g.d, target: g.n, progress: g.p }))) : undefined
+  return (
+    <div className="member-week">
+      {goals && t && (
+        <>
+          <div className="member-week-head">
+            <Px name="quests" size={18} />
+            <span>Цели недели</span>
+            <span className="num">
+              {t.done}/{t.total}
+            </span>
+          </div>
+          <PubGoals goals={goals} max={4} />
+        </>
+      )}
+      {recap && (
+        <button className="btn sm ghost" onClick={() => setOpen(true)}>
+          <Px name="trophy" size={18} /> Итог недели · {weekLabel(recap.key)}
+        </button>
+      )}
+      {open && recap && (
+        <Sheet title={`${name} · итог недели`} onClose={() => setOpen(false)}>
+          <p className="small muted" style={{ marginBottom: 10 }}>
+            {weekLabel(recap.key)} · только то, что видно пати
+          </p>
+          <RecapSummary v={viewFromPub(recap, name)} />
+        </Sheet>
+      )}
+    </div>
+  )
+}
+
+/** «Неделя пати»: everyone's shared итоги (or this week's goals) as one prompt for the AI */
+function PartyWeek({ members, party }: { members: Member[]; party: PartyT }) {
+  const today = useToday()
+  const say = useUi((s) => s.say)
+  const views: RecapView[] = []
+  for (const m of members) {
+    const r = safeRecap(m.stats?.recap, today)
+    if (r) views.push(viewFromPub(r, m.display_name))
+    else {
+      const g = safeWeek(m.stats?.week, today)
+      if (g) views.push({ name: m.display_name, week: m.stats!.week!.key, goals: g, insights: [], fails: [], next: [] })
+    }
+  }
+  const recaps = members.filter((m) => safeRecap(m.stats?.recap, today)).length
+  return (
+    <section className="panel tight party-week" aria-label="Неделя пати">
+      <div className="row" style={{ gap: 10 }}>
+        <Px name="trophy" size={28} />
+        <span className="grow">
+          <b>Неделя пати</b>
+          <small className="tiny muted" style={{ display: 'block' }}>
+            Итогов: {recaps} из {members.length}. Обсуждаем в чате — сюда только цифры и цели
+          </small>
+        </span>
+        <Help title="Неделя пати" text={['В понедельник каждый ставит цели недели, в воскресенье — итог: цели план/факт, цифры, инсайты, провал и план.', '«Скопировать для ИИ» соберёт итоги всей пати в один запрос: вставь его в ChatGPT или Claude и обсудите вывод в чате.', 'В запрос попадает только то, чем участники поделились.']} />
+      </div>
+      <button className="btn sm" disabled={!views.length} onClick={() => copyPrompt(recapPrompt(views, { party: party.name }), say)}>
+        <Copy size={16} aria-hidden /> Скопировать для ИИ
+      </button>
+    </section>
   )
 }
 

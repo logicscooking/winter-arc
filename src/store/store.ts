@@ -18,6 +18,10 @@ import {
   DUMP_TEXT_MAX,
   JOURNAL_TEXT_MAX,
   JOURNAL_PROMPTS,
+  bumpProgress,
+  sanitizeRecap,
+  sanitizeWeekGoal,
+  weekOfDay,
 } from '../engine'
 import type {
   AppData,
@@ -57,6 +61,9 @@ import type {
   Trend,
   Duel,
   CalEvent,
+  PlanDraft,
+  WeekGoal,
+  WeekRecap,
 } from '../engine'
 import { MAX_ACTIVE_SKILLS, MONEY_MAX, MONEY_NOTE_MAX, MONEY_SOURCE_MAX, PRACTICE_LIMIT, barMin, canStartFlow, chestsFor, extraUsed, pityCount, practicesToday, rollChest } from '../engine'
 
@@ -122,6 +129,15 @@ interface Store {
   updateEvent: (id: string, patch: Partial<Pick<CalEvent, 'title' | 'date' | 'time' | 'note'>>, now: Date) => void
   toggleEvent: (id: string, now: Date) => void
   deleteEvent: (id: string) => void
+  // ---- «Неделя» ----
+  /** goals of a week (Monday key); blank titles are skipped. Returns how many were added */
+  addWeekGoals: (week: DayKey, list: (PlanDraft & { private?: boolean })[], now: Date) => number
+  updateWeekGoal: (id: string, patch: Partial<Pick<WeekGoal, 'title' | 'target' | 'unit' | 'private' | 'done' | 'progress'>>, now: Date) => void
+  /** +/− on a numeric goal */
+  bumpWeekGoal: (id: string, delta: number, now: Date) => void
+  deleteWeekGoal: (id: string) => void
+  /** «Итог недели»: merge a patch into the week's итог (created on first edit) */
+  setRecap: (week: DayKey, patch: Partial<Omit<WeekRecap, 'id' | 'updatedAt'>>, now: Date) => void
   /** «Вечерний дневник»: one answer; blank text removes it */
   setJournal: (day: DayKey, promptId: string, text: string, now: Date) => void
   /** «Выброс мыслей»: the day's free text; blank removes it */
@@ -496,6 +512,50 @@ export const useStore = create<Store>()(
             ev.updatedAt = now.getTime()
           }),
         deleteEvent: (id) => update((d) => void (d.events = (d.events ?? []).filter((e) => e.id !== id))),
+        addWeekGoals: (week, list, now) => {
+          const key = weekOfDay(week)
+          const t = now.getTime()
+          const items = list.map((x) => ({ ...x, title: x.title.trim() })).filter((x) => x.title)
+          if (!items.length) return 0
+          update((d) => {
+            const goals = (d.weekGoals ??= [])
+            let order = goals.filter((g) => g.week === key).reduce((m, g) => Math.max(m, g.order + 1), 0)
+            for (const x of items) {
+              const g = sanitizeWeekGoal({ id: uid(), week: key, title: x.title, target: x.target, unit: x.unit, private: x.private, order: order++, createdAt: t, updatedAt: t })
+              if (g) goals.push(g)
+            }
+          })
+          return items.length
+        },
+        updateWeekGoal: (id, patch, now) =>
+          update((d) => {
+            const i = (d.weekGoals ?? []).findIndex((g) => g.id === id)
+            if (i < 0) return
+            const merged: Record<string, unknown> = { ...d.weekGoals![i], ...patch, updatedAt: now.getTime() }
+            // explicit undefined in the patch clears the field
+            for (const [k, v] of Object.entries(patch)) if (v === undefined || v === false) delete merged[k]
+            const g = sanitizeWeekGoal(merged)
+            if (g) d.weekGoals![i] = g
+          }),
+        bumpWeekGoal: (id, delta, now) =>
+          update((d) => {
+            const i = (d.weekGoals ?? []).findIndex((g) => g.id === id)
+            if (i >= 0) d.weekGoals![i] = bumpProgress(d.weekGoals![i], delta, now.getTime())
+          }),
+        deleteWeekGoal: (id) => update((d) => void (d.weekGoals = (d.weekGoals ?? []).filter((g) => g.id !== id))),
+        setRecap: (week, patch, now) =>
+          update((d) => {
+            const key = weekOfDay(week)
+            const list = (d.weekRecaps ??= [])
+            const i = list.findIndex((r) => r.id === key)
+            const cur = i >= 0 ? list[i] : { id: key, insights: [], fails: [], nextPlan: [], updatedAt: 0 }
+            const merged: Record<string, unknown> = { ...cur, ...patch, id: key, updatedAt: now.getTime() }
+            for (const [k, v] of Object.entries(patch)) if (v === undefined) delete merged[k]
+            const r = sanitizeRecap(merged)
+            if (!r) return
+            if (i >= 0) list[i] = r
+            else list.push(r)
+          }),
         setJournal: (day, promptId, text, now) =>
           update((d) => {
             if (!JOURNAL_PROMPTS.some((p) => p.id === promptId)) return

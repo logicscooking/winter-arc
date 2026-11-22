@@ -571,6 +571,66 @@ export interface Income {
   note?: string
 }
 
+// ---------- «Неделя» ----------
+
+export interface WeekGoal {
+  id: string
+  /** Monday of the week (game days) */
+  week: DayKey
+  title: string
+  /** numeric goal: «20 постов» */
+  target?: number
+  unit?: string
+  progress?: number
+  /** marked done by hand (a numeric goal is also done once progress reaches the target) */
+  done?: boolean
+  /** «только мне»: never in public stats, the shared deck or the party prompt */
+  private?: boolean
+  order: number
+  createdAt: number
+  updatedAt: number
+}
+
+export interface PlanDraft {
+  title: string
+  target?: number
+  unit?: string
+}
+
+export interface WeekFigures {
+  /** average day ring of the week, % */
+  pct: number
+  /** days counted in the average */
+  days: number
+  perfect: number
+  xp: number
+  /** honesty streak (days with a confession in a row) */
+  streak: number
+  /** top quests: title, days done, sum for numeric quests */
+  quests: { t: string; n: number; s?: number; u?: string }[]
+  /** week income: shown and shared only with the money opt-in */
+  money?: number
+}
+
+/** «Итог недели» of one week. id = Monday of the week */
+export interface WeekRecap {
+  id: DayKey
+  insights: string[]
+  fails: { what: string; why: string }[]
+  nextPlan: PlanDraft[]
+  /** «Вывод недели» from the AI answer, applied by the user */
+  aiSummary?: string
+  /** numbers on the deck when it was finished (what the party sees) */
+  numbers?: WeekFigures
+  /** «Итог готов»: XP once, and from now on the party sees it */
+  doneAt?: number
+  /** «Сделать целями недели» pressed */
+  appliedAt?: number
+  /** hidden from the party */
+  private?: boolean
+  updatedAt: number
+}
+
 export interface AppData {
   schemaVersion: 1
   profile?: Profile
@@ -606,4 +666,8 @@ export interface AppData {
   incomes?: Income[]
   /** «Сферы»: one-off events of «Разное» */
   events?: CalEvent[]
+  /** «Неделя»: goals of the week (synced per goal) */
+  weekGoals?: WeekGoal[]
+  /** «Неделя»: «Итог недели» per week, id = Monday (synced per week) */
+  weekRecaps?: WeekRecap[]
 }
