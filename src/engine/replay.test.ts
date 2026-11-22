@@ -258,7 +258,8 @@ describe('босс недели', () => {
     const st = computeState(data, nowAt(addDays(D1, 6), 22))
     expect(st.bosses[1]).toMatchObject({ name: 'Хаос', hp: 280, damage: 280, done: true, won: true })
     expect(st.trophies).toEqual([1])
-    expect(st.shards).toBe(7 * (3 + 3 + 1) + 15)
+    // v0.16: the win also gives +100 XP; levels 2 and 3 give 6 + 9 ❄
+    expect(st.shards).toBe(7 * (3 + 3 + 1) + 15 + 6 + 9)
     const live = computeState(data, nowAt(addDays(D1, 5), 22))
     expect(live.bosses[1]).toMatchObject({ done: false, damage: 240 })
   })

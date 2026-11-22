@@ -65,7 +65,7 @@ import type {
   WeekGoal,
   WeekRecap,
 } from '../engine'
-import { MAX_ACTIVE_SKILLS, MONEY_MAX, MONEY_NOTE_MAX, MONEY_SOURCE_MAX, PRACTICE_LIMIT, barMin, canStartFlow, chestsFor, extraUsed, pityCount, practicesToday, rollChest } from '../engine'
+import { MAX_ACTIVE_SKILLS, MONEY_MAX, MONEY_NOTE_MAX, MONEY_SOURCE_MAX, PRACTICE_LIMIT, barMin, canStartFlow, chestsFor, extraUsed, pityCount, practicesToday, rollChest, shopChestId } from '../engine'
 
 type Fn = (d: AppData) => void
 
@@ -176,6 +176,8 @@ interface Store {
   addExtra: (skillId: string, now: Date) => boolean
   setDealNode: (day: DayKey, nodeId: string | null) => void
   openChest: (type: ChestType, now: Date) => string | null
+  /** v0.16 «Сундук за ❄»: the purchase and its prize (seeded by the purchase id); returns the purchase id */
+  buyChest: (price: number, now: Date) => string
   // ---- v0.5 ----
   /** keeps the best streak of a repeat goal once it is beaten */
   setBestStreak: (goalId: string, best: number) => void
@@ -307,7 +309,12 @@ export const useStore = create<Store>()(
           })
           return id
         },
-        undoPurchase: (id) => update((d) => void (d.purchases = d.purchases.filter((p) => p.id !== id))),
+        undoPurchase: (id) =>
+          update((d) => {
+            d.purchases = d.purchases.filter((p) => p.id !== id)
+            // a bought chest goes back with its prize
+            if (d.chests?.some((c) => c.id === shopChestId(id))) d.chests = d.chests.filter((c) => c.id !== shopChestId(id))
+          }),
         addReward: (title, price, icon) => update((d) => void d.rewards.push(icon ? { id: uid(), title, price, icon } : { id: uid(), title, price })),
         updateReward: (id, patch) =>
           update((d) => {
@@ -756,6 +763,17 @@ export const useStore = create<Store>()(
             ;(d.chests ??= []).push({ id, day, type, at: now.getTime(), ...(r.reward ? { rewardId: r.reward.id, rewardTitle: r.reward.title, rarity: r.rarity } : {}) })
           })
           return id
+        },
+        buyChest: (price, now) => {
+          const data = get().data
+          const day = gameDayOf(now)
+          const pid = uid()
+          const r = rollChest(day, 'shop', pityCount(data.chests), data.rewards, pid)
+          update((d) => {
+            d.purchases.push({ id: pid, at: now.getTime(), day, itemId: 'chest', title: 'Сундук за ❄', price, kind: 'chest' })
+            ;(d.chests ??= []).push({ id: shopChestId(pid), day, type: 'shop', at: now.getTime(), ...(r.reward ? { rewardId: r.reward.id, rewardTitle: r.reward.title, rarity: r.rarity } : {}) })
+          })
+          return pid
         },
         setBestStreak: (goalId, best) =>
           update((d) => {

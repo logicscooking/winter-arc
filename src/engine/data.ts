@@ -26,7 +26,7 @@ export function createInitialData(): AppData {
     final: {},
     reviews: {},
     settings: { debugOffsetDays: 0, reelsLimit: REELS_LIMIT, defaultSwap: '10 отжиманий', theme: 'dark', snow: true },
-    ack: { reviewedWeeks: [], hints: [], celebrated: [] },
+    ack: { reviewedWeeks: [], hints: [], celebrated: [], moments: [] },
     skills: [],
     traits: [],
     nodes: [],

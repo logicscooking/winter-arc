@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
-import { levelOf, statName } from '../engine'
+import { sphereLevelOf, sphereOfStat, sphereTitle } from '../engine'
 import { useFx } from '../store/hooks'
-import { Px, STAT_SPRITE } from '../pixel/Pixel'
+import { Px } from '../pixel/Pixel'
+import { AREA_ICON } from '../screens/todayItems'
 import { Bar } from './ui'
 
 /** Skillion-style reward card: stat + level, bar filling to the new value, XP pill, ❄ and CRITICAL chips */
@@ -16,8 +17,11 @@ export function RewardPop() {
     return () => cancelAnimationFrame(t)
   }, [pop?.id])
   if (!pop) return null
-  const before = levelOf(pop.fromXp)
-  const after = levelOf(pop.fromXp + pop.xp)
+  // v0.16: progress of the sphere («Здоровье», «Деньги», «Развитие», «Разное»)
+  const area = pop.area ?? sphereOfStat(pop.stat) ?? 'misc'
+  const name = sphereTitle(area)
+  const before = sphereLevelOf(pop.fromXp)
+  const after = sphereLevelOf(pop.fromXp + pop.xp)
   const levelUp = after.level > before.level
   const shown = filled ? after : before
   const lo = pop.fromXp + pop.xp - after.into
@@ -28,16 +32,16 @@ export function RewardPop() {
           <X size={18} />
         </button>
         <div className="pop-top">
-          <Px name={STAT_SPRITE[pop.stat]} size={44} />
+          <Px name={AREA_ICON[area]} size={44} />
           <div>
-            <h3>{statName(pop.stat)}</h3>
+            <h3>{name}</h3>
             <div className="small muted">{levelUp ? `Новый уровень ${after.level}!` : `Уровень ${after.level}`}</div>
           </div>
           <span className="pop-xp">+{pop.xp} XP</span>
         </div>
         <div className="pop-bar">
           <span className="num">{lo}</span>
-          <Bar value={levelUp && !filled ? 1 : shown.progress} label={`${statName(pop.stat)}: опыт уровня`} />
+          <Bar value={levelUp && !filled ? 1 : shown.progress} label={`${name}: опыт уровня`} />
           <span className="num">{lo + after.span}</span>
         </div>
         {pop.impact && <p className="pop-impact">{pop.impact}</p>}
@@ -57,7 +61,7 @@ export function RewardPop() {
               <Px name="play" size={22} /> Поток ×2
             </span>
           )}
-          {pop.theme && (
+          {pop.theme && !pop.flow && (
             <span className="reward-chip gold">
               <Px name="star" size={22} /> Тема ×1,5
             </span>

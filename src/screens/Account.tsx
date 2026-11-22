@@ -10,7 +10,7 @@ import { AuthForm } from '../components/AuthForm'
 import { Field, Help } from '../components/ui'
 import { HeroAva } from '../components/HeroAva'
 import { timeAgo } from './Party'
-import { MoneyShareRow } from '../components/Money'
+import { MoneyShareRow, UsdRateRow } from '../components/Money'
 
 /** the title lives in the top bar; `title` stays for the accessible region name */
 function Sub({ title, children }: { title: string; children: ReactNode }) {
@@ -171,6 +171,7 @@ function Signed() {
           </div>
         ))}
         <MoneyShareRow />
+        <UsdRateRow />
         <p className="tiny muted">
           Уровень, HP и серии видны пати всегда{' '}
           <Help title="Что видит пати" text={['Уровень, HP, гирлянда дня и серии видны участникам пати всегда.', 'Исповеди, замеры, причины срывов и заметки не уходят никогда.']} />

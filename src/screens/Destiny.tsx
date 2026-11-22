@@ -27,8 +27,7 @@ import {
   slotItemFor,
   specialById,
   statName,
-  streakMult,
-} from '../engine'
+  streakMult, STAT_SPHERE } from '../engine'
 import type { PlinkoDrop } from '../engine'
 import { rollDrop } from '../engine/plinkoSim'
 import { useStore } from '../store/store'
@@ -164,7 +163,7 @@ export function Destiny() {
       useFx.getState().showPop({
         title: task.title,
         stat: task.stat,
-        fromXp: game.xpByStat[task.stat],
+        fromXp: game.xpBySphere[STAT_SPHERE[task.stat]],
         xp: r.xp,
         shards: r.shards,
         crit: false,

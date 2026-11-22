@@ -8,11 +8,11 @@ import { questStreak } from './analysis'
 import { wornOutfit } from './avatar'
 import { levelOf } from './levels'
 import { COMEBACK_WINDOW_MS, isCompleted } from './quests'
-import { marksFor, planFor } from './replay'
+import { heroTitle, marksFor, planFor } from './replay'
 import type { GameState } from './replay'
 import { activeSkills, skillView } from './skills'
 import { publicDuels } from './duels'
-import { publicMoney } from './money'
+import { MILESTONES, formatUsd, moneyShareOn, publicMoney } from './money'
 import type { MoneyTotals } from './money'
 import type { DuelPub } from './duels'
 import { publicRecap, publicWeek } from './week'
@@ -71,6 +71,8 @@ export interface PublicStats {
   boss: { week: number; name: string; hp: number; damage: number; won: boolean } | null
   /** worn pixel-hero look (owned gear only). Missing in snapshots from older app versions */
   outfit?: Outfit
+  /** v0.16: the hero title («Снежинка» … «Покоритель зимы»). Missing in older snapshots */
+  title?: string
   /** v0.4: active skills, title and rank only. «Кайф», notes and feedback stay private */
   skills?: { t: string; r: string }[]
   /** v0.5 duels: ids, window and own closed-quests score per day. Friends validate it with safeDuels */
@@ -125,7 +127,8 @@ export function buildPublicStats(data: AppData, game: GameState, now: Date): Pub
     honesty: game.honestyStreak,
     freezes: game.freezes,
     boss: bossWeek ? { week: bossWeek.week, name: bossWeek.name, hp: bossWeek.hp, damage: bossWeek.damage, won: bossWeek.won } : null,
-    outfit: wornOutfit(data.profile?.outfit, level, data.purchases),
+    outfit: wornOutfit(data.profile?.outfit, level, data.purchases, game),
+    title: heroTitle(game),
     ...(activeSkills(data).length ? { skills: publicSkills(data, game) } : {}),
     ...(() => {
       const duels = publicDuels(data, game, now.getTime())
@@ -199,6 +202,16 @@ export function detectFeedEvents(data: AppData, game: GameState, ctx: FeedContex
     if (lvl > ctx.levelAtSince) out.push({ kind: 'level', key: `level:${lvl}`, payload: { level: lvl }, at: Date.now() })
   }
 
+  // v0.16 «Путь к $10k»: a milestone is news only with the money opt-in; it rides the 'level' kind
+  // (the server knows no other kinds) with a readable `level` so older clients still show a line
+  if (moneyShareOn(data)) {
+    for (const m of game.milestones) {
+      if (m.day < sinceDay) continue
+      const ms = MILESTONES.find((x) => x.id === m.id)
+      if (ms) out.push({ kind: 'level', key: `milestone:${m.id}`, payload: { ms: m.id, usd: ms.usd, level: `${formatUsd(ms.usd)} за месяц` }, at: data.days[m.day]?.confession?.at ?? ctx.since })
+    }
+  }
+
   if (share.book) {
     for (const b of data.books) {
       if (b.finishedDay && b.finishedDay >= sinceDay) out.push({ kind: 'book', key: `book:${b.id}`, payload: { title: b.title.slice(0, 60) }, at: ctx.since })
@@ -245,6 +258,7 @@ export function feedText(kind: string, payload: Record<string, unknown>, comebac
     case 'boss':
       return `Победил босса недели ${payload.week}: ${payload.name}`
     case 'level':
+      if (typeof payload.ms === 'string' && typeof payload.usd === 'number') return `Веха: ${formatUsd(payload.usd)} за месяц 💰`
       return `Новый уровень: ${payload.level}`
     case 'book':
       return `Дочитал книгу «${payload.title}»`

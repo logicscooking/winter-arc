@@ -1,13 +1,12 @@
 import { ChevronRight } from 'lucide-react'
-import { ARC_START, ARC_WEEKS, CHAPTERS, STATS, bossOf, chapterOf, chapterRank, levelOf, rankTitle } from '../engine'
-import type { StatId } from '../engine'
+import { ARC_START, ARC_WEEKS, CHAPTERS, GEAR, bossOf, chapterOf, chapterRank, heroTitles, levelOf, nextTitle, rankTitle } from '../engine'
 import { useStore } from '../store/store'
 import { useGame } from '../store/hooks'
-import { Bar } from '../components/ui'
 import { Spark } from '../components/Spark'
+import { FinalBossCard, MoneyPathCard, SphereList } from '../components/Progress'
 import { MiniTrends } from './Today'
 import { hpValues, window7, xpValues } from '../store/trends'
-import { BossSprite, PixelAvatar, Px, STAT_SPRITE } from '../pixel/Pixel'
+import { BossSprite, PixelAvatar, Px } from '../pixel/Pixel'
 import { useWornOutfit } from '../pixel/useHero'
 
 export function Hero() {
@@ -24,15 +23,11 @@ export function Hero() {
   const xpWeek = xp7.reduce<number>((s, v) => s + (v ?? 0), 0)
   const warmup = game.today < ARC_START
 
-  // podium: the three strongest stats; ties keep the canonical order
-  const ranked = [...STATS].sort((a, b) => game.xpByStat[b.id] - game.xpByStat[a.id])
-  const top = ranked.slice(0, 3)
-  const podium: { s: (typeof STATS)[number]; place: 1 | 2 | 3 }[] = [
-    { s: top[1], place: 2 },
-    { s: top[0], place: 1 },
-    { s: top[2], place: 3 },
-  ]
-  const anyXp = top.some((s) => game.xpByStat[s.id] > 0)
+  const titles = heroTitles(game)
+  const levelT = titles[titles.length - 1]
+  const special = titles.slice(0, -1)
+  const nt = nextTitle(lvl.level)
+  const anyXp = game.xp > 0
 
   return (
     <div className="stack-lg">
@@ -50,22 +45,35 @@ export function Hero() {
             <div className="hero-lvl">
               <span>Ур. {lvl.level}</span>
               <Px name="shield" size={24} />
-              <span className="muted">→ Ур. {lvl.level + 1}</span>
-              <Px name="shield" size={24} className="dim" />
+              {lvl.max ? (
+                <span style={{ color: 'var(--gold)' }}>Макс</span>
+              ) : (
+                <>
+                  <span className="muted">→ Ур. {lvl.level + 1}</span>
+                  <Px name="shield" size={24} className="dim" />
+                </>
+              )}
             </div>
-            <span className="small muted">{rankTitle(rank)}</span>
+            <div className="hero-titles">
+              {special.map((t) => (
+                <span key={t} className="hero-title special">
+                  <Px name="trophy" size={16} /> {t}
+                </span>
+              ))}
+              <span className="hero-title">
+                <Px name="star" size={16} /> {levelT}
+              </span>
+            </div>
             <div className="hero-bars">
               <span className="hs-k">
                 <Px name="star" size={16} />
-                <span className="num">
-                  XP: {lvl.into}/{lvl.span}
-                </span>
+                <span className="num">{lvl.max ? `XP сверх: ${lvl.over ?? 0}` : `XP: ${lvl.into}/${lvl.span}`}</span>
               </span>
               <span className="fat-row">
-                <span className="fat-bar xp" role="progressbar" aria-label="Опыт уровня" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(lvl.progress * 100)}>
+                <span className={`fat-bar xp${lvl.max ? ' max' : ''}`} role="progressbar" aria-label="Опыт уровня" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(lvl.progress * 100)}>
                   <i style={{ width: `${Math.max(4, Math.round(lvl.progress * 100))}%` }} />
                 </span>
-                <span className="num">{Math.round(lvl.progress * 100)}%</span>
+                <span className="num">{lvl.max ? 'Макс' : `${Math.round(lvl.progress * 100)}%`}</span>
               </span>
               <span className="hs-k">
                 <Px name="heart" size={16} />
@@ -78,7 +86,9 @@ export function Hero() {
                 <span className="num">{game.hp}%</span>
               </span>
               <p className="tiny muted" style={{ textAlign: 'center', marginTop: 4 }}>
-                {game.xp} XP всего · до уровня {lvl.level + 1}: {lvl.toNext} XP. XP не сгорает никогда.
+                {lvl.max
+                  ? `${game.xp} XP всего · уровень 30 — потолок арки. XP не сгорает никогда.`
+                  : `${game.xp} XP всего · до уровня ${lvl.level + 1}: ${lvl.toNext} XP${nt ? ` · титул «${nt.title}» на ${nt.level}` : ''}. Каждый уровень — ❄.`}
               </p>
             </div>
             <a className="btn block" href="#/avatar">
@@ -86,41 +96,16 @@ export function Hero() {
             </a>
           </section>
 
-          <section className="podium-wrap" aria-label="Топ статов">
-            <h2 style={{ textAlign: 'center' }}>Топ статов</h2>
-            {!anyXp && <p className="small muted center" style={{ marginTop: 4 }}>Выполни первый квест — и статы выйдут на пьедестал.</p>}
-            <div className="podium">
-              {podium.map(({ s, place }) => {
-                const xp = game.xpByStat[s.id]
-                const l = levelOf(xp)
-                return (
-                  <div key={s.id} className={`pod p${place}`}>
-                    <Px name={STAT_SPRITE[s.id]} size={place === 1 ? 44 : 36} />
-                    <span className="pod-name">
-                      <span className="pod-medal">{place}</span> {s.name}
-                    </span>
-                    <div className="pod-block" aria-label={`${s.name}: уровень ${l.level}`}>
-                      {l.level}
-                    </div>
-                    <Bar value={l.progress} label={`${s.name}: опыт уровня`} />
-                    <div className="pod-meta">
-                      <span>ур {l.level}</span>
-                      <span>{xp} XP</span>
-                    </div>
-                  </div>
-                )
-              })}
+          <section className="stack" aria-label="Сферы">
+            <div className="section-title">
+              <h2>Сферы</h2>
+              <span className="tiny muted">бонусы на 5 · 10 · 15</span>
             </div>
+            {!anyXp && <p className="small muted">Выполни первый квест — и сферы начнут расти.</p>}
+            <SphereList game={game} />
           </section>
 
-          <section className="stack">
-            <h2>Все статы</h2>
-            <div className="stat-list">
-              {STATS.map((s) => (
-                <StatRow key={s.id} id={s.id} name={s.name} xp={game.xpByStat[s.id]} />
-              ))}
-            </div>
-          </section>
+          <MoneyPathCard />
         </div>
 
         <div className="stack-lg">
@@ -171,10 +156,12 @@ export function Hero() {
             <div className="panel stack" style={{ gap: 4 }}>
               <span className="small muted">Заморозки</span>
               <div className="row" style={{ gap: 4 }}>
-                {[0, 1].map((i) => (
+                {Array.from({ length: game.freezeMax }, (_, i) => (
                   <Px key={i} name="snowflake" size={28} style={i < game.freezes ? undefined : { opacity: 0.25, filter: 'grayscale(1)' }} />
                 ))}
-                <span className="sr">{game.freezes} из 2</span>
+                <span className="sr">
+                  {game.freezes} из {game.freezeMax}
+                </span>
               </div>
               <span className="tiny muted">идеальных подряд: {game.perfectRun}/7</span>
             </div>
@@ -199,15 +186,23 @@ export function Hero() {
             <div className="trophies">
               {Array.from({ length: ARC_WEEKS }, (_, i) => i + 1).map((w) => {
                 const b = game.bosses[w]
+                const item = GEAR.find((g) => g.boss === w)
+                const lost = b?.done && !b.won
                 return (
-                  <div key={w} className={`trophy ${b?.won ? 'won' : ''}`} title={`${bossOf(w)}${b?.won ? ' — повержен' : ''}`}>
+                  <div key={w} className={`trophy ${b?.won ? 'won' : ''} ${lost ? 'lost' : ''}`} title={`${bossOf(w)}${b?.won ? ` — повержен, ${item?.title ?? 'трофей'}` : lost ? ' — ушёл к финальному' : item ? ` — награда: ${item.title}` : ''}`}>
                     <BossSprite name={bossOf(w)} size={28} />
                     <span className="num">{w}</span>
                   </div>
                 )
               })}
             </div>
+            <p className="tiny muted">
+              Победа над боссом: +100 XP, +15 ❄ и его вещь в гардероб
+              {game.trophies.length > 0 && <> — уже: {GEAR.filter((g) => g.boss !== undefined && game.trophies.includes(g.boss)).map((g) => g.title).join(', ')}</>}.
+            </p>
           </section>
+
+          <FinalBossCard game={game} />
 
           <a className="list-btn" href="#/party">
             <Px name="campfire" size={28} />
@@ -219,29 +214,6 @@ export function Hero() {
           </a>
         </div>
       </div>
-    </div>
-  )
-}
-
-function StatRow({ id, name, xp }: { id: StatId; name: string; xp: number }) {
-  const l = levelOf(xp)
-  return (
-    <div className="panel tight stat-row">
-      <div className="stat-icon">
-        <Px name={STAT_SPRITE[id]} size={30} />
-      </div>
-      <div className="stack" style={{ gap: 6 }}>
-        <div className="row between">
-          <span style={{ fontWeight: 800 }}>{name}</span>
-          <span className="tiny muted num">
-            {l.into}/{l.span}
-          </span>
-        </div>
-        <Bar value={l.progress} label={`${name}: опыт уровня`} />
-      </div>
-      <span className="num" style={{ fontSize: '1.3rem', minWidth: 30, textAlign: 'right' }}>
-        {l.level}
-      </span>
     </div>
   )
 }

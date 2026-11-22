@@ -3,7 +3,7 @@
  * Everything here derives from the stored log, so replay (replay.ts) stays deterministic.
  */
 import { hash32 } from './quests'
-import { ARC_START, CHAPTERS, addDays, chapterOf, diffDays, gameDayOf, weekday } from './time'
+import { ARC_START, CHAPTERS, addDays, bossOf, chapterOf, diffDays, gameDayOf, weekOf, weekday } from './time'
 import type {
   AppData,
   ChapterId,
@@ -32,6 +32,8 @@ export const PRACTICE_LIMIT = 3
 /** practice XP: full with a feedback line, half without */
 export const PRACTICE_XP = { full: 14, half: 7 } as const
 export const THEME_MULT = 1.5
+/** v0.16: flow ×2 and the season theme ×1.5 no longer stack past ×2 */
+export const MULT_CAP = 2
 export const EXTRA_XP = 10
 
 /**
@@ -558,7 +560,8 @@ export const flowEnd = (f: FlowSession) => Math.min(f.endedAt ?? Infinity, f.sta
 
 // ---------- season theme ----------
 
-export const CHAPTER_BOSS: Record<ChapterId, string> = { 0: 'Хаос', 1: 'Зомби', 2: 'Рилс-демон', 3: 'Потом' }
+/** The boss that opens a chapter: the weekly boss of the chapter's first week (0 Хаос, I Зомби, II Сахарный голем, III Туман) */
+export const CHAPTER_BOSS: Record<ChapterId, string> = Object.fromEntries(CHAPTERS.map((c) => [c.id, bossOf(weekOf(c.start))])) as Record<ChapterId, string>
 
 export function themeOf(data: Pick<AppData, 'themes'>, chapter: ChapterId): string | undefined {
   return (data.themes ?? []).find((t) => t.chapter === chapter)?.skillId
@@ -602,7 +605,7 @@ export function skillEvents(data: AppData, windows: FlowWindow[]): SkillEvent[] 
     if (n > PRACTICE_LIMIT) continue
     const flow = flowAt(windows, p.at)
     const theme = themeOf(data, chapterOf(p.day)) === sk.id
-    const xp = Math.round((hasFeedback(p) ? PRACTICE_XP.full : PRACTICE_XP.half) * (flow ? FLOW.mult : 1) * (theme ? THEME_MULT : 1))
+    const xp = Math.round((hasFeedback(p) ? PRACTICE_XP.full : PRACTICE_XP.half) * Math.min(MULT_CAP, (flow ? FLOW.mult : 1) * (theme ? THEME_MULT : 1)))
     out.push({ day: p.day, at: p.at, xp, stat: sk.stat, skillId: sk.id, flowId: flow?.id, kind: 'practice' })
   }
   // goals
@@ -750,6 +753,9 @@ export function cantStartPick(data: AppData, skillId: string, today: DayKey, fal
 
 export const CHEST = { need: 3, rare: 0.12, legendary: 0.03, pityRare: 0.1, pityLegendary: 0.03 } as const
 export const CHEST_TYPES: ChestType[] = ['repeat', 'short', 'mid']
+/** v0.16 «Сундук за ❄»: price, and the discount of «Развитие 10» (spheres.ts) */
+export const SHOP_CHEST = { price: 60, discount: 20 } as const
+export const shopChestId = (purchaseId: string) => `shop:${purchaseId}`
 
 /** Chest sources: «Квесты» = quests of the day (done or mini), «Задачи» = any closed task (project steps,
  * Дело дня, own tasks), «Навыки» = practices; skill goals of the matching type count too */
@@ -784,11 +790,13 @@ export function chestOdds(pity: number): { rare: number; legendary: number } {
 }
 
 /** Deterministic roll: hash of day + chest, pity raises the odds. Picks only among existing tiers. */
-export function rollChest(day: DayKey, type: ChestType, pity: number, rewards: Reward[]): { reward?: Reward; rarity?: Rarity } {
+export function rollChest(day: DayKey, type: ChestType, pity: number, rewards: Reward[], seed?: string): { reward?: Reward; rarity?: Rarity } {
   const pool = rewards.filter((r) => r.rarity)
   if (!pool.length) return {}
   const tier = (rr: Rarity) => pool.filter((r) => r.rarity === rr)
-  const roll = (hash32(`chest|${day}|${type}`) % 10000) / 10000
+  // a daily chest is keyed by day + type; a bought one by its purchase id
+  const key = seed ? `shop|${seed}` : `${day}|${type}`
+  const roll = (hash32(`chest|${key}`) % 10000) / 10000
   const odds = chestOdds(pity)
   let rarity: Rarity = roll < odds.legendary ? 'legendary' : roll < odds.legendary + odds.rare ? 'rare' : 'common'
   const order: Rarity[] = rarity === 'legendary' ? ['legendary', 'rare', 'common'] : rarity === 'rare' ? ['rare', 'common', 'legendary'] : ['common', 'rare', 'legendary']
@@ -796,7 +804,7 @@ export function rollChest(day: DayKey, type: ChestType, pity: number, rewards: R
     const list = tier(rr)
     if (list.length) {
       rarity = rr
-      const reward = list[hash32(`chest-item|${day}|${type}`) % list.length]
+      const reward = list[hash32(`chest-item|${key}`) % list.length]
       return { reward, rarity }
     }
   }

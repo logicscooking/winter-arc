@@ -1,7 +1,8 @@
-import { ARC_DAYS, ARC_START, CHAPTERS, addDays, arcDayNumber, bossOf, chapterOf, diffDays, levelOf, plural, weekOf } from '../engine'
+import { ARC_DAYS, ARC_START, BOSS_WIN, CHAPTERS, FINAL_WEEK, FINAL_WIN, GEAR, addDays, arcDayNumber, bossOf, chapterOf, diffDays, heroTitle, levelOf, plural, taskCap, weaknessOf, weekOf } from '../engine'
 import type { GameState } from '../engine'
 import { useStore } from '../store/store'
 import { Banner, useHint } from './ui'
+import { FinalBossCard } from './Progress'
 import { BossSprite, PixelAvatar, Px } from '../pixel/Pixel'
 import { useWornOutfit } from '../pixel/useHero'
 
@@ -49,6 +50,7 @@ export function Hud({ game, mainsDone, mainsTotal }: { game: GameState; mainsDon
       <a className="hero-strip" href="#/hero" aria-label={`${profile.nick}, уровень ${lvl.level}, HP ${game.hp}. Открыть персонажа`} style={game.fallen ? { borderColor: 'var(--hp)' } : undefined}>
         <span className="hs-left">
           <span className="hs-name">{profile.nick}</span>
+          <span className="hs-title">{heroTitle(game)}</span>
           <span className="hs-ava">
             <PixelAvatar outfit={outfit} size={78} title={`Аватар ${profile.nick}`} />
           </span>
@@ -62,17 +64,23 @@ export function Hud({ game, mainsDone, mainsTotal }: { game: GameState; mainsDon
             <span>Ур. {lvl.level}</span>
             <Px name="shield" size={22} />
             <span className="grow" />
-            <span className="hs-next">→ Ур. {lvl.level + 1}</span>
-            <Px name="shield" size={22} className="dim" />
+            {lvl.max ? (
+              <span className="hs-next" style={{ color: 'var(--gold)' }}>
+                Макс
+              </span>
+            ) : (
+              <>
+                <span className="hs-next">→ Ур. {lvl.level + 1}</span>
+                <Px name="shield" size={22} className="dim" />
+              </>
+            )}
           </span>
           <span className="hs-k">
             <Px name="star" size={16} />
-            <span className="num">
-              XP: {lvl.into}/{lvl.span}
-            </span>
+            <span className="num">{lvl.max ? `XP сверх: ${lvl.over ?? 0}` : `XP: ${lvl.into}/${lvl.span}`}</span>
           </span>
           <span className="fat-row">
-            <span className="fat-bar xp" role="progressbar" aria-label="Опыт до следующего уровня" aria-valuemin={0} aria-valuemax={100} aria-valuenow={xpPct}>
+            <span className={`fat-bar xp${lvl.max ? ' max' : ''}`} role="progressbar" aria-label="Опыт до следующего уровня" aria-valuemin={0} aria-valuemax={100} aria-valuenow={xpPct}>
               <i style={{ width: `${Math.max(xpPct, 4)}%` }} />
             </span>
             <span className="num">{xpPct}%</span>
@@ -142,7 +150,10 @@ export function BossCard({ game }: { game: GameState }) {
           </span>
           <h3 className="grow">Первый босс: {bossOf(1)}</h3>
         </div>
-        <p className="small muted">Бой с 23 ноября: бьют главные квесты и Дело.</p>
+        <p className="small muted">Бой с 23 ноября: бьют главные квесты и Дело дня.</p>
+        <p className="boss-weak">
+          <b>Слабость:</b> {weaknessOf(1).label} — урон ×2
+        </p>
       </section>
     )
   }
@@ -151,6 +162,11 @@ export function BossCard({ game }: { game: GameState }) {
   if (!b) return null
   const left = Math.max(0, b.hp - b.damage)
   const pct = b.hp ? left / b.hp : 0
+  const final = w === FINAL_WEEK
+  const weak = weaknessOf(w)
+  const item = GEAR.find((g) => g.boss === w)
+  const cap = taskCap(b.hp)
+  const prize = final ? `+${FINAL_WIN.xp} XP, +${FINAL_WIN.shards} ❄, ${item?.title ?? 'легенда'} и титул` : `+${BOSS_WIN.xp} XP, +${BOSS_WIN.shards} ❄ и ${item?.title ?? 'трофей'}`
   return (
     <section className="panel boss" aria-label="Босс недели">
       <div className="boss-head">
@@ -166,7 +182,22 @@ export function BossCard({ game }: { game: GameState }) {
       <div className="boss-bar" role="progressbar" aria-label="HP босса" aria-valuemin={0} aria-valuemax={b.hp} aria-valuenow={left}>
         <i className={b.won ? 'won' : ''} style={{ width: `${pct * 100}%` }} />
       </div>
-      <p className="tiny muted">{b.won ? 'Повержен. Добивай неделю ради XP.' : `Бьют главные квесты и Дело · урон ${b.damage}`}</p>
+      {final && (b.bonus ?? 0) > 0 && (
+        <p className="tiny final-line">
+          <span className="final-plus">+{b.bonus} HP</span> принесли боссы, которые ушли от тебя.
+        </p>
+      )}
+      {!b.won && weak.quests.length + (weak.extra?.length ?? 0) > 0 && (
+        <p className="boss-weak">
+          <b>Слабость:</b> {weak.label} — урон ×2
+        </p>
+      )}
+      <p className="tiny muted">
+        {b.won
+          ? `Повержен${b.done ? '' : ' — награда придёт в воскресенье'}. ${prize}.`
+          : `Бьют главные квесты и Дело дня · урон ${b.damage} · задачи до ${cap} (${b.taskDamage ?? 0}/${cap}). Победа: ${prize}.`}
+      </p>
+      {!final && !b.won && <FinalBossCard game={game} compact />}
     </section>
   )
 }

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-import { GEAR, OUTFIT_SLOTS, canBuy, gearPurchaseId, levelOf, ownsGear, wornOutfit } from '../engine'
+import { GEAR, OUTFIT_SLOTS, bossOf, canBuy, chapterOf, gearPrice, gearPurchaseId, gearUnlockLabel, levelOf, ownsGear, wornOutfit } from '../engine'
 import type { GearItem, Outfit, OutfitSlot } from '../engine'
 import { useStore } from '../store/store'
 import { nowWithOffset, reward, useGame } from '../store/hooks'
@@ -20,17 +20,21 @@ export function AvatarScreen() {
   const game = useGame()
   const level = levelOf(game.xp).level
   const [tab, setTab] = useState<Tab>('hat')
-  const worn = wornOutfit(data.profile?.outfit, level, data.purchases)
+  const worn = wornOutfit(data.profile?.outfit, level, data.purchases, game)
+  const ch = chapterOf(game.today)
+  const owns = (item: GearItem) => ownsGear(item, level, data.purchases, game)
 
   const wear = (slot: OutfitSlot, id: string) => setOutfit({ [slot]: id } as Partial<Outfit>)
 
   const onTile = (el: Element, item: GearItem) => {
-    if (ownsGear(item, level, data.purchases)) {
+    if (owns(item)) {
       wear(item.slot, worn[item.slot] === item.id ? '' : item.id)
       return
     }
     if (item.level !== undefined) return say(`Откроется на уровне ${item.level}. Сейчас ${level}.`)
-    const price = item.price ?? 0
+    if (item.boss !== undefined) return say(`Трофей: победи босса недели ${item.boss} — ${bossOf(item.boss)}.`)
+    if (item.milestone !== undefined) return say('Откроется, когда месяц принесёт $10 000.')
+    const price = gearPrice(item, ch)
     const c = canBuy(game.shards, price, game.fallen)
     if (!c.ok) return say(c.reason!)
     const id = buy({ itemId: gearPurchaseId(item.id), title: item.title, price, kind: 'avatar' }, nowWithOffset())
@@ -50,7 +54,7 @@ export function AvatarScreen() {
         <section className="panel dress-stage" aria-label="Предпросмотр">
           <PixelAvatar outfit={worn} size={220} title="Твой герой" />
           <p className="small muted center" style={{ marginTop: 8 }}>
-            Уровень {level}. Новые вещи открываются уровнем или за ❄ в магазине.
+            Уровень {level}. Вещи открывают уровни, боссы, «Путь к $10k» и ❄ в магазине.
           </p>
         </section>
 
@@ -105,22 +109,24 @@ export function AvatarScreen() {
                   Без
                 </button>
                 {slotItems.map((item) => {
-                  const owned = ownsGear(item, level, data.purchases)
+                  const owned = owns(item)
+                  const lockLabel = gearUnlockLabel(item, bossOf)
                   const preview: Outfit = { hair: worn.hair, skin: worn.skin, colors: worn.colors, [item.slot]: item.id }
                   return (
-                    <button key={item.id} className={`tile ${owned ? '' : 'locked'}`} aria-pressed={worn[tab] === item.id} onClick={(e) => onTile(e.currentTarget, item)}>
+                    <button key={item.id} className={`tile ${owned ? '' : 'locked'}${item.legendary ? ' legend' : ''}`} aria-pressed={worn[tab] === item.id} onClick={(e) => onTile(e.currentTarget, item)}>
                       {!owned && <Px name="lock" size={18} className="tile-lock" />}
                       <span className="tile-art">
                         <PixelAvatar outfit={preview} size={58} title={item.title} />
                       </span>
+                      {item.legendary && <span className="legend-tag">легенда</span>}
                       <span>{item.title}</span>
                       {!owned &&
-                        (item.level !== undefined ? (
-                          <span className="tile-price lvl">ур {item.level}</span>
+                        (lockLabel ? (
+                          <span className="tile-price lvl">{lockLabel}</span>
                         ) : (
                           <span className="tile-price">
                             <Px name="shard" size={14} />
-                            {item.price}
+                            {gearPrice(item, ch)}
                           </span>
                         ))}
                     </button>

@@ -9,18 +9,18 @@ import { makeData } from './testkit'
 import type { Quest, Slip, Task } from './types'
 
 describe('уровни', () => {
-  it('уровню n нужно 50·n·(n−1) XP', () => {
-    expect([1, 2, 3, 4, 5].map(xpForLevel)).toEqual([0, 100, 300, 600, 1000])
+  it('уровню n нужно 26·m² + 100·m XP, m = n − 1', () => {
+    expect([1, 2, 3, 4, 5].map(xpForLevel)).toEqual([0, 126, 304, 534, 816])
   })
   it('levelOf', () => {
     expect(levelOf(0).level).toBe(1)
-    expect(levelOf(99).level).toBe(1)
-    expect(levelOf(100).level).toBe(2)
-    expect(levelOf(299).level).toBe(2)
-    expect(levelOf(300).level).toBe(3)
-    expect(levelOf(600).level).toBe(4)
-    expect(levelOf(450)).toMatchObject({ level: 3, into: 150, span: 300, toNext: 150 })
-    for (let xp = 0; xp < 20000; xp += 37) {
+    expect(levelOf(125).level).toBe(1)
+    expect(levelOf(126).level).toBe(2)
+    expect(levelOf(303).level).toBe(2)
+    expect(levelOf(304).level).toBe(3)
+    expect(levelOf(534).level).toBe(4)
+    expect(levelOf(400)).toMatchObject({ level: 3, into: 96, span: 230, toNext: 134 })
+    for (let xp = 0; xp < 24000; xp += 37) {
       const l = levelOf(xp)
       expect(xpForLevel(l.level)).toBeLessThanOrEqual(xp)
       expect(xpForLevel(l.level + 1)).toBeGreaterThan(xp)

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Snowflake } from 'lucide-react'
-import { ARC_START, computeState, formatDayRu, gameDayOf, isCompleted, marksFor, planFor, reelsLimitFor, uid, weekOf } from '../engine'
+import { ARC_START, BOSS_WIN, FINAL_WEEK, GEAR, computeState, formatDayRu, gameDayOf, isCompleted, marksFor, planFor, reelsLimitFor, uid, weekOf } from '../engine'
 import type { AppData, Confession, DayKey, GameState, MarkStatus, SugarAnswer } from '../engine'
 import { useStore } from '../store/store'
 import { haptic, nowWithOffset, useFx } from '../store/hooks'
@@ -108,7 +108,7 @@ export function ConfessionSheet({ day }: { day: DayKey }) {
     haptic([15, 40, 15])
     setDone({ before: b, after })
     const w = weekOf(day)
-    if (!warmup && after.bosses[w]?.won && after.bosses[w]?.done && !b.bosses[w]?.done) celebrate({ kind: 'boss', title: `${after.bosses[w].name} повержен`, text: 'Трофей недели и +15 ❄ твои.' })
+    if (!warmup && after.bosses[w]?.won && after.bosses[w]?.done && !b.bosses[w]?.done) celebrate({ kind: 'boss', title: `${after.bosses[w].name} повержен`, text: w === FINAL_WEEK ? 'Финал арки взят.' : `+${BOSS_WIN.xp} XP, +${BOSS_WIN.shards} ❄ и ${GEAR.find((g) => g.boss === w)?.title ?? 'трофей'} в гардероб.` })
     else if (after.days[day]?.perfect) celebrate({ kind: 'perfect', title: 'Идеальный день', text: warmup ? 'Разминка закрыта на все главные.' : '+5 HP за все главные квесты.' })
   }
 

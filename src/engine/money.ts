@@ -151,3 +151,106 @@ export function moneyBoard(entries: BoardEntry[], period: MoneyPeriod): BoardRow
   const hidden = entries.filter((e) => !e.money).sort((a, b) => (a.me ? -1 : b.me ? 1 : a.name < b.name ? -1 : 1))
   return [...rows, ...hidden]
 }
+
+// ---------- v0.16 «Путь к $10k» ----------
+
+/** ₽ per $: only for the milestones; the user sets it in «Ещё» */
+export const USD_RATE_DEFAULT = 80
+export const USD_RATE_MIN = 1
+export const USD_RATE_MAX = 1000
+
+export function usdRateOf(data: Pick<AppData, 'settings'>): number {
+  const r = Number(data.settings.usdRate)
+  return Number.isFinite(r) && r >= USD_RATE_MIN && r <= USD_RATE_MAX ? r : USD_RATE_DEFAULT
+}
+
+export interface Milestone {
+  id: string
+  /** income of one calendar month, $ */
+  usd: number
+  xp: number
+  shards: number
+  /** avatar.ts GEAR `milestone` */
+  item?: string
+  title?: string
+}
+
+/** First time a calendar month reaches the amount: once each, in the arc */
+export const MILESTONES: Milestone[] = [
+  { id: 'usd1k', usd: 1000, xp: 150, shards: 20 },
+  { id: 'usd2500', usd: 2500, xp: 300, shards: 40 },
+  { id: 'usd5k', usd: 5000, xp: 500, shards: 60 },
+  { id: 'usd10k', usd: 10000, xp: 1000, shards: 100, item: 'goldsuit', title: 'Десятка в месяц' },
+]
+
+export const formatUsd = (n: number) => `$${Math.floor(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')}`
+
+const monthOf = (day: DayKey) => day.slice(0, 7)
+
+export interface MilestoneEvent {
+  id: string
+  usd: number
+  day: DayKey
+  at: number
+  xp: number
+  shards: number
+}
+
+/**
+ * Walk the incomes month by month in (day, at) order: the entry that lifts a month over a milestone
+ * gives it, on its day. A milestone already reached in an earlier month never comes again.
+ * Only days of the arc (warm-up included) count.
+ */
+export function milestoneEvents(data: Pick<AppData, 'incomes' | 'settings'>): MilestoneEvent[] {
+  const rate = usdRateOf(data)
+  const list = incomesOf(data)
+    .filter((x) => x.day <= ARC_END)
+    .sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : a.at - b.at || (a.id < b.id ? -1 : 1)))
+  const got = new Set<string>()
+  const out: MilestoneEvent[] = []
+  let month = ''
+  let sum = 0
+  for (const x of list) {
+    if (monthOf(x.day) !== month) {
+      month = monthOf(x.day)
+      sum = 0
+    }
+    sum += x.amount
+    for (const m of MILESTONES) {
+      if (got.has(m.id) || sum / rate < m.usd) continue
+      got.add(m.id)
+      out.push({ id: m.id, usd: m.usd, day: x.day, at: x.at, xp: m.xp, shards: m.shards })
+    }
+  }
+  return out
+}
+
+export interface MoneyPath {
+  /** YYYY-MM of today */
+  month: string
+  rub: number
+  usd: number
+  rate: number
+  /** the next milestone of this month (null: this month is past $10k) */
+  next: Milestone | null
+  /** the milestone below `next` (its start on the bar), 0 for the first */
+  from: number
+  progress: number
+  /** milestones reached at least once */
+  reached: string[]
+}
+
+/** «Путь к $10k»: the current calendar month toward its next milestone */
+export function moneyPath(data: Pick<AppData, 'incomes' | 'settings'>, today: DayKey): MoneyPath {
+  const rate = usdRateOf(data)
+  const month = monthOf(today)
+  const rub = incomesOf(data)
+    .filter((x) => monthOf(x.day) === month && x.day <= today)
+    .reduce((s, x) => s + x.amount, 0)
+  const usd = rub / rate
+  const next = MILESTONES.find((m) => usd < m.usd) ?? null
+  const i = next ? MILESTONES.indexOf(next) : MILESTONES.length
+  const from = i > 0 ? MILESTONES[i - 1].usd : 0
+  const progress = next ? Math.max(0, Math.min(1, (usd - from) / (next.usd - from))) : 1
+  return { month, rub, usd, rate, next, from, progress, reached: milestoneEvents(data).map((e) => e.id) }
+}

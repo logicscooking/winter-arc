@@ -6,7 +6,6 @@ import { AccountEntry, AccountPage } from './Account'
 import {
   CHAPTERS,
   FINAL_MEASURE_FROM,
-  STATS,
   TRIGGERS_MIN,
   WHAT_LABEL,
   WHY_LABEL,
@@ -20,7 +19,7 @@ import {
   RU_WEEKDAYS,
   ARC_START,
 } from '../engine'
-import type { Area, Quest, Role, StatId, ThemePref } from '../engine'
+import type { Area, Quest, Role, ThemePref } from '../engine'
 import { useStore } from '../store/store'
 import { refreshClock, useGame, useNow } from '../store/hooks'
 import { useUi } from '../store/ui'
@@ -307,15 +306,6 @@ function QuestCard({ q }: { q: Quest }) {
             <input className="input" value={q.mini} onChange={(e) => update(q.id, { mini: e.target.value })} />
           </Field>
           <div className="grid-2">
-            <Field label="Стат">
-              <select className="select" value={q.stat} onChange={(e) => update(q.id, { stat: e.target.value as StatId })}>
-                {STATS.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
             <Field label="Сфера">
               <select className="select" value={questArea(q)} onChange={(e) => update(q.id, { area: e.target.value as Area })}>
                 {AREAS.map((a) => (

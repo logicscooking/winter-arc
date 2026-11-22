@@ -204,7 +204,7 @@ function SkillCard({ skill, view, theme, xp }: { skill: Skill; view: ReturnType<
   )
 }
 
-const CHEST_NAME: Record<ChestType, string> = { repeat: 'Квесты', short: 'Задачи', mid: 'Навыки' }
+const CHEST_NAME: Record<ChestType, string> = { repeat: 'Квесты', short: 'Задачи', mid: 'Навыки', shop: 'За ❄' }
 
 function Chests() {
   const data = useStore((s) => s.data)

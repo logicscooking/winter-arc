@@ -39,8 +39,7 @@ import {
   TRANSITION_MIN,
   uid,
   weekday,
-  workMinutes,
-} from '../engine'
+  workMinutes, STAT_SPHERE } from '../engine'
 import type { BlockColor, DayKey, DayLog, PlanBlock, PlanTemplate, TransitionSlot } from '../engine'
 import { useStore } from '../store/store'
 import { go, nowWithOffset, reward, useFx, useGame, useNow, useRoute } from '../store/hooks'
@@ -308,7 +307,7 @@ export function useCheck(day: DayKey, canCheck: boolean, openValue: (it: PlanIte
       st.setMark(day, it.id, 'done', now)
       const r = questReward(day, it.plan, 'done')
       reward(el, { xp: r.xp })
-      useFx.getState().showPop({ title: it.title, stat: it.stat, fromXp: game.xpByStat[it.stat], xp: r.xp, shards: r.shards, crit: r.crit })
+      useFx.getState().showPop({ title: it.title, stat: it.stat, fromXp: game.xpBySphere[STAT_SPHERE[it.stat]], xp: r.xp, shards: r.shards, crit: r.crit })
       say(`Готово: ${it.title}`, () => useStore.getState().restoreMark(day, it.id, snap))
       return
     }

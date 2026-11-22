@@ -11,7 +11,9 @@ import {
   PARENT_TYPE,
   RANKS,
   STAGE_NAMES,
-  STATS,
+  SPHERES,
+  SPHERE_STAT,
+  STAT_SPHERE,
   canRaise,
   cantStartPick,
   checkValue,
@@ -772,7 +774,7 @@ function SkillEdit({ id, onClose }: { id: string; onClose: () => void }) {
             {check.reason} {check.hint}
           </p>
         )}
-        <Chips label="Стат-покровитель" options={STATS.map((s) => ({ id: s.id, label: s.name }))} value={stat} onChange={setStat} />
+        <Chips label="Сфера" options={SPHERES.map((a) => ({ id: SPHERE_STAT[a.id], label: a.title }))} value={SPHERE_STAT[STAT_SPHERE[stat]]} onChange={setStat} />
         <div className="icon-pick" role="group" aria-label="Иконка">
           {SKILL_ICONS.map((i) => (
             <button key={i} aria-pressed={icon === i} onClick={() => setIcon(i)} aria-label={i}>

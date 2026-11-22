@@ -18,8 +18,7 @@ import {
   setupDue,
   skillView,
   statName,
-  themeOf,
-} from '../engine'
+  themeOf, STAT_SPHERE } from '../engine'
 import type { ChapterId, Rank, Skill, SkillView, StatId, Trend } from '../engine'
 import { Px, STAT_SPRITE } from '../pixel/Pixel'
 import type { SpriteName } from '../pixel/sprites'
@@ -112,7 +111,7 @@ export function PracticeSheet({ nodeId, onClose }: { nodeId: string; onClose: ()
     }
     const imp = practiceImpact(useStore.getState().data, id)
     reward(el, { xp })
-    useFx.getState().showPop({ title: node.title, stat: skill.stat, fromXp: game.xpByStat[skill.stat], xp, shards: 0, crit: false, impact: imp?.text, flow: m.flow, theme: m.theme })
+    useFx.getState().showPop({ title: node.title, stat: skill.stat, fromXp: game.xpBySphere[STAT_SPHERE[skill.stat]], xp, shards: 0, crit: false, impact: imp?.text, flow: m.flow, theme: m.theme })
     onClose()
   }
 

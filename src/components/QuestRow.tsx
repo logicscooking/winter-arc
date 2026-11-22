@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Check, Minus, X } from 'lucide-react'
-import { BAR_LADDERS, BAR_STEP_BONUS, SHARDS, barMin, barStep, formatHM, questReward, questStreak, questXp, statusFromValue } from '../engine'
+import { BAR_LADDERS, BAR_STEP_BONUS, SHARDS, barMin, barStep, formatHM, questReward, questStreak, questXp, statusFromValue, questArea } from '../engine'
 import type { DayKey, GameState, MarkStatus, PlannedQuest, Quest } from '../engine'
 import { useStore } from '../store/store'
 import { go, nowWithOffset, reward, useFx } from '../store/hooks'
@@ -57,7 +57,7 @@ export function QuestRow({ plan, quest, status, auto, day, game, locked, wakeTar
     const z = useStore.getState().data.days[day]?.destiny
     const destiny = z?.ref === 'quest' && z.id === quest.id && at >= z.startedAt && at <= z.startedAt + z.minutes * 60_000 ? SHARDS.destiny : 0
     reward(el, { xp: r.xp })
-    useFx.getState().showPop({ title: quest.title, stat: plan.stat, fromXp: game.xpByStat[plan.stat], xp: r.xp, shards: r.shards, crit: r.crit, destiny })
+    useFx.getState().showPop({ title: quest.title, stat: plan.stat, area: questArea(quest), fromXp: game.xpBySphere[questArea(quest)], xp: r.xp, shards: r.shards, crit: r.crit, destiny })
   }
 
   const complete = (el: Element, s: MarkStatus) => {

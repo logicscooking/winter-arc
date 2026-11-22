@@ -151,14 +151,14 @@ describe('Аватар', () => {
   it('уровневые вещи открываются уровнем, магазинные — покупкой', () => {
     const ushanka = GEAR.find((g) => g.id === 'ushanka')!
     const kolpak = GEAR.find((g) => g.id === 'kolpak')!
-    expect(ownsGear(ushanka, 4, [])).toBe(false)
-    expect(ownsGear(ushanka, 5, [])).toBe(true)
+    expect(ownsGear(ushanka, 11, [])).toBe(false)
+    expect(ownsGear(ushanka, 12, [])).toBe(true)
     expect(ownsGear(kolpak, 50, [])).toBe(false)
     expect(ownsGear(kolpak, 1, [{ kind: 'avatar', itemId: gearPurchaseId('kolpak') }])).toBe(true)
   })
 
   it('надето только то, что открыто; пустая строка = снято', () => {
-    const w = wornOutfit({ hat: 'ushanka', glasses: 'goggles', scarf: '' }, 5, [])
+    const w = wornOutfit({ hat: 'ushanka', glasses: 'goggles', scarf: '' }, 12, [])
     expect(w.hat).toBe('ushanka')
     expect(w.glasses).toBeUndefined()
     expect(w.scarf).toBeUndefined()

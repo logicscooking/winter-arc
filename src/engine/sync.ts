@@ -36,7 +36,7 @@ const SEP = '/'
 // v0.4 collections merge per item exactly like tasks: one atom per id, LWW by stamp, tombstone on delete
 const COLLECTIONS = ['quests', 'tasks', 'slips', 'cravings', 'purchases', 'rewards', 'pauses', 'books', ...V04_COLLECTIONS] as const
 type CollectionKey = (typeof COLLECTIONS)[number]
-const SET_ACKS = ['reviewedWeeks', 'hints', 'celebrated'] as const
+const SET_ACKS = ['reviewedWeeks', 'hints', 'celebrated', 'moments'] as const
 /** Day-log maps whose entries are separate atoms: `days/<day>/<map>/<key>` */
 const DAY_MAPS = ['quests', 'plinko', 'dayBlocks', 'assign', 'transitions', 'picks', 'journal'] as const
 const KNOWN = new Set<string>(['schemaVersion', 'profile', 'days', 'activeBookId', 'baseline', 'final', 'reviews', 'settings', 'ack', ...COLLECTIONS])

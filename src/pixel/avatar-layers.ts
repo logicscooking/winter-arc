@@ -3,6 +3,7 @@
  * Layer colors: X main, Y shade, Z highlight (swatch); H/J hair; s/S skin.
  */
 import { AV_LAYERS_MORE } from './avatar-layers-more'
+import { AV_LAYERS_ARC } from './avatar-layers-arc'
 
 export const AV_W = 20
 export const AV_H = 24
@@ -36,6 +37,7 @@ export const AV_BASE = [
 
 export const AV_LAYERS: Record<string, string[]> = {
   ...AV_LAYERS_MORE,
+  ...AV_LAYERS_ARC,
   beanie: [
     '........kZZk........',
     '......kkkZZkkk......',

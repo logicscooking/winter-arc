@@ -247,3 +247,30 @@ describe('merge: two devices', () => {
     expect(m.tombs).toEqual({ b: 1000 })
   })
 })
+
+describe('v0.16 «Прогрессия»: synced state', () => {
+  it('seen moments merge as a set, the level ack, the $ rate and a bought chest travel', () => {
+    const phone = new Device(base())
+    const mac = new Device(base())
+    const server = { doc: null as SyncDoc | null }
+    phone.syncWith(server)
+    mac.syncWith(server)
+    phone.edit(T0 + 1000, (d) => {
+      d.ack.moments = ['usd1k']
+      d.ack.levelSeen = 7
+      d.settings.usdRate = 92
+      d.purchases.push({ id: 'pc', at: T0, day: D, itemId: 'chest', title: 'Сундук за ❄', price: 60, kind: 'chest' })
+      ;(d.chests ??= []).push({ id: 'shop:pc', day: D, type: 'shop', at: T0, rewardId: 'r1', rewardTitle: 'Кино', rarity: 'common' })
+    })
+    mac.edit(T0 + 2000, (d) => void (d.ack.moments = ['final']))
+    phone.syncWith(server)
+    mac.syncWith(server)
+    phone.syncWith(server)
+    expect([...mac.data.ack.moments!].sort()).toEqual(['final', 'usd1k'])
+    expect(mac.data.ack.levelSeen).toBe(7)
+    expect(mac.data.settings.usdRate).toBe(92)
+    expect(mac.data.purchases.some((p) => p.id === 'pc' && p.kind === 'chest')).toBe(true)
+    expect(mac.data.chests?.find((c) => c.id === 'shop:pc')?.rewardTitle).toBe('Кино')
+    expect(stableStringify(phone.data)).toBe(stableStringify(mac.data))
+  })
+})

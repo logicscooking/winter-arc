@@ -1,5 +1,5 @@
 
-import { ARC_START, ARC_WEEKS, FINAL_MEASURE_FROM, STATS, booksFinishedInArc, gameDayOf, levelOf, parseHM, questStreak } from '../engine'
+import { ARC_START, ARC_WEEKS, FINAL_MEASURE_FROM, MILESTONES, SPHERES, booksFinishedInArc, formatUsd, gameDayOf, heroTitles, levelOf, parseHM, questStreak, sphereLevelOf } from '../engine'
 import type { Measurements } from '../engine'
 import { useStore } from '../store/store'
 import { useGame, useNow } from '../store/hooks'
@@ -47,9 +47,15 @@ export function Finale() {
         {(
           [
             ['Общий уровень', lvl.level],
+            ['Титул', heroTitles(game)[0]],
             ['XP за арку', game.xp],
             ['Книг дочитано', booksFinishedInArc(data, ARC_START)],
             ['Боссов повержено', `${game.trophies.length}/${ARC_WEEKS}`],
+            ['Весенний босс', game.trophies.includes(ARC_WEEKS) ? 'повержен' : `${game.finalBoss.hp} HP`],
+            ['Лучшая веха денег', (() => {
+              const top = [...MILESTONES].reverse().find((m) => game.milestones.some((x) => x.id === m.id))
+              return top ? `${formatUsd(top.usd)}/мес` : '—'
+            })()],
             ['Лучшая серия честности', game.bestHonesty],
             ['Падений', game.falls.length],
           ] as const
@@ -104,11 +110,11 @@ export function Finale() {
         </section>
 
         <section className="stack">
-          <h2>Статы</h2>
-          {STATS.map((s) => (
+          <h2>Сферы</h2>
+          {SPHERES.map((s) => (
             <div key={s.id} className="row between panel tight">
-              <span>{s.name}</span>
-              <span className="num">ур. {levelOf(game.xpByStat[s.id]).level}</span>
+              <span>{s.title}</span>
+              <span className="num">ур. {sphereLevelOf(game.xpBySphere[s.id]).level}</span>
             </div>
           ))}
           <h2 style={{ marginTop: 8 }}>Лучшие серии</h2>

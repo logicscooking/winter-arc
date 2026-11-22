@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Pause, Play, SkipBack, SkipForward } from 'lucide-react'
-import { MORNING, gameDayOf, morningCounts, morningDone, statName } from '../engine'
+import { MORNING, gameDayOf, morningCounts, morningDone, statName, STAT_SPHERE } from '../engine'
 import { useStore } from '../store/store'
 import { go, nowWithOffset, useGame, useNow } from '../store/hooks'
 import { useFx } from '../store/hooks'
@@ -386,7 +386,7 @@ function Finish() {
     const pay = counts && !morningDone(data.days[day])
     if (pay) {
       finishMorning(day, now.getTime())
-      useFx.getState().showPop({ title: 'Утренняя инвестиция', stat: MORNING.stat, fromXp: game.xpByStat[MORNING.stat], xp: MORNING.xp, shards: MORNING.shards, crit: false })
+      useFx.getState().showPop({ title: 'Утренняя инвестиция', stat: MORNING.stat, fromXp: game.xpBySphere[STAT_SPHERE[MORNING.stat]], xp: MORNING.xp, shards: MORNING.shards, crit: false })
     }
     useMorning.getState().setRewarded(pay)
     if (sound) sfxFinish()

@@ -6,6 +6,7 @@ import { useGame, useNow, useRoute } from './store/hooks'
 import { useUi } from './store/ui'
 import { ConfirmSheet, Floaters, Toast } from './components/ui'
 import { Party, Snow, TopGarland } from './components/festive'
+import { MomentScreen } from './components/Progress'
 import { Today } from './screens/Today'
 import { Deal } from './screens/Deal'
 import { SkillScreen } from './screens/Skill'
@@ -183,7 +184,7 @@ function Shell({ top }: { top: string }) {
       screen = <Charts />
       break
     case 'shop':
-      screen = <Shop />
+      screen = <Shop tab={route.query.get('tab') ?? undefined} />
       break
     case 'more':
       screen = <More sub={route.parts[1]} />
@@ -256,6 +257,7 @@ function Shell({ top }: { top: string }) {
       <Floaters />
       <RewardPop />
       <Party />
+      {top !== 'morning' && <MomentScreen />}
       <Toast />
     </div>
   )

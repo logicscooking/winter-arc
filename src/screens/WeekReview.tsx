@@ -43,7 +43,7 @@ import { Chart } from '../components/Chart'
 import { Field } from '../components/ui'
 import { WeeklyCheck } from '../components/WeeklyCheck'
 import { cloudConfigured } from '../cloud/client'
-import { activeSkills, frozenDays, isCompleted, skillView } from '../engine'
+import { BOSS_WIN, FINAL_WEEK, FINAL_WIN, GEAR, activeSkills, frozenDays, isCompleted, skillView, weaknessOf } from '../engine'
 import type { AppData, GameState } from '../engine'
 import { weekTask } from '../ai/prompts'
 import type { WeekNumbers } from '../ai/prompts'
@@ -186,7 +186,14 @@ function ArcWeek({ week, onReviewed }: { week: number; onReviewed: () => void })
           <div className="grow">
             <h2>{b?.done ? (b.won ? `${bossOf(week)} повержен` : `${bossOf(week)} выстоял`) : `Бой с «${bossOf(week)}» ещё идёт`}</h2>
             <p className="small muted">
-              Урон {b?.damage ?? 0} из {b?.hp ?? 0}.{b?.won ? ' Трофей и +15 ❄ твои.' : b?.done ? (b.damage >= b.hp * 0.7 ? ' Не хватило совсем немного.' : ' Значит, квесты пока тяжелее, чем неделя. Упрости или опирайся на мини-версии.') : ''}
+              Урон {b?.damage ?? 0} из {b?.hp ?? 0}.
+              {b?.won
+                ? week === FINAL_WEEK
+                  ? ` +${FINAL_WIN.xp} XP, +${FINAL_WIN.shards} ❄, легендарная вещь и титул «${FINAL_WIN.title}».`
+                  : ` +${BOSS_WIN.xp} XP, +${BOSS_WIN.shards} ❄ и «${GEAR.find((g) => g.boss === week)?.title ?? 'трофей'}» в гардероб.`
+                : b?.done
+                  ? `${b.damage >= b.hp * 0.7 ? ' Не хватило совсем немного.' : ' Значит, квесты пока тяжелее, чем неделя. Упрости или опирайся на мини-версии.'}${b.carry ? ` Он ушёл к финальному боссу: +${b.carry} HP Весеннему боссу.` : ''}`
+                  : ` Слабость: ${weaknessOf(week).label}.`}
             </p>
           </div>
         </div>

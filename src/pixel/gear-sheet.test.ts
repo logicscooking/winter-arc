@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { GEAR } from '../engine'
 import { PixelAvatar } from './Pixel'
 
-const OUT = '/Users/admin/Desktop/Claude/winter-arc/screenshots/gear-v8'
+const OUT = process.env.GEAR_OUT ?? '/Users/admin/Desktop/Claude/winter-arc/screenshots/gear-v8'
 const NEW = new Set(process.env.GEAR_IDS ? process.env.GEAR_IDS.split(',') : GEAR.filter((g) => g.level === 1 && g.id !== 'beanie' && g.id !== 'scarf' && g.id !== 'breath').map((g) => g.id))
 
 it.skipIf(!process.env.GEAR_SHEET)('writes preview sheets', async () => {

@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react'
 import { Lock, Plus, Trash2 } from 'lucide-react'
 import {
+  USD_RATE_MAX,
+  USD_RATE_MIN,
+  usdRateOf,
   ARC_START,
   MONEY_NOTE_MAX,
   MONEY_SOURCE_MAX,
@@ -23,6 +26,7 @@ import { nowWithOffset, reward, useNow } from '../store/hooks'
 import { useUi } from '../store/ui'
 import type { Member } from '../cloud/state'
 import { Field, Help, Sheet } from './ui'
+import { MoneyPathCard } from './Progress'
 import { HeroAva } from './HeroAva'
 import { Px } from '../pixel/Pixel'
 import './money.css'
@@ -188,6 +192,29 @@ export function MoneyShareRow() {
   )
 }
 
+/** v0.16 «Путь к $10k»: ₽ per $ for the milestones only */
+export function UsdRateRow() {
+  const rate = useStore((s) => usdRateOf(s.data))
+  const setSettings = useStore((s) => s.setSettings)
+  const [raw, setRaw] = useState(String(rate))
+  const commit = () => {
+    const n = Number(raw.replace(',', '.'))
+    if (Number.isFinite(n) && n >= USD_RATE_MIN && n <= USD_RATE_MAX) setSettings({ usdRate: Math.round(n * 100) / 100 })
+    else setRaw(String(rate))
+  }
+  return (
+    <div className="switch-row">
+      <span>
+        <span style={{ fontWeight: 700 }}>Курс $</span>
+        <span className="tiny muted" style={{ display: 'block' }}>
+          Только для вех «Путь к $10k», ₽ за $1
+        </span>
+      </span>
+      <input className="input num" style={{ width: 88 }} inputMode="decimal" value={raw} onChange={(e) => setRaw(e.target.value.replace(/[^\d.,]/g, ''))} onBlur={commit} onKeyDown={(e) => e.key === 'Enter' && commit()} aria-label="Курс доллара в рублях" />
+    </div>
+  )
+}
+
 // ---------- Пати → Деньги: totals and entries ----------
 
 export function MoneyCard() {
@@ -255,7 +282,13 @@ export function MoneyCard() {
           </button>
         )}
         <MoneyShareRow />
+        <UsdRateRow />
       </div>
+      {list.length > 0 && (
+        <div style={{ marginTop: 12 }}>
+          <MoneyPathCard />
+        </div>
+      )}
       {add && <MoneySheet onClose={() => setAdd(false)} />}
     </section>
   )

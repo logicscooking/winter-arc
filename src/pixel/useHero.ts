@@ -7,5 +7,5 @@ export function useWornOutfit() {
   const outfit = useStore((s) => s.data.profile?.outfit)
   const purchases = useStore((s) => s.data.purchases)
   const game = useGame()
-  return wornOutfit(outfit, levelOf(game.xp).level, purchases)
+  return wornOutfit(outfit, levelOf(game.xp).level, purchases, game)
 }

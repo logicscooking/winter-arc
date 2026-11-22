@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Lock, Plus, Trash2 } from 'lucide-react'
-import { CHAPTERS, GEAR, SHOP_ITEMS, canBuy, chapterOf, formatDayShort, gameDayOf, gearPurchaseId, levelOf, ownsGear, priceFor, priceMultiplier, wornOutfit } from '../engine'
-import type { Rarity, ShopKind } from '../engine'
+import { CHAPTERS, GEAR, SHOP_CHEST, SHOP_ITEMS, canBuy, chapterOf, dopaminePrice, formatDayShort, gameDayOf, gearPrice, gearPurchaseId, hasPerk, levelOf, ownsGear, priceMultiplier, wornOutfit } from '../engine'
+import type { GearItem, Rarity, ShopKind } from '../engine'
 import { useStore } from '../store/store'
 import { nowWithOffset, reward, useGame, useNow } from '../store/hooks'
 import { useUi } from '../store/ui'
@@ -11,9 +11,10 @@ import type { SpriteName } from '../pixel/sprites'
 
 type Tab = 'dopamine' | 'custom' | 'avatar'
 
-export function Shop() {
+export function Shop({ tab: initialTab }: { tab?: string } = {}) {
   const data = useStore((s) => s.data)
   const buy = useStore((s) => s.buy)
+  const buyChest = useStore((s) => s.buyChest)
   const addReward = useStore((s) => s.addReward)
   const removeReward = useStore((s) => s.removeReward)
   const updateReward = useStore((s) => s.updateReward)
@@ -26,7 +27,7 @@ export function Shop() {
   const ch = chapterOf(today)
   const mult = priceMultiplier(ch)
   const level = levelOf(game.xp).level
-  const [tab, setTab] = useState<Tab>('dopamine')
+  const [tab, setTab] = useState<Tab>(initialTab === 'custom' || initialTab === 'avatar' ? initialTab : 'dopamine')
   const [title, setTitle] = useState('')
   const [price, setPrice] = useState('')
   const [icon, setIcon] = useState<SpriteName>('gift')
@@ -45,13 +46,63 @@ export function Shop() {
   }
 
   const history = [...data.purchases].sort((a, b) => b.at - a.at).slice(0, 30)
-  const worn = wornOutfit(data.profile?.outfit, level, data.purchases)
-  const shopGear = GEAR.filter((g) => g.price !== undefined)
+  const worn = wornOutfit(data.profile?.outfit, level, data.purchases, game)
+  const shopGear = GEAR.filter((g) => g.price !== undefined && !g.legendary)
+  const legendGear = GEAR.filter((g) => g.price !== undefined && g.legendary)
+  // v0.16 sphere perks: «Деньги 10» dopamine −10%, «Развитие 10» the ❄ chest −20
+  const dopaDiscount = hasPerk(game.xpBySphere, 'money', 'dopamine')
+  const chestPrice = SHOP_CHEST.price - (hasPerk(game.xpBySphere, 'growth', 'chest') ? SHOP_CHEST.discount : 0)
+  const prizes = data.rewards.filter((r) => r.rarity)
+
+  const doChest = (el: Element) => {
+    if (!prizes.length) return say('Отметь редкость у своих наград — они станут призами сундука')
+    const c = canBuy(game.shards, chestPrice, game.fallen)
+    if (!c.ok) return say(c.reason!)
+    const id = buyChest(chestPrice, nowWithOffset())
+    reward(el, { shards: -chestPrice })
+    const got = useStore.getState().data.chests?.find((x) => x.id === `shop:${id}`)
+    say(got?.rewardTitle ? `Сундук: ${got.rewardTitle}${got.rarity === 'legendary' ? ' — легендарная!' : got.rarity === 'rare' ? ' — редкая!' : ''}` : 'Сундук пуст', () => undoPurchase(id))
+  }
+
+  const gearTile = (g: GearItem) => {
+    const owned = ownsGear(g, level, data.purchases, game)
+    const p = gearPrice(g, ch)
+    return (
+      <button
+        key={g.id}
+        className={`tile ${owned || canBuy(game.shards, p, game.fallen).ok ? '' : 'locked'}${g.legendary ? ' legend' : ''}`}
+        aria-pressed={worn[g.slot] === g.id}
+        disabled={!owned && game.fallen}
+        onClick={(e) => {
+          if (owned) {
+            setOutfit({ [g.slot]: g.id })
+            return say(`Надето: ${g.title}`)
+          }
+          if (doBuy(e.currentTarget, { itemId: gearPurchaseId(g.id), title: g.title, price: p, kind: 'avatar' })) setOutfit({ [g.slot]: g.id })
+        }}
+      >
+        <span className="tile-art">
+          <PixelAvatar outfit={{ hair: worn.hair, skin: worn.skin, colors: worn.colors, [g.slot]: g.id }} size={58} title={g.title} />
+        </span>
+        {g.legendary && <span className="legend-tag">легенда</span>}
+        <span>{g.title}</span>
+        {owned ? (
+          <span className="tile-price lvl">{worn[g.slot] === g.id ? 'надето' : 'есть'}</span>
+        ) : (
+          <span className="tile-price">
+            <Px name="shard" size={14} />
+            {p}
+          </span>
+        )}
+      </button>
+    )
+  }
 
   return (
     <div className="stack-lg">
       <p className="small muted page-sub">
-        {CHAPTERS[ch].id === 0 ? 'Пролог' : `Глава ${CHAPTERS[ch].roman}`}: цены дофамина ×{String(mult).replace('.', ',')}
+        {CHAPTERS[ch].id === 0 ? 'Пролог' : `Глава ${CHAPTERS[ch].roman}`}: цены дофамина и вещей ×{String(mult).replace('.', ',')}
+        {dopaDiscount ? ' · дофамин −10% (Деньги 10)' : ''}
       </p>
 
       <div className="wallet">
@@ -61,7 +112,7 @@ export function Shop() {
           <span className="num">{game.shards}</span>
         </div>
         <small style={{ textAlign: 'right', maxWidth: 130 }}>
-          Откуда ❄ <Help title="Откуда осколки" text="За квесты, исповедь, камбэк, победу над боссом и Судьбу дня." />
+          Откуда ❄ <Help title="Откуда осколки" text="За квесты, исповедь, камбэк, Судьбу дня, победу над боссом, каждый новый уровень, бонусы сфер и вехи «Путь к $10k»." />
         </small>
       </div>
 
@@ -95,7 +146,7 @@ export function Shop() {
               </p>
               <div className="tile-grid">
                 {SHOP_ITEMS.map((it) => {
-                  const p = priceFor(it.basePrice, ch)
+                  const p = dopaminePrice(it.basePrice, ch, dopaDiscount)
                   const ok = canBuy(game.shards, p, game.fallen).ok
                   return (
                     <button key={it.id} className={`tile ${ok ? '' : 'locked'}`} disabled={game.fallen} onClick={(e) => doBuy(e.currentTarget, { itemId: it.id, title: it.title, price: p, kind: it.kind })} title={it.hint}>
@@ -117,6 +168,16 @@ export function Shop() {
           {tab === 'custom' && (
             <>
               <p className="small muted">Кино, кроссовки, ужин — по своей цене в ❄.</p>
+              <div className="panel chest-buy">
+                <Px name="chest" size={44} />
+                <div className="stack" style={{ gap: 2 }}>
+                  <b>Сундук за ❄</b>
+                  <span className="tiny muted">{prizes.length ? `Одна из ${prizes.length} твоих наград с редкостью. Без редкой — шанс растёт.` : 'Призы — твои награды с редкостью: отметь «сундук» у наград ниже.'}</span>
+                </div>
+                <button className={`btn ${canBuy(game.shards, chestPrice, game.fallen).ok && prizes.length ? 'primary' : ''}`} disabled={game.fallen} onClick={(e) => doChest(e.currentTarget)} aria-label={`Открыть сундук за ${chestPrice} ❄`}>
+                  <Px name="shard" size={16} /> {chestPrice}
+                </button>
+              </div>
               <div className="tile-grid">
                 <button className="tile add-tile" onClick={() => setAdding(true)} aria-expanded={adding}>
                   <span className="tile-art">
@@ -198,41 +259,17 @@ export function Shop() {
 
           {tab === 'avatar' && (
             <>
-              <p className="small muted">Остальное открывает уровень — в «Образе».</p>
-              <div className="tile-grid">
-                {shopGear.map((g) => {
-                  const owned = ownsGear(g, level, data.purchases)
-                  const p = g.price ?? 0
-                  return (
-                    <button
-                      key={g.id}
-                      className={`tile ${owned || canBuy(game.shards, p, game.fallen).ok ? '' : 'locked'}`}
-                      aria-pressed={worn[g.slot] === g.id}
-                      disabled={!owned && game.fallen}
-                      onClick={(e) => {
-                        if (owned) {
-                          setOutfit({ [g.slot]: g.id })
-                          return say(`Надето: ${g.title}`)
-                        }
-                        if (doBuy(e.currentTarget, { itemId: gearPurchaseId(g.id), title: g.title, price: p, kind: 'avatar' })) setOutfit({ [g.slot]: g.id })
-                      }}
-                    >
-                      <span className="tile-art">
-                        <PixelAvatar outfit={{ hair: worn.hair, skin: worn.skin, colors: worn.colors, [g.slot]: g.id }} size={58} title={g.title} />
-                      </span>
-                      <span>{g.title}</span>
-                      {owned ? (
-                        <span className="tile-price lvl">{worn[g.slot] === g.id ? 'надето' : 'есть'}</span>
-                      ) : (
-                        <span className="tile-price">
-                          <Px name="shard" size={14} />
-                          {p}
-                        </span>
-                      )}
-                    </button>
-                  )
-                })}
+              <div className="section-title">
+                <h3>Легендарные</h3>
+                <span className="tiny muted">цена не растёт с главой</span>
               </div>
+              <div className="tile-grid">{legendGear.map(gearTile)}</div>
+              <div className="section-title">
+                <h3>Вещи</h3>
+                <span className="tiny muted">цены ×{String(mult).replace('.', ',')}</span>
+              </div>
+              <div className="tile-grid">{shopGear.map(gearTile)}</div>
+              <p className="small muted">Остальное открывают уровни, боссы и «Путь к $10k» — в «Образе».</p>
               <a className="btn block" href="#/avatar">
                 <Px name="hero" size={22} /> Открыть гардероб
               </a>

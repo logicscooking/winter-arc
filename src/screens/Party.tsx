@@ -606,6 +606,7 @@ function MemberCard({ m, isMe, owner, onNudge }: { m: Member; isMe: boolean; own
             <>
               <div className="member-badges">
                 <span className="lvl-badge">УР {s.level}</span>
+                {typeof s.title === 'string' && s.title && <span className="title-chip">{s.title.slice(0, 24)}</span>}
                 <span className="streak-chip" title="Дни подряд с исповедью" aria-label={`Честность: ${s.honesty} ${plural(s.honesty, 'день', 'дня', 'дней')} подряд`}>
                   <Px name="flame" size={16} /> честность {s.honesty}
                 </span>

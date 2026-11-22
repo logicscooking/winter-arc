@@ -232,7 +232,8 @@ export interface Craving {
   swap: string
 }
 
-export type ShopKind = 'chocolate' | 'cola' | 'reels' | 'custom' | 'avatar'
+/** 'chest': v0.16 «Сундук за ❄» (the prize is the ChestOpen `shop:<purchase id>`) */
+export type ShopKind = 'chocolate' | 'cola' | 'reels' | 'custom' | 'avatar' | 'chest'
 
 export interface Purchase {
   id: string
@@ -352,6 +353,8 @@ export interface Settings {
   aiUse?: { day: DayKey; n: number; last: number }
   /** v0.7 «Заработано»: publish week / arc totals to the party (missing = off) */
   moneyShare?: boolean
+  /** v0.16 «Путь к $10k»: ₽ per $ for the money milestones (missing = 80) */
+  usdRate?: number
   /** «Утренняя инвестиция»: the final block (squats + push-ups) for men or women; missing = ask on first run */
   morningFinal?: 'm' | 'f'
   /** «Утренняя инвестиция»: ambient music on this device (missing = on, kept local) */
@@ -372,6 +375,10 @@ export interface Ack {
   celebrated?: DayKey[]
   /** «Сферы»: the one-time migration (new quests, retitled phone) ran on this data */
   areasV?: number
+  /** v0.16: the highest hero level whose «Новый уровень» screen was shown (missing = set silently on first run) */
+  levelSeen?: number
+  /** v0.16: big moments already shown once: `usd1k`, `final`… */
+  moments?: string[]
 }
 
 // ---------- v0.4 «Навыки и прогрессия» ----------
@@ -509,7 +516,8 @@ export interface Extra {
   at: number
 }
 
-export type ChestType = 'repeat' | 'short' | 'mid'
+/** 'shop': bought for ❄ (v0.16), not part of the daily chests */
+export type ChestType = 'repeat' | 'short' | 'mid' | 'shop'
 
 export interface ChestOpen {
   /** `${day}:${type}` */

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { create } from 'zustand'
 import { computeState, gameDayOf, shiftNow } from '../engine'
-import type { GameState, StatId } from '../engine'
+import type { Area, GameState, StatId } from '../engine'
 import { useStore } from './store'
 
 // ---------- clock (with debug offset) ----------
@@ -60,7 +60,7 @@ export interface Celebration {
   id: number
   title: string
   text?: string
-  kind: 'perfect' | 'boss'
+  kind: 'perfect' | 'boss' | 'level' | 'milestone' | 'final'
 }
 
 /** Bottom card after a completion: stat progress, XP, ❄, CRITICAL */
@@ -68,7 +68,9 @@ export interface RewardPop {
   id: number
   title: string
   stat: StatId
-  /** stat XP before this completion */
+  /** v0.16 «Сферы»: the area the XP goes to (a quest's own area; missing = the area of the stat) */
+  area?: Area
+  /** sphere XP before this completion */
   fromXp: number
   xp: number
   shards: number

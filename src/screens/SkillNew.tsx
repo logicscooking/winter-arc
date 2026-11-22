@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-import { MAX_ACTIVE_SKILLS, STATS, TEMPLATES, VALUE_MAX, checkValue, decodeTree, gameDayOf, materializeTree, templateTree, uid } from '../engine'
+import { MAX_ACTIVE_SKILLS, SPHERES, SPHERE_STAT, STAT_SPHERE, TEMPLATES, VALUE_MAX, checkValue, decodeTree, gameDayOf, materializeTree, templateTree, uid } from '../engine'
 import type { SkillTemplate, StatId, TreeCode, ValueKind } from '../engine'
 import { useStore } from '../store/store'
 import { go, nowWithOffset } from '../store/hooks'
@@ -171,7 +171,7 @@ function AiTreeBuilder({ onImport }: { onImport: (tree: TreeCode, examples: stri
               ))}
             </div>
           )}
-          <Chips label="Стат-покровитель" options={STATS.map((s) => ({ id: s.id, label: s.name }))} value={stat} onChange={setStat} />
+          <Chips label="Сфера" options={SPHERES.map((a) => ({ id: SPHERE_STAT[a.id], label: a.title }))} value={SPHERE_STAT[STAT_SPHERE[stat]]} onChange={setStat} />
         </AiPreview>
       )}
     </section>
@@ -238,7 +238,7 @@ function CreateSheet({ tree, tpl, examples: aiExamples, bridge, onClose }: { tre
             ))}
           </div>
         </div>
-        <Chips label="Стат-покровитель: туда идёт XP" options={STATS.map((s) => ({ id: s.id, label: s.name }))} value={stat} onChange={setStat} />
+        <Chips label="Сфера: туда идёт XP" options={SPHERES.map((a) => ({ id: SPHERE_STAT[a.id], label: a.title }))} value={SPHERE_STAT[STAT_SPHERE[stat]]} onChange={setStat} />
         {tpl && (
           <p className="tiny muted">
             В шаблоне {tpl.traits.length} характеристики, {tpl.traits.reduce((s, t) => s + t.nodes.length, 0)} узлов и по одной цели каждого типа. Всё редактируется.
