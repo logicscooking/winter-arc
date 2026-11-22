@@ -38,6 +38,7 @@ import { useWhySeen } from './Why'
 import { TransitionCard } from './PlanDay'
 import { DayRingCard, TodayBlocks } from './TodayBlocks'
 import { WeekGoalsCard } from '../components/Week'
+import { StreakCard } from '../components/Streak'
 import { todaySections } from './todayItems'
 import '../morning/morning.css'
 
@@ -272,6 +273,7 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
           <TransitionCard />
           <BarOffers />
           <ThemeCard compact />
+          <StreakCard />
           <WeekGoalsCard />
 
           <TodayBlocks game={game} locked={locked} />

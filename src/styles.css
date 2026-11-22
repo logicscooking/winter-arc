@@ -2293,3 +2293,19 @@ body:has(.top-garland:not(.is-off)) .topbar::after {
 }
 .bar.thin { height: 6px; display: block; }
 .title-chip { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 99px; background: var(--gold-soft); color: var(--gold); font-size: 0.72rem; font-weight: 900; }
+
+/* «Серия» on Today */
+.streak-card { background: var(--surface); border: var(--bw) solid var(--card-line); border-radius: var(--r-lg); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.streak-top { display: flex; align-items: center; gap: 12px; }
+.streak-run { font-weight: 900; font-size: 1.15rem; color: var(--ink); }
+.streak-run b { font-size: 1.9rem; color: var(--gold, var(--ember)); margin-right: 2px; }
+.streak-today { margin: 0; padding: 8px 12px; border-radius: 12px; background: var(--surface-2); font-weight: 800; font-size: 0.9rem; color: var(--ink-2); }
+.streak-today.done { background: var(--pine-soft, var(--surface-2)); color: var(--pine); }
+.streak-month { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.streak-month .wd { text-align: center; font-size: 0.7rem; font-weight: 800; color: var(--mist); }
+.streak-month .cell { height: 26px; display: grid; place-items: center; border-radius: 7px; font-size: 0.7rem; font-weight: 800; background: var(--surface-2); color: var(--mist); }
+.streak-month .cell.done { background: var(--pine); color: var(--pine-ink); }
+.streak-month .cell.frozen { background: var(--frost-soft); color: var(--frost); }
+.streak-month .cell.miss { background: color-mix(in srgb, var(--hp) 22%, var(--surface-2)); color: var(--hp); }
+.streak-month .cell.future, .streak-month .cell.none { opacity: 0.45; }
+.streak-month .cell.today { outline: 2px solid var(--ink); outline-offset: -2px; }
