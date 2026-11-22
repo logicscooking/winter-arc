@@ -5,7 +5,7 @@ import type { AppData, Confession, DayKey, GameState, MarkStatus, SugarAnswer } 
 import { useStore } from '../store/store'
 import { haptic, nowWithOffset, useFx } from '../store/hooks'
 import { useUi } from '../store/ui'
-import { Chips, Field, Sheet } from '../components/ui'
+import { Chips, Field, Rating, Sheet } from '../components/ui'
 import { TimePicker } from '../components/TimePicker'
 
 type Draft = Omit<Confession, 'at'>
@@ -114,8 +114,14 @@ export function ConfessionSheet({ day }: { day: DayKey }) {
 
   const isLate = day !== gameDayOf(now)
   return (
-    <Sheet title={isLate ? `Исповедь за ${formatDayRu(day)}` : 'Вечерняя исповедь'} onClose={close}>
+    <Sheet title={isLate ? `Исповедь за ${formatDayRu(day)}` : 'Вечерний чек-ин'} onClose={close}>
       <div className="stack-lg">
+        <Rating label="Как прошёл день? 1–10" max={10} value={draft.dayScore} onChange={(v) => set('dayScore', v)} />
+        {draft.dayScore !== undefined && (
+          <Field label="Почему так?">
+            <textarea className="input" rows={2} value={draft.dayWhy ?? ''} onChange={(e) => set('dayWhy', e.target.value)} placeholder="Видишь только ты" maxLength={300} autoFocus />
+          </Field>
+        )}
         <div className="grid-2">
           <Field label={`Рилсы, мин (лимит ${limit})`}>
             <input className="input num" type="number" inputMode="numeric" min={0} max={1440} value={draft.reelsMin} onChange={(e) => set('reelsMin', Math.min(1440, Math.max(0, Number(e.target.value) || 0)))} />
@@ -212,8 +218,8 @@ export function ConfessionSheet({ day }: { day: DayKey }) {
             </span>
           </div>
         </div>
-        <button className="btn primary block" onClick={submit}>
-          Закрыть день
+        <button className="btn primary block" onClick={submit} disabled={draft.dayScore === undefined}>
+          {draft.dayScore === undefined ? 'Оцени день 1–10 наверху' : 'Закрыть день'}
         </button>
       </div>
     </Sheet>

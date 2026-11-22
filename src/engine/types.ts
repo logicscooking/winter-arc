@@ -63,6 +63,9 @@ export interface Confession {
   colaAfter14: boolean
   bedtime: string // HH:MM
   main: string
+  /** v0.15 evening check-in: how the day went, 1..10, and why (private like the rest of the confession) */
+  dayScore?: number
+  dayWhy?: string
   at: number
 }
 

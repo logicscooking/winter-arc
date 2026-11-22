@@ -169,8 +169,8 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
     steps.push({
       key: 'conf',
       icon: 'owl',
-      title: 'Вечерняя исповедь',
-      text: '30 секунд честности закрывают день. +5 XP, +1 ❄.',
+      title: 'Вечерний чек-ин',
+      text: 'Оценка дня 1–10 и честная исповедь закрывают день. +5 XP, +1 ❄.',
       cta: 'Закрыть день',
       run: () => open({ kind: 'confession', day: today }),
     })
@@ -278,6 +278,7 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
         </div>
 
         <div className="stack-lg" style={{ marginTop: 4 }}>
+          <QuoteCard />
           <MiniTrends />
           <BossCard game={game} />
           {warmup && <Prep />}
@@ -374,6 +375,16 @@ function WhyCard() {
         <X size={18} strokeWidth={3} />
       </button>
     </div>
+  )
+}
+
+/** A line worth seeing every day, between the day's areas and the 7-day tiles */
+function QuoteCard() {
+  return (
+    <figure className="quote-card">
+      <blockquote>«Чтобы быть счастливым, нужно избавиться от двух вещей: страха перед плохим будущим и воспоминаний о плохом прошлом»</blockquote>
+      <figcaption>Луций Сенека</figcaption>
+    </figure>
   )
 }
 
