@@ -51,6 +51,8 @@ export interface FeedDraft {
 
 export interface PublicStats {
   v: 1
+  /** v0.25: the day ring of «Сегодня» as is: done / total and per area (filled in by cloud/party.ts) */
+  prog?: { d: number; t: number; a: Record<'health' | 'money' | 'growth' | 'misc', [number, number]> }
   /** game day the snapshot describes */
   day: DayKey
   /** v0.22: FACEIT Эло level 1…10 (older snapshots: the XP level, no `elo`) */

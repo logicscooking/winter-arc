@@ -3,10 +3,11 @@
  * tables (see supabase/schema.sql). Results are cached in the social store for offline display.
  */
 import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js'
-import { buildPublicStats, computeState, detectFeedEvents, shareSettings, statsSignature } from '../engine'
+import { buildPublicStats, computeState, detectFeedEvents, gameDayOf, shareSettings, statsSignature } from '../engine'
 import type { FeedDraft, PublicStats } from '../engine'
 import { useStore } from '../store/store'
 import { nowWithOffset } from '../store/hooks'
+import { todaySections } from '../screens/todayItems'
 import { CloudError, errorCode, getClient } from './client'
 import { activePartyOf, useSocial } from './state'
 import type { FeedEvent, Member, Nudge, Party, Reaction } from './state'
@@ -244,6 +245,9 @@ export async function pushStats(force = false) {
   if (!acc || !data.profile || data.settings.debugOffsetDays) return
   const now = nowWithOffset()
   const stats = buildPublicStats(data, computeState(data, now), now)
+  // the same ring as on «Сегодня», so friends see exactly the same «Сделано X из Y»
+  const p = todaySections(data, gameDayOf(now)).progress
+  stats.prog = { d: p.done, t: p.total, a: p.areas }
   const sig = statsSignature(stats)
   if (!force && sig === lastStatsSig) return
   const sb = await getClient()

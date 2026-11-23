@@ -14,6 +14,7 @@ import { createParty, deleteEvent, joinParty, leaveParty, markNudgesSeen, react,
 import { AuthForm } from '../components/AuthForm'
 import { HeroAva, useUserOutfit } from '../components/HeroAva'
 import { Help, Ring, Sheet } from '../components/ui'
+import { DayRingCard } from './TodayBlocks'
 import { RankBadge } from '../components/skills'
 import { RANKS } from '../engine'
 import type { Rank } from '../engine'
@@ -642,6 +643,22 @@ function MemberCard({ m, isMe, owner, onNudge }: { m: Member; isMe: boolean; own
 }
 
 function MemberDay({ s, fresh }: { s: PublicStats; fresh: boolean }) {
+  const pr = s.prog
+  if (pr && typeof pr.d === 'number' && typeof pr.t === 'number' && pr.a) {
+    const zero: [number, number] = [0, 0]
+    const areas = { health: pr.a.health ?? zero, money: pr.a.money ?? zero, growth: pr.a.growth ?? zero, misc: pr.a.misc ?? zero }
+    const progress = fresh ? { done: pr.d, total: pr.t, areas } : { done: 0, total: pr.t, areas: { health: [0, areas.health[1]], money: [0, areas.money[1]], growth: [0, areas.growth[1]], misc: [0, areas.misc[1]] } as typeof areas }
+    return (
+      <div className="member-day">
+        <DayRingCard progress={{ ...progress, quests: zero, tasks: zero, transitions: zero }} bare />
+        {fresh && s.confessed && (
+          <span className="tag auto">
+            <Check size={11} aria-hidden strokeWidth={4} /> исповедь
+          </span>
+        )}
+      </div>
+    )
+  }
   const bulbs = s.bulbs.split('')
   const lit = fresh ? bulbs.filter((c) => c === 'M' || c === 'S').length : 0
   if (!bulbs.length && !s.mains.length) return null

@@ -3,6 +3,7 @@ import { ARC_DAYS, ARC_START, CHAPTERS, arcDayNumber, chapterOf, diffDays, eloLe
 import type { GameState } from '../engine'
 import { useStore } from '../store/store'
 import { useNow } from '../store/hooks'
+import { useSocial } from '../cloud/state'
 import { Banner, useHint } from './ui'
 import { PixelAvatar, Px } from '../pixel/Pixel'
 import { useWornOutfit } from '../pixel/useHero'
@@ -55,6 +56,8 @@ export function Hud({ game, progress }: { game: GameState; progress: DayProgress
   const r = game.days[game.today]
   const gainToday = warmup ? 0 : (r?.eloGain ?? 0)
   const lossToday = warmup ? 0 : (r?.eloLoss ?? 0)
+  // the name from the party (what friends see), the local nick until signed in
+  const partyName = useSocial((st) => st.account?.display_name)
   return (
     <header className="hud">
       <div className="day-line">
@@ -76,7 +79,7 @@ export function Hud({ game, progress }: { game: GameState; progress: DayProgress
           <span className="hs-ava">
             <PixelAvatar outfit={outfit} size={78} title={`Аватар ${profile.nick}`} />
           </span>
-          <span className="hs-name">{profile.nick}</span>
+          <span className="hs-name">{partyName || profile.nick}</span>
         </a>
         <a className="hs-right" href="#/hero" aria-hidden tabIndex={-1}>
           <EloBlock elo={game.elo} size={58} gain={gainToday} loss={lossToday} />
