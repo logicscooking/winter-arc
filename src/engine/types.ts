@@ -378,6 +378,8 @@ export interface Ack {
   areasV?: number
   /** v0.16: the highest hero level whose «Новый уровень» screen was shown (missing = set silently on first run) */
   levelSeen?: number
+  /** v0.22: the highest FACEIT Эло level whose «Новый уровень» screen was shown (missing = set silently) */
+  eloSeen?: number
   /** v0.16: big moments already shown once: `mb:<month>:<id>`, `conqueror`… (v0.18: an old `final` is ignored) */
   moments?: string[]
 }

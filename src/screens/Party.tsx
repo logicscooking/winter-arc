@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { EloBlock } from '../components/Elo'
 import { Check, Copy, Crown, Hand, Image as ImageIcon, LogIn, RefreshCw, Share2, ShieldCheck, Trash2, WifiOff } from 'lucide-react'
 import { DUEL, NUDGES, REACTIONS, feedText, incomingChallenges, levelOf, nudgeText, plural } from '../engine'
 import type { Outfit, PublicStats } from '../engine'
@@ -609,7 +610,7 @@ function MemberCard({ m, isMe, owner, onNudge }: { m: Member; isMe: boolean; own
           {s && lvl ? (
             <>
               <div className="member-badges">
-                <span className="lvl-badge">УР {s.level}</span>
+                {s.elo === undefined && <span className="lvl-badge">УР {s.level}</span>}
                 {typeof s.title === 'string' && s.title && <span className="title-chip">{s.title.slice(0, 24)}</span>}
                 <span className="streak-chip" title="Дни подряд с исповедью" aria-label={`Честность: ${s.honesty} ${plural(s.honesty, 'день', 'дня', 'дней')} подряд`}>
                   <Px name="flame" size={16} /> честность {s.honesty}
@@ -620,13 +621,17 @@ function MemberCard({ m, isMe, owner, onNudge }: { m: Member; isMe: boolean; own
                 <HpBar hp={hp} />
                 {s.warmup ? <span className="tag warm">разминка</span> : <span className="num hp-v">{s.fallen ? 'падение' : `${hp}/100`}</span>}
               </span>
-              <span className="meter">
-                <Px name="star" size={18} />
-                <Bar value={lvl.progress} label="Опыт до следующего уровня" />
-                <span className="num">
-                  {lvl.into}/{lvl.span}
+              {s.elo !== undefined ? (
+                <EloBlock elo={s.elo} size={40} />
+              ) : (
+                <span className="meter">
+                  <Px name="star" size={18} />
+                  <Bar value={lvl.progress} label="Опыт до следующего уровня" />
+                  <span className="num">
+                    {lvl.into}/{lvl.span}
+                  </span>
                 </span>
-              </span>
+              )}
             </>
           ) : (
             <span className="tiny muted">Герой ещё не прислал статы</span>

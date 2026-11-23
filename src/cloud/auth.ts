@@ -1,5 +1,5 @@
 import type { SupabaseClient, User } from '@supabase/supabase-js'
-import { computeState, levelOf } from '../engine'
+import { computeState, eloLevel } from '../engine'
 import { useStore } from '../store/store'
 import { nowWithOffset } from '../store/hooks'
 import { CloudError, errorCode, getClient, nickProblem, nickToEmail } from './client'
@@ -30,7 +30,7 @@ async function signedIn(account: Account) {
   const prev = useSocial.getState()
   const fresh = prev.account?.id !== account.id
   const data = useStore.getState().data
-  const level = data.profile ? levelOf(computeState(data, nowWithOffset()).xp).level : 1
+  const level = data.profile ? eloLevel(computeState(data, nowWithOffset()).elo).level : 1
   useSocial.setState({
     account,
     ...(fresh || prev.since === undefined ? { since: Date.now(), levelAtSince: level, posted: {}, parties: [], members: {}, feed: {}, reactions: {} } : {}),

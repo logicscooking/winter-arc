@@ -1,5 +1,5 @@
 import { ChevronRight } from 'lucide-react'
-import { ARC_START, CHAPTERS, chapterOf, chapterRank, heroTitles, levelOf, nextTitle, rankTitle } from '../engine'
+import { ARC_START, CHAPTERS, chapterOf, chapterRank, eloLevel, heroTitles, nextEloTitle, rankTitle } from '../engine'
 import { useStore } from '../store/store'
 import { useGame } from '../store/hooks'
 import { Spark } from '../components/Spark'
@@ -9,12 +9,13 @@ import { MiniTrends } from './Today'
 import { hpValues, window7, xpValues } from '../store/trends'
 import { PixelAvatar, Px } from '../pixel/Pixel'
 import { useWornOutfit } from '../pixel/useHero'
+import { EloBlock } from '../components/Elo'
 
 export function Hero() {
   const profile = useStore((s) => s.data.profile)!
   const game = useGame()
   const outfit = useWornOutfit()
-  const lvl = levelOf(game.xp)
+  const lvl = eloLevel(game.elo)
   const ch = chapterOf(game.today)
   const rank = chapterRank(game, ch)
   const data = useStore((s) => s.data)
@@ -27,7 +28,7 @@ export function Hero() {
   const titles = heroTitles(game)
   const levelT = titles[titles.length - 1]
   const special = titles.slice(0, -1)
-  const nt = nextTitle(lvl.level)
+  const nt = nextEloTitle(lvl.level)
   const anyXp = game.xp > 0
 
   return (
@@ -43,17 +44,8 @@ export function Hero() {
               <Px name="heart" size={18} />
               <span className="num">{game.hp}/100</span>
             </span>
-            <div className="hero-lvl">
-              <span>Ур. {lvl.level}</span>
-              <Px name="shield" size={24} />
-              {lvl.max ? (
-                <span style={{ color: 'var(--gold)' }}>Макс</span>
-              ) : (
-                <>
-                  <span className="muted">→ Ур. {lvl.level + 1}</span>
-                  <Px name="shield" size={24} className="dim" />
-                </>
-              )}
+            <div className="hero-elo">
+              <EloBlock elo={game.elo} size={64} gain={warmup ? 0 : game.days[game.today]?.eloGain ?? 0} />
             </div>
             <div className="hero-titles">
               {special.map((t) => (
@@ -67,16 +59,6 @@ export function Hero() {
             </div>
             <div className="hero-bars">
               <span className="hs-k">
-                <Px name="star" size={16} />
-                <span className="num">{lvl.max ? `XP сверх: ${lvl.over ?? 0}` : `XP: ${lvl.into}/${lvl.span}`}</span>
-              </span>
-              <span className="fat-row">
-                <span className={`fat-bar xp${lvl.max ? ' max' : ''}`} role="progressbar" aria-label="Опыт уровня" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(lvl.progress * 100)}>
-                  <i style={{ width: `${Math.max(4, Math.round(lvl.progress * 100))}%` }} />
-                </span>
-                <span className="num">{lvl.max ? 'Макс' : `${Math.round(lvl.progress * 100)}%`}</span>
-              </span>
-              <span className="hs-k">
                 <Px name="heart" size={16} />
                 <span className="num">HP: {game.hp}/100</span>
               </span>
@@ -88,8 +70,8 @@ export function Hero() {
               </span>
               <p className="tiny muted" style={{ textAlign: 'center', marginTop: 4 }}>
                 {lvl.max
-                  ? `${game.xp} XP всего · уровень 30 — потолок арки. XP не сгорает никогда.`
-                  : `${game.xp} XP всего · до уровня ${lvl.level + 1}: ${lvl.toNext} XP${nt ? ` · титул «${nt.title}» на ${nt.level}` : ''}. Каждый уровень — ❄.`}
+                  ? 'Уровень 10 — вершина лестницы FACEIT. Эло не сгорает.'
+                  : `Каждый закрытый день: 0–15 Эло за квесты без «Денег»${nt ? ` · титул «${nt.title}» на Ур. ${nt.level}` : ''}. Каждый уровень — ❄. XP: ${game.xp}.`}
               </p>
             </div>
             <a className="btn block" href="#/avatar">

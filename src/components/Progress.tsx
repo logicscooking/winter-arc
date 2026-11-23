@@ -8,7 +8,7 @@ import {
   ARC_START,
   CONQUEROR,
   GEAR,
-  LEVEL_TITLES,
+  ELO_TITLES,
   SPHERES,
   SPHERE_PERKS,
   MAIN_BOSS_PRIZE,
@@ -18,8 +18,8 @@ import {
   formatUsd,
   moneyBossById,
   laggingSphere,
+  eloTitle,
   levelOf,
-  levelTitle,
   plural,
   sphereLevelOf,
   wornOutfit,
@@ -143,7 +143,7 @@ interface Moment {
   chips: { cls: string; icon: 'shard' | 'star' | 'trophy'; text: string }[]
   items: GearItem[]
   /** acknowledging it */
-  ack: { levelSeen?: number; moments?: string[] }
+  ack: { eloSeen?: number; moments?: string[] }
 }
 
 const PARTY_COLORS = ['var(--gold-bright)', '#ff5a6a', '#43d57a', '#6cc6f2', '#ffffff']
@@ -219,21 +219,21 @@ function pendingMoment(game: GameState, levelSeen: number | undefined, moments: 
       ack: { moments: fresh.map(moneyMomentKey) },
     }
   }
-  const level = levelOf(game.xp).level
+  const level = game.eloLevel
   if (levelSeen !== undefined && level > levelSeen) {
     const ups = game.levelUps.filter((u) => u.level > levelSeen && u.level <= level)
     const shards = ups.reduce((s, u) => s + u.shards, 0)
-    const titleUp = LEVEL_TITLES.find(([l]) => l > levelSeen && l <= level)
-    const items = GEAR.filter((g) => g.level !== undefined && g.level > Math.max(1, levelSeen) && g.level <= level)
+    const titleUp = ELO_TITLES.find(([l]) => l > levelSeen && l <= level && l > 1)
+    const items = GEAR.filter((g) => g.eloLevel !== undefined && g.eloLevel > levelSeen && g.eloLevel <= level)
     return {
-      key: `lvl:${level}`,
+      key: `elo:${level}`,
       kind: 'level',
-      eyebrow: ups.length > 1 ? `+${ups.length} ${plural(ups.length, 'уровень', 'уровня', 'уровней')}` : 'Герой вырос',
-      title: `Новый уровень ${level}`,
-      text: titleUp ? `Новый титул: «${levelTitle(level)}»` : level >= 30 ? 'Максимум арки. Дальше XP идёт «сверх».' : undefined,
-      chips: [{ cls: 'ice', icon: 'shard', text: `+${shards}` }, ...(titleUp ? [{ cls: 'gold', icon: 'trophy' as const, text: levelTitle(level) }] : [])],
+      eyebrow: ups.length > 1 ? `+${ups.length} ${plural(ups.length, 'уровень', 'уровня', 'уровней')}` : `Эло ${game.elo}`,
+      title: `Уровень ${level} из 10`,
+      text: titleUp ? `Новый титул: «${eloTitle(level)}»` : level >= 10 ? 'Максимум FACEIT-лестницы. Ты на вершине.' : undefined,
+      chips: [{ cls: 'ice', icon: 'shard', text: `+${shards}` }, ...(titleUp ? [{ cls: 'gold', icon: 'trophy' as const, text: eloTitle(level) }] : [])],
       items,
-      ack: { levelSeen: level },
+      ack: { eloSeen: level },
     }
   }
   return null
@@ -249,12 +249,12 @@ export function MomentScreen() {
   const profileOutfit = useStore((s) => s.data.profile?.outfit)
   const level = levelOf(game.xp).level
 
-  // first run of v0.16: the current level counts as seen, nothing floods in
+  // first run of v0.22: the current Эло level counts as seen, nothing floods in
   useEffect(() => {
-    if (ack.levelSeen === undefined) setAck({ levelSeen: level })
-  }, [ack.levelSeen, level, setAck])
+    if (ack.eloSeen === undefined) setAck({ eloSeen: game.eloLevel })
+  }, [ack.eloSeen, game.eloLevel, setAck])
 
-  const m = pendingMoment(game, ack.levelSeen, ack.moments ?? [])
+  const m = pendingMoment(game, ack.eloSeen, ack.moments ?? [])
   const seed = useMemo(() => (m ? m.key.length * 31 + level : 0), [m?.key]) // eslint-disable-line react-hooks/exhaustive-deps
   const confetti = useMemo(() => bits(seed), [seed])
   useEffect(() => {
@@ -263,7 +263,7 @@ export function MomentScreen() {
   if (!m) return null
 
   const take = () => {
-    if (m.ack.levelSeen !== undefined) setAck({ levelSeen: m.ack.levelSeen })
+    if (m.ack.eloSeen !== undefined) setAck({ eloSeen: m.ack.eloSeen })
     if (m.ack.moments) setAck({ moments: [...(ack.moments ?? []), ...m.ack.moments] })
   }
   // the hero wears the first new item on the screen

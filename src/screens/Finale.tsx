@@ -1,5 +1,5 @@
 
-import { ARC_DAYS, ARC_START, CONQUEROR, FINAL_MEASURE_FROM, MAIN_MONEY_BOSS, SPHERES, booksFinishedInArc, gameDayOf, heroTitles, levelOf, parseHM, questStreak, sphereLevelOf } from '../engine'
+import { ARC_DAYS, ARC_START, CONQUEROR, FINAL_MEASURE_FROM, MAIN_MONEY_BOSS, SPHERES, booksFinishedInArc, gameDayOf, eloLevel, heroTitles, parseHM, questStreak, sphereLevelOf } from '../engine'
 import type { Measurements } from '../engine'
 import { useStore } from '../store/store'
 import { useGame, useNow } from '../store/hooks'
@@ -24,7 +24,7 @@ export function Finale() {
   const game = useGame()
   const today = gameDayOf(useNow())
   const open = today >= FINAL_MEASURE_FROM
-  const lvl = levelOf(game.xp)
+  const lvl = eloLevel(game.elo)
   const bestQuests = data.quests
     .filter((q) => q.enabled)
     .map((q) => ({ q, s: questStreak(game, q.id) }))
@@ -46,7 +46,7 @@ export function Finale() {
       <div className="grid-2" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
         {(
           [
-            ['Общий уровень', lvl.level],
+            ['Эло', `${game.elo} · Ур. ${lvl.level}`],
             ['Титул', heroTitles(game)[0]],
             ['XP за арку', game.xp],
             ['Книг дочитано', booksFinishedInArc(data, ARC_START)],

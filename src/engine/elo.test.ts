@@ -1,0 +1,86 @@
+import { describe, expect, it } from 'vitest'
+import { ELO, eloGain, eloLevel, eloShare } from './elo'
+import { computeState } from './replay'
+import { questArea } from './areas'
+import { ARC_START, addDays } from './time'
+import { confess, doMains, makeData, mark, nowAt } from './testkit'
+import type { Area } from './types'
+
+const D1 = ARC_START
+const areaOf = (id: string): Area => questArea({ id })
+
+describe('Эло: формула дня', () => {
+  const plan = [{ id: 'wake' }, { id: 'water' }, { id: 'reading' }, { id: 'meditation' }, { id: 'deal' }, { id: 'twitter' }]
+  it('доля квестов вне «Денег»: done = 1, mini = ½, остальное 0', () => {
+    expect(eloShare(plan, { wake: 'done', water: 'done', reading: 'done', meditation: 'done' }, areaOf)).toBe(1)
+    expect(eloGain(plan, { wake: 'done', water: 'mini', reading: 'skip', meditation: undefined }, areaOf)).toBe(Math.round(15 * 0.375))
+    expect(eloGain(plan, {}, areaOf)).toBe(0)
+  })
+  it('квесты «Денег» не считаются ни в долю, ни в знаменатель', () => {
+    expect(eloGain(plan, { deal: 'done', twitter: 'done' }, areaOf)).toBe(0)
+    expect(eloGain(plan, { wake: 'done', water: 'done', reading: 'done', meditation: 'done', deal: 'skip' }, areaOf)).toBe(15)
+  })
+  it('замороженный день даёт 0', () => {
+    expect(eloGain(plan, { wake: 'done', water: 'done', reading: 'done', meditation: 'done' }, areaOf, true)).toBe(0)
+  })
+})
+
+describe('Эло: уровни FACEIT', () => {
+  it('границы уровней 1…10', () => {
+    const cases: [number, number][] = [[0, 1], [500, 1], [501, 2], [750, 2], [751, 3], [900, 3], [901, 4], [1000, 4], [1050, 4], [1051, 5], [1200, 5], [1201, 6], [1350, 6], [1351, 7], [1530, 7], [1531, 8], [1750, 8], [1751, 9], [2000, 9], [2001, 10], [3000, 10]]
+    for (const [elo, lvl] of cases) expect(eloLevel(elo).level, `Эло ${elo}`).toBe(lvl)
+  })
+  it('до следующего уровня и вершина', () => {
+    const l = eloLevel(1135)
+    expect(l.level).toBe(5)
+    expect(l.from).toBe(1051)
+    expect(l.to).toBe(1200)
+    expect(l.toNext).toBe(66)
+    expect(eloLevel(2300).max).toBe(true)
+    expect(ELO.start).toBe(1000)
+  })
+})
+
+describe('Эло: реплей', () => {
+  it('старт 1000, разминка ничего не даёт, закрытый день добавляет, открытый — нет', () => {
+    const data = makeData()
+    data.profile!.onboardDay = addDays(D1, -2)
+    doMains(data, addDays(D1, -1))
+    confess(data, addDays(D1, -1))
+    const st0 = computeState(data, nowAt(D1, 10))
+    expect(st0.elo).toBe(1000)
+    expect(st0.eloLevel).toBe(4)
+    for (const id of ['wake', 'water', 'reading', 'meditation']) mark(data, D1, id)
+    confess(data, D1)
+    const st = computeState(data, nowAt(addDays(D1, 1), 8))
+    expect(st.days[D1].eloGain).toBeGreaterThan(0)
+    expect(st.elo).toBe(1000 + st.days[D1].eloGain)
+    expect(st.eloByDay[D1]).toBe(st.elo)
+    // the day is not closed yet: the projection shows, the Эло does not move
+    mark(data, addDays(D1, 1), 'wake')
+    const open = computeState(data, nowAt(addDays(D1, 1), 12))
+    expect(open.days[addDays(D1, 1)].eloGain).toBeGreaterThan(0)
+    expect(open.elo).toBe(st.elo)
+  })
+
+  it('«Деньги» не двигают Эло', () => {
+    const data = makeData()
+    for (const id of ['deal', 'twitter', 'leads']) mark(data, D1, id)
+    confess(data, D1)
+    expect(computeState(data, nowAt(addDays(D1, 1), 8)).elo).toBe(1000)
+  })
+
+  it('идеальная арка ≈ 98 × 15 → уровень 10', () => {
+    const data = makeData()
+    let d = D1
+    for (let i = 0; i < 98; i++, d = addDays(d, 1)) {
+      const day = (data.days[d] ??= { quests: {} })
+      for (const p of computeState(makeData(), nowAt(D1, 10)).days[D1]?.plan ?? []) day.quests[p.id] = { status: 'done', at: Date.now() }
+      confess(data, d)
+    }
+    const st = computeState(data, nowAt(addDays(D1, 99), 12))
+    expect(st.eloLevel).toBe(10)
+    expect(st.elo).toBeGreaterThan(2001)
+    expect(st.levelUps.map((l) => l.level)).toEqual([5, 6, 7, 8, 9, 10])
+  })
+})

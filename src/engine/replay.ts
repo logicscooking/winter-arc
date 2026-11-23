@@ -2,7 +2,8 @@
  * The whole game state is derived by replaying the stored log from the arc start.
  * Nothing derived is persisted, so editing the past or importing a backup is always consistent.
  */
-import { LEVEL_UP_SHARDS, levelOf, levelTitle, sphereLevelOf } from './levels'
+import { ELO, ELO_LEVEL_SHARDS, ELO_MAX_LEVEL, eloGain, eloLevel, eloTitle } from './elo'
+import { sphereLevelOf } from './levels'
 import {
   COMEBACK_WINDOW_MS,
   FREEZE,
@@ -63,6 +64,8 @@ export interface DayResult {
   destinyWon: boolean
   /** «Утренняя инвестиция» finished */
   morning: boolean
+  /** v0.22: Эло of the day (0…15), counted into `elo` only when the arc day is closed and not frozen */
+  eloGain: number
 }
 
 /** Anti-farm caps per game day (v0.16) */
@@ -110,8 +113,13 @@ export interface GameState {
   flowStats: Record<string, { closed: number; xp: number }>
   /** v0.16 «Сферы»: XP per life area */
   xpBySphere: Record<Area, number>
-  /** v0.16: every hero level reached in the replay (2…30), with its ❄ */
+  /** v0.22: every Эло level reached in the replay (5…10), with its ❄ */
   levelUps: LevelUp[]
+  /** v0.22 «Эло как на FACEIT»: 1000 at the arc start + closed arc days (elo.ts) */
+  elo: number
+  eloLevel: number
+  /** Эло at the end of each replayed day */
+  eloByDay: Record<DayKey, number>
   /** v0.16: sphere perks reached, `${area}:${level}` */
   perks: string[]
   /** v0.16: freeze slots (2, 3 with «Здоровье 10») */
@@ -200,6 +208,9 @@ export function computeState(data: AppData, now: Date): GameState {
     flowStats: {},
     xpBySphere: emptySpheres(),
     levelUps: [],
+    elo: ELO.start,
+    eloLevel: eloLevel(ELO.start).level,
+    eloByDay: {},
     perks: [],
     freezeMax: FREEZE.max,
     conqueror: { closed: 0, need: CONQUEROR.need, won: false },
@@ -339,7 +350,6 @@ export function computeState(data: AppData, now: Date): GameState {
   let prevMissed = new Set<string>()
   const lastDay = today
   let perfectArcDays = 0
-  let level = 1
   const perkSeen = new Set<string>()
 
   const addShards = (n: number, info: { shards: number }) => {
@@ -347,20 +357,13 @@ export function computeState(data: AppData, now: Date): GameState {
     st.shards = Math.max(0, st.shards + n)
     info.shards += n
   }
-  /** every XP goes through here: totals, spheres, hero level-ups (❄ once per level) and sphere perks */
-  const gainXp = (d: DayKey, at: number, xp: number, info: { xp: number; shards: number }, stat?: StatId, sphere?: Area) => {
+  /** every XP goes through here: totals, spheres and sphere perks */
+  const gainXp = (d: DayKey, _at: number, xp: number, info: { xp: number; shards: number }, stat?: StatId, sphere?: Area) => {
     st.xp += xp
     if (stat) st.xpByStat[stat] += xp
     st.chapterXp[chapterOf(d)] += xp
     st.xpByDay[d] = (st.xpByDay[d] ?? 0) + xp
     info.xp += xp
-    const lvl = levelOf(st.xp).level
-    while (level < lvl) {
-      level++
-      const sh = LEVEL_UP_SHARDS(level)
-      addShards(sh, info)
-      st.levelUps.push({ level, day: d, at, shards: sh })
-    }
     const area = sphere ?? sphereOfStat(stat)
     if (!area) return
     st.xpBySphere[area] += xp
@@ -418,7 +421,12 @@ export function computeState(data: AppData, now: Date): GameState {
       crits: info.crits,
       destinyWon: info.destinyWon,
       morning: morningDone(log),
+      eloGain: 0,
     }
+    // v0.22: the projected Эло of an arc day (the player sees it live); banked below when the day closes
+    const arcDay = d >= ARC_START && d <= ARC_END && d >= evalStart
+    const areaOf = (id: string) => questArea({ id, area: data.quests.find((q) => q.id === id)?.area })
+    if (arcDay) res.eloGain = eloGain(info.plan, info.marks, areaOf)
 
     if (closed && warmup) {
       // «Разминка»: the day closes for streaks and charts, nothing else changes
@@ -473,6 +481,19 @@ export function computeState(data: AppData, now: Date): GameState {
         res.shards = info.shards
       }
     }
+    if (closed && arcDay && !res.frozen && res.eloGain) {
+      st.elo += res.eloGain
+      const newLevel = eloLevel(st.elo).level
+      while (st.eloLevel < newLevel && st.eloLevel < ELO_MAX_LEVEL) {
+        st.eloLevel++
+        const sh = ELO_LEVEL_SHARDS(st.eloLevel)
+        addShards(sh, info)
+        st.levelUps.push({ level: st.eloLevel, day: d, at: dayStart(addDays(d, 1)).getTime() - 1, shards: sh })
+      }
+      res.shards = info.shards
+    }
+    if (arcDay && res.frozen) res.eloGain = 0
+    st.eloByDay[d] = st.elo
     res.hpEnd = st.hp
     if (perfect && d >= ARC_START && d <= ARC_END) perfectArcDays++
     st.days[d] = res
@@ -501,20 +522,21 @@ export function chapterRank(st: GameState, ch: ChapterId): number {
   return Math.max(0, st.chapterXp[ch] - st.chapterPenalty[ch])
 }
 
+/** v0.22: the hero level is the FACEIT Эло level (XP levels stay internal) */
 export function overallLevel(st: GameState) {
-  return levelOf(st.xp)
+  return eloLevel(st.elo)
 }
 
 /** Hero titles, the most prestigious first: «Покоритель зимы», the $10k one, then the level title */
-export function heroTitles(st: Pick<GameState, 'xp' | 'conqueror' | 'moneyKills'>): string[] {
+export function heroTitles(st: Pick<GameState, 'eloLevel' | 'conqueror' | 'moneyKills'>): string[] {
   const out: string[] = []
   if (st.conqueror?.won) out.push(CONQUEROR.title)
   if (st.moneyKills.some((k) => k.id === MAIN_MONEY_BOSS.id)) out.push(MAIN_BOSS_PRIZE.title)
-  out.push(levelTitle(levelOf(st.xp).level))
+  out.push(eloTitle(st.eloLevel))
   return out
 }
 
-export const heroTitle = (st: Pick<GameState, 'xp' | 'conqueror' | 'moneyKills'>) => heroTitles(st)[0]
+export const heroTitle = (st: Pick<GameState, 'eloLevel' | 'conqueror' | 'moneyKills'>) => heroTitles(st)[0]
 
 /** Days that closed without a confession after the last acknowledgement */
 export function unacknowledgedMissed(st: GameState, missedThrough?: DayKey): DayKey[] {

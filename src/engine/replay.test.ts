@@ -251,8 +251,8 @@ describe('неделя без босса', () => {
     const data = makeData()
     perfectDays(data, D1, 7)
     const st = computeState(data, nowAt(addDays(D1, 6), 22))
-    // levels 2 and 3 give 6 + 9 ❄
-    expect(st.shards).toBe(7 * (3 + 3 + 1) + 6 + 9)
+    // Эло levels start at 4 (1000): no level-up ❄ in the first week
+    expect(st.shards).toBe(7 * (3 + 3 + 1))
     expect(st.conqueror.closed).toBe(7)
   })
 })

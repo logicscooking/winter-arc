@@ -203,7 +203,7 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
     <div>
       <Hud game={game} mainsDone={doneMain} mainsTotal={mains.length} />
       <div style={{ marginBottom: 22 }}>
-        <DayRingCard progress={progress} />
+        <DayRingCard progress={progress} eloGain={game.today < ARC_START ? 0 : game.days[game.today]?.eloGain ?? 0} />
       </div>
       <div style={{ marginBottom: 16 }}>
         <Hint id="areas-v1" title="Новое: сферы" art={['heart', 'coin']}>

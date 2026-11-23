@@ -1,9 +1,10 @@
-import { ARC_DAYS, ARC_START, CHAPTERS, addDays, arcDayNumber, chapterOf, diffDays, heroTitle, levelOf, plural, weekOf } from '../engine'
+import { ARC_DAYS, ARC_START, CHAPTERS, addDays, arcDayNumber, chapterOf, diffDays, heroTitle, eloLevel, plural, weekOf } from '../engine'
 import type { GameState } from '../engine'
 import { useStore } from '../store/store'
 import { Banner, useHint } from './ui'
 import { PixelAvatar, Px } from '../pixel/Pixel'
 import { useWornOutfit } from '../pixel/useHero'
+import { EloBlock } from './Elo'
 
 const NEW_YEAR = '2027-01-01'
 
@@ -25,10 +26,10 @@ export function Hud({ game, mainsDone, mainsTotal }: { game: GameState; mainsDon
   const warmup = game.today < ARC_START
   const day = Math.max(1, Math.min(ARC_DAYS, arcDayNumber(game.today)))
   const ch = CHAPTERS[chapterOf(game.today)]
-  const lvl = levelOf(game.xp)
+  const lvl = eloLevel(game.elo)
   const toArc = diffDays(game.today, ARC_START)
   const [hpHint, dismissHp] = useHint('hp')
-  const xpPct = Math.round(lvl.progress * 100)
+  const gainToday = game.days[game.today]?.eloGain ?? 0
   const mainPct = mainsTotal ? Math.round((mainsDone / mainsTotal) * 100) : 0
   return (
     <header className="hud">
@@ -46,7 +47,7 @@ export function Hud({ game, mainsDone, mainsTotal }: { game: GameState; mainsDon
           </span>
         )}
       </div>
-      <a className="hero-strip" href="#/hero" aria-label={`${profile.nick}, уровень ${lvl.level}, HP ${game.hp}. Открыть персонажа`} style={game.fallen ? { borderColor: 'var(--hp)' } : undefined}>
+      <a className="hero-strip" href="#/hero" aria-label={`${profile.nick}, Эло ${game.elo}, уровень ${lvl.level}, HP ${game.hp}. Открыть персонажа`} style={game.fallen ? { borderColor: 'var(--hp)' } : undefined}>
         <span className="hs-left">
           <span className="hs-name">{profile.nick}</span>
           <span className="hs-title">{heroTitle(game)}</span>
@@ -59,31 +60,7 @@ export function Hud({ game, mainsDone, mainsTotal }: { game: GameState; mainsDon
           </span>
         </span>
         <span className="hs-right">
-          <span className="hs-lvl">
-            <span>Ур. {lvl.level}</span>
-            <Px name="shield" size={22} />
-            <span className="grow" />
-            {lvl.max ? (
-              <span className="hs-next" style={{ color: 'var(--gold)' }}>
-                Макс
-              </span>
-            ) : (
-              <>
-                <span className="hs-next">→ Ур. {lvl.level + 1}</span>
-                <Px name="shield" size={22} className="dim" />
-              </>
-            )}
-          </span>
-          <span className="hs-k">
-            <Px name="star" size={16} />
-            <span className="num">{lvl.max ? `XP сверх: ${lvl.over ?? 0}` : `XP: ${lvl.into}/${lvl.span}`}</span>
-          </span>
-          <span className="fat-row">
-            <span className={`fat-bar xp${lvl.max ? ' max' : ''}`} role="progressbar" aria-label="Опыт до следующего уровня" aria-valuemin={0} aria-valuemax={100} aria-valuenow={xpPct}>
-              <i style={{ width: `${Math.max(xpPct, 4)}%` }} />
-            </span>
-            <span className="num">{xpPct}%</span>
-          </span>
+          <EloBlock elo={game.elo} size={50} gain={warmup ? 0 : gainToday} />
           <span className="hs-k">
             <Px name="quests" size={16} />
             <span className="num">

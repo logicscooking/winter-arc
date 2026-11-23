@@ -2274,3 +2274,16 @@ body:has(.top-garland:not(.is-off)) .topbar::after {
 .streak-month .cell.miss { background: color-mix(in srgb, var(--hp) 22%, var(--surface-2)); color: var(--hp); }
 .streak-month .cell.future, .streak-month .cell.none { opacity: 0.45; }
 .streak-month .cell.today { outline: 2px solid var(--ink); outline-offset: -2px; }
+
+/* v0.22 «Эло как на FACEIT» */
+.elo-block{display:flex;align-items:center;gap:10px;width:100%}
+.elo-badge{flex:none}
+.elo-main{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.elo-line{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.elo-num{font-weight:800;font-size:1.05rem}
+.elo-lvl{font-weight:700;opacity:.85}
+.elo-gain{margin-left:auto;font-size:.78rem;font-weight:700;color:var(--ok,#3fbf5a)}
+.elo-bar{display:block;height:8px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden}
+.elo-bar i{display:block;height:100%;border-radius:99px;transition:width .4s ease}
+.hero-elo{display:flex;justify-content:center;width:100%;max-width:320px}
+.lvl-badge.elo{display:inline-flex;align-items:center;gap:4px}

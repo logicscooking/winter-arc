@@ -69,8 +69,8 @@ describe('feed events', () => {
     const keys = ev.map((e) => e.key)
     expect(keys).toContain(`perfect:${D}`)
     expect(keys).toContain('book:b1')
-    expect(keys).toContain('level:1')
-    expect(detectFeedEvents(d, game, ctx(at(D, 0), 1)).some((e) => e.kind === 'level')).toBe(false)
+    expect(keys).toContain('level:4')
+    expect(detectFeedEvents(d, game, ctx(at(D, 0), 4)).some((e) => e.kind === 'level')).toBe(false)
   })
 
   it('nothing from before `since`, and nothing that is switched off', () => {

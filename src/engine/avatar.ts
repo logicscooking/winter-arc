@@ -12,6 +12,8 @@ export interface GearItem {
   title: string
   /** free once the overall level reaches this */
   level?: number
+  /** v0.22: free once the FACEIT Эло level (elo.ts, 1…10) reaches this */
+  eloLevel?: number
   /** price in ❄ (shop), when not a level reward */
   price?: number
   /** colors can't be changed (e.g. the ice crown) */
@@ -65,13 +67,13 @@ export const GEAR: GearItem[] = [
   { id: 'tangerine', slot: 'extra', title: 'Мандарин', level: 1, fixed: true },
   { id: 'snowfall', slot: 'extra', title: 'Снегопад', level: 1, fixed: true },
   { id: 'lantern', slot: 'extra', title: 'Фонарь', level: 1 },
-  // v0.16 «Прогрессия»: a special item every 5 levels (titles: levels.ts LEVEL_TITLES)
-  { id: 'flakescarf', slot: 'scarf', title: 'Шарф-снежинка', level: 5 },
-  { id: 'frostgloves', slot: 'mitts', title: 'Морозные краги', level: 10, fixed: true },
-  { id: 'peacoat', slot: 'coat', title: 'Бушлат ледокола', level: 15, fixed: true },
-  { id: 'stormvisor', slot: 'glasses', title: 'Визор бурана', level: 20, fixed: true },
-  { id: 'wintercloak', slot: 'coat', title: 'Мантия хозяина зимы', level: 25, fixed: true },
-  { id: 'legendcrown', slot: 'hat', title: 'Венец легенды', level: 30, fixed: true, legendary: true },
+  // v0.16 «Прогрессия»: v0.22: a special item at every Эло level 5…10 (titles: elo.ts ELO_TITLES)
+  { id: 'flakescarf', slot: 'scarf', title: 'Шарф-снежинка', eloLevel: 5 },
+  { id: 'frostgloves', slot: 'mitts', title: 'Морозные краги', eloLevel: 6, fixed: true },
+  { id: 'peacoat', slot: 'coat', title: 'Бушлат ледокола', eloLevel: 7, fixed: true },
+  { id: 'stormvisor', slot: 'glasses', title: 'Визор бурана', eloLevel: 8, fixed: true },
+  { id: 'wintercloak', slot: 'coat', title: 'Мантия хозяина зимы', eloLevel: 9, fixed: true },
+  { id: 'legendcrown', slot: 'hat', title: 'Венец легенды', eloLevel: 10, fixed: true, legendary: true },
   // v0.18: the old weekly-boss trophies, now plain ❄ gear (60…120 ❄, × the chapter like other gear)
   { id: 'b_compass', slot: 'extra', title: 'Компас порядка', price: 60, fixed: true },
   { id: 'b_alarm', slot: 'extra', title: 'Громкий будильник', price: 65, fixed: true },
@@ -111,12 +113,15 @@ export const gearPurchaseId = (id: string) => `av:${id}`
 
 /** v0.16: what the replay earned besides levels: «Покоритель зимы» and money boss kills */
 export interface Earned {
+  /** v0.22: the current FACEIT Эло level (GameState.eloLevel) */
+  eloLevel?: number
   conqueror?: { won: boolean }
   moneyKills: { id: string }[]
 }
 
 export function ownsGear(item: GearItem, level: number, purchases: Pick<Purchase, 'itemId' | 'kind'>[], earned?: Earned): boolean {
   if (item.level !== undefined && level >= item.level) return true
+  if (item.eloLevel !== undefined) return (earned?.eloLevel ?? 1) >= item.eloLevel
   if (item.conqueror) return !!earned?.conqueror?.won
   if (item.moneyBoss !== undefined) return !!earned?.moneyKills?.some((m) => m.id === item.moneyBoss)
   return item.price !== undefined && purchases.some((p) => p.kind === 'avatar' && p.itemId === gearPurchaseId(item.id))
@@ -131,6 +136,7 @@ export function gearPrice(item: GearItem, chapter: ChapterId): number {
 /** How a locked item opens, for its tile */
 export function gearUnlockLabel(item: GearItem): string {
   if (item.level !== undefined) return `ур ${item.level}`
+  if (item.eloLevel !== undefined) return `Эло ${item.eloLevel}`
   if (item.conqueror) return '70 дней'
   if (item.moneyBoss !== undefined) return '$10k/мес'
   return ''

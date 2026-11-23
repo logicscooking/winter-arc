@@ -6,7 +6,6 @@
  */
 import { questStreak } from './analysis'
 import { wornOutfit } from './avatar'
-import { levelOf } from './levels'
 import { COMEBACK_WINDOW_MS, isCompleted } from './quests'
 import { heroTitles, marksFor, planFor } from './replay'
 import type { GameState } from './replay'
@@ -53,8 +52,11 @@ export interface PublicStats {
   v: 1
   /** game day the snapshot describes */
   day: DayKey
+  /** v0.22: FACEIT Эло level 1…10 (older snapshots: the XP level, no `elo`) */
   level: number
   xp: number
+  /** v0.22: Эло (not private). Missing in older snapshots */
+  elo?: number
   hp: number
   fallen: boolean
   warmup: boolean
@@ -104,12 +106,13 @@ export function buildPublicStats(data: AppData, game: GameState, now: Date): Pub
     const on = isCompleted(marks[p.id]?.status)
     return p.role === 'main' ? (on ? 'M' : 'm') : on ? 'S' : 's'
   })
-  const level = levelOf(game.xp).level
+  const level = game.eloLevel
   return {
     v: 1,
     day: today,
     level,
     xp: game.xp,
+    elo: game.elo,
     hp: game.hp,
     fallen: game.fallen,
     warmup: today < ARC_START,
@@ -189,7 +192,7 @@ export function detectFeedEvents(data: AppData, game: GameState, ctx: FeedContex
   }
 
   if (share.level) {
-    const lvl = levelOf(game.xp).level
+    const lvl = game.eloLevel
     if (lvl > ctx.levelAtSince) out.push({ kind: 'level', key: `level:${lvl}`, payload: { level: lvl }, at: Date.now() })
   }
 
@@ -253,7 +256,7 @@ export function feedText(kind: string, payload: Record<string, unknown>, comebac
       }
       // v0.16 milestones still in the feed
       if (typeof payload.ms === 'string' && typeof payload.usd === 'number') return `Веха: ${formatUsd(payload.usd)} за месяц 💰`
-      return `Новый уровень: ${payload.level}`
+      return `Новый уровень Эло: ${payload.level}`
     case 'book':
       return `Дочитал книгу «${payload.title}»`
     case 'check':

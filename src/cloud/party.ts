@@ -3,7 +3,7 @@
  * tables (see supabase/schema.sql). Results are cached in the social store for offline display.
  */
 import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js'
-import { buildPublicStats, computeState, detectFeedEvents, levelOf, shareSettings, statsSignature } from '../engine'
+import { buildPublicStats, computeState, detectFeedEvents, shareSettings, statsSignature } from '../engine'
 import type { FeedDraft, PublicStats } from '../engine'
 import { useStore } from '../store/store'
 import { nowWithOffset } from '../store/hooks'
@@ -279,7 +279,7 @@ export async function postFeedEvents() {
     const me = st.members[party.id]?.find((m) => m.id === acc.id)
     const joined = me ? Date.parse(me.joined_at) : NaN
     const since = Math.max(st.since, Number.isFinite(joined) ? joined : st.since)
-    const drafts = detectFeedEvents(data, game, { since, levelAtSince: st.levelAtSince ?? levelOf(game.xp).level, share: shareSettings(data) })
+    const drafts = detectFeedEvents(data, game, { since, levelAtSince: st.levelAtSince ?? game.eloLevel, share: shareSettings(data) })
     const posted = new Set(st.posted[party.id] ?? [])
     const fresh = drafts.filter((d) => !posted.has(d.key))
     if (!fresh.length) continue

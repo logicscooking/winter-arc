@@ -53,7 +53,7 @@ function useTodayMode(): [TodayMode, (m: TodayMode) => void] {
 }
 
 /** Day progress: one ring split by areas (rows + warm-up + переходы + events of today), a legend per area */
-export function DayRingCard({ progress }: { progress: DayProgress }) {
+export function DayRingCard({ progress, eloGain = 0 }: { progress: DayProgress; eloGain?: number }) {
   const pct = progress.total ? Math.round((progress.done / progress.total) * 100) : 0
   const full = progress.total > 0 && progress.done === progress.total
   const parts = AREAS.filter((a) => progress.areas[a.id][1] > 0)
@@ -110,6 +110,7 @@ export function DayRingCard({ progress }: { progress: DayProgress }) {
             )
           })}
         </ul>
+        {eloGain > 0 && <span className="elo-gain" style={{ marginLeft: 0 }}>+{eloGain} Эло сегодня</span>}
       </div>
     </section>
   )

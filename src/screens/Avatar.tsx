@@ -31,6 +31,7 @@ export function AvatarScreen() {
       wear(item.slot, worn[item.slot] === item.id ? '' : item.id)
       return
     }
+    if (item.eloLevel !== undefined) return say(`Откроется на уровне Эло ${item.eloLevel}. Сейчас ${game.eloLevel}.`)
     if (item.level !== undefined) return say(`Откроется на уровне ${item.level}. Сейчас ${level}.`)
     if (item.conqueror) return say(`Награда «${CONQUEROR.title}»: закрой ${CONQUEROR.need} из 98 дней арки.`)
     if (item.moneyBoss !== undefined) return say('Откроется, когда убьёшь главного босса месяца: $10 000 за месяц.')

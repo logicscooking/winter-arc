@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { LEVEL_CAP, LEVEL_UP_SHARDS, levelOf, levelTitle, nextTitle, sphereLevelOf, xpForLevel } from './levels'
+import { ELO_LEVEL_SHARDS } from './elo'
+import { LEVEL_CAP, levelOf, levelTitle, nextTitle, sphereLevelOf, xpForLevel } from './levels'
 import { CAPS, computeState, heroTitle, heroTitles } from './replay'
 import { CONQUEROR } from './conqueror'
 import { normalizeData } from './data'
@@ -55,16 +56,15 @@ describe('уровни героя до 30', () => {
     expect(nextTitle(7)).toEqual({ level: 10, title: 'Морозный' })
     expect(nextTitle(30)).toBeNull()
     // a special item every 5 levels
-    for (const l of [5, 10, 15, 20, 25, 30]) expect(GEAR.filter((g) => g.level === l).length, `item at ${l}`).toBeGreaterThanOrEqual(1)
+    for (const l of [5, 6, 7, 8, 9, 10]) expect(GEAR.filter((g) => g.eloLevel === l).length, `item at Эло ${l}`).toBeGreaterThanOrEqual(1)
   })
 
-  it('новый уровень даёт ❄ один раз, пересчёт ничего не удваивает', () => {
+  it('уровень Эло даёт ❄ один раз, пересчёт ничего не удваивает', () => {
     const data = makeData()
     perfectDays(data, D1, 7)
     const st = computeState(data, nowAt(addDays(D1, 6), 22))
-    const levels = st.levelUps.map((l) => l.level)
-    expect(levels).toEqual(Array.from({ length: levelOf(st.xp).level - 1 }, (_, i) => i + 2))
-    expect(st.levelUps.every((l) => l.shards === LEVEL_UP_SHARDS(l.level))).toBe(true)
+    expect(st.levelUps.map((l) => l.level)).toEqual(Array.from({ length: st.eloLevel - 4 }, (_, i) => i + 5))
+    expect(st.levelUps.every((l) => l.shards === ELO_LEVEL_SHARDS(l.level))).toBe(true)
     const again = computeState(structuredClone(data), nowAt(addDays(D1, 6), 23))
     expect(again.shards).toBe(st.shards)
     expect(again.levelUps).toEqual(st.levelUps)
