@@ -37,20 +37,30 @@ def base(name, actions, **extra):
     d.update(extra)
     return d
 
+def dbg_url():
+    # the pause URL plus what was compared, so a failing check is visible on the pause screen
+    a = PAUSE_URL + '&u='
+    b = a + '\ufffc&n='
+    return {'Value': {'string': b + '\ufffc', 'attachmentsByRange': {
+        '{%d, 1}' % len(a): {'OutputUUID': ft, 'Type': 'ActionOutput', 'OutputName': 'Text'},
+        '{%d, 1}' % len(b): {'OutputUUID': nn, 'Type': 'ActionOutput', 'OutputName': 'Numbers'}}},
+        'WFSerializationType': 'WFTextTokenString'}
+
 # ---- WA Пауза: open the pause page unless an «entered» window is active
-gf, un, g, url = U(), U(), U(), U()
+gf, ft, un, g, url = U(), U(), U(), U(), U()
 nn, now_acts = now_number()
 pause = [
     act('is.workflow.actions.comment', WFCommentActionText='Winter Arc. Запускается автоматизацией «Instagram открыт». Если после «Захожу» окно ещё идёт — ничего не делает, иначе открывает паузу.'),
     act('is.workflow.actions.documentpicker.open', gf, WFShowFilePicker=False, WFGetFilePath=txt(FILE), WFFileErrorIfNotFound=False),
-    act('is.workflow.actions.detect.number', un, WFInput=att(gf, 'File')),
+    act('is.workflow.actions.detect.text', ft, WFInput=att(gf, 'File')),
+    act('is.workflow.actions.detect.number', un, WFInput=att(ft, 'Text')),
     *now_acts,
     act('is.workflow.actions.conditional', g, GroupingIdentifier=g, WFControlFlowMode=0, WFCondition=2,
         WFInput={'Type': 'Variable', 'Variable': {'Value': {'OutputUUID': nn, 'Type': 'ActionOutput', 'OutputName': 'Numbers',
                  'Aggrandizements': [{'Type': 'WFCoercionVariableAggrandizement', 'CoercionItemClass': 'WFNumberContentItem'}]},
                  'WFSerializationType': 'WFTextTokenAttachment'}},
         WFNumberValue=att(un, 'Numbers')),
-    act('is.workflow.actions.url', url, WFURLActionURL=PAUSE_URL),
+    act('is.workflow.actions.url', url, WFURLActionURL=dbg_url()),
     act('is.workflow.actions.openurl', WFInput=att(url, 'URL'), Show=True),
     act('is.workflow.actions.conditional', GroupingIdentifier=g, WFControlFlowMode=1),
     act('is.workflow.actions.comment', WFCommentActionText='Окно «Захожу» ещё идёт — не мешаем.'),

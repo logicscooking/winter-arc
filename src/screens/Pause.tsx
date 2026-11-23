@@ -38,12 +38,15 @@ export function Pause({ app }: { app: string }) {
   const price = priceFor(item.basePrice, chapterOf(today))
   const buyable = canBuy(game.shards, price)
   const name = NAMES[app] ?? app
+  // «WA Пауза» passes what it compared: the saved window end (u) and now (n), both yyyyMMddHHmmss
+  const q = new URLSearchParams(window.location.hash.split('?')[1] ?? '')
+  const dbg = q.has('n') ? `окно до ${q.get('u') || 'нет'} · сейчас ${q.get('n')}` : ''
 
   const enter = (min: number) => {
     logPause(app, 'entered', min, nowWithOffset())
     setEntered(min)
     setState('entered')
-    if (app === 'instagram') window.location.href = enterShortcutUrl(min)
+    if (app === 'instagram') window.location.href = enterShortcutUrl(Math.max(1, min))
   }
 
   return (
@@ -141,6 +144,11 @@ export function Pause({ app }: { app: string }) {
               Вернуться в Winter Arc
             </a>
           </div>
+        )}
+        {dbg && (
+          <p className="tiny muted" style={{ textAlign: 'center', opacity: 0.6 }}>
+            {dbg}
+          </p>
         )}
       </div>
     </div>
