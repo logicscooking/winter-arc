@@ -10,22 +10,20 @@ import {
   GEAR,
   ELO_TITLES,
   SPHERES,
-  SPHERE_PERKS,
   MAIN_BOSS_PRIZE,
   MAIN_MONEY_BOSS,
   addDays,
   diffDays,
   formatUsd,
   moneyBossById,
-  laggingSphere,
   eloTitle,
   levelOf,
   plural,
-  sphereLevelOf,
-  sphereQuestStats,
+  sphereWeekGrid,
+  RU_WEEKDAYS,
   wornOutfit,
 } from '../engine'
-import type { Area, GameState, GearItem, Outfit, SphereQuestStats } from '../engine'
+import type { Area, GameState, GearItem, Outfit } from '../engine'
 import { useStore } from '../store/store'
 import { haptic, useGame } from '../store/hooks'
 import { MoneyBossSprite, PixelAvatar, Px } from '../pixel/Pixel'
@@ -33,56 +31,114 @@ import { useWornOutfit } from '../pixel/useHero'
 import { AREA_ICON } from '../screens/todayItems'
 import { AREA_COLOR } from '../screens/TodayBlocks'
 
-// ---------- spheres ----------
+// ---------- spheres: radar + week grid ----------
+
+const CX = 150
+const CY = 118
+const RAD = 74
+/** axes clockwise from the top: Здоровье, Деньги, Развитие, Разное */
+const ANGLE = [-90, 0, 90, 180]
+const pt = (i: number, r: number) => `${(CX + Math.cos((ANGLE[i] * Math.PI) / 180) * r).toFixed(1)},${(CY + Math.sin((ANGLE[i] * Math.PI) / 180) * r).toFixed(1)}`
+const poly = (vals: number[]) => vals.map((v, i) => pt(i, RAD * Math.max(0.02, v))).join(' ')
 
 export function SphereList({ game }: { game: GameState }) {
   const quests = useStore((s) => s.data.quests)
-  const lag = laggingSphere(game.xpBySphere)
-  const stats = useMemo(() => sphereQuestStats(game, quests, game.today), [game, quests])
+  const g = useMemo(() => sphereWeekGrid(game, quests, game.today), [game, quests])
+  const areas = SPHERES.map((s) => s.id)
+  const now = areas.map((a) => g.thisWeek[a] ?? 0)
+  const before = areas.map((a) => g.lastWeek[a] ?? 0)
+  const totals = Object.fromEntries(areas.map((a) => [a, g.cells[a].reduce((t, c) => ({ done: t.done + c.done, total: t.total + c.total }), { done: 0, total: 0 })])) as Record<Area, { done: number; total: number }>
+  const known = areas.filter((a) => g.thisWeek[a] !== null)
+  const best = known.reduce<Area | null>((m, a) => (m === null || g.thisWeek[a]! > g.thisWeek[m]! ? a : m), null)
+  const worst = known.reduce<Area | null>((m, a) => (m === null || g.thisWeek[a]! < g.thisWeek[m]! ? a : m), null)
+  const pct = (a: Area) => Math.round((g.thisWeek[a] ?? 0) * 100)
+  const title = (a: Area) => SPHERES.find((s) => s.id === a)!.title
+  let verdict = 'За эту неделю ещё нет квестов в планах.'
+  if (best && worst) {
+    if (best === worst || g.thisWeek[best] === g.thisWeek[worst]) verdict = `Все сферы идут вровень — ${pct(best)}%.`
+    else verdict = `Сильнее всего — ${title(best)} ${pct(best)}%. Подтяни ${title(worst)}: ${totals[worst].done} из ${totals[worst].total} за неделю.`
+  }
   return (
-    <div className="sphere-list">
-      {SPHERES.map((s) => (
-        <SphereRow key={s.id} area={s.id} title={s.title} xp={game.xpBySphere[s.id]} lagging={lag === s.id} stats={stats[s.id]} />
-      ))}
-    </div>
-  )
-}
+    <div className="panel stack sphere-card">
+      <div className="radar" role="img" aria-label={`Сферы за неделю: ${areas.map((a) => `${title(a)} ${pct(a)}%`).join(', ')}`}>
+        <svg viewBox="0 0 300 236" aria-hidden>
+          {[0.25, 0.5, 0.75, 1].map((k) => (
+            <polygon key={k} className={`radar-ring${k === 1 ? ' outer' : ''}`} points={areas.map((_, i) => pt(i, RAD * k)).join(' ')} />
+          ))}
+          {areas.map((_, i) => (
+            <line key={i} className="radar-axis" x1={CX} y1={CY} x2={pt(i, RAD).split(',')[0]} y2={pt(i, RAD).split(',')[1]} />
+          ))}
+          <polygon className="radar-last" points={poly(before)} />
+          <polygon className="radar-now" points={poly(now)} />
+          {areas.map((a, i) => {
+            const [x, y] = pt(i, RAD * Math.max(0.02, now[i])).split(',')
+            return <circle key={a} cx={x} cy={y} r={4.5} className="radar-dot" style={{ fill: AREA_COLOR[a] }} />
+          })}
+          {[25, 50, 75].map((k) => (
+            <text key={k} className="radar-tick" x={CX + 3} y={CY - (RAD * k) / 100 + 9}>
+              {k}
+            </text>
+          ))}
+        </svg>
+        {areas.map((a, i) => (
+          <div key={a} className={`radar-tip t${i}`} style={{ '--sc': AREA_COLOR[a] } as React.CSSProperties}>
+            <span className="radar-ico">
+              <Px name={AREA_ICON[a]} size={18} />
+            </span>
+            <b>{title(a)}</b>
+            <span className="num">{g.thisWeek[a] === null ? '—' : `${pct(a)}%`}</span>
+          </div>
+        ))}
+      </div>
+      <div className="radar-legend tiny">
+        <span>
+          <i className="lg-now" /> эта неделя
+        </span>
+        <span>
+          <i className="lg-last" /> прошлая
+        </span>
+      </div>
+      <p className="small" style={{ margin: 0 }}>
+        {verdict}
+      </p>
 
-/** One sphere in plain numbers: this week's quests, the arc total, what its level gives */
-function SphereRow({ area, title, xp, lagging, stats }: { area: Area; title: string; xp: number; lagging: boolean; stats: SphereQuestStats }) {
-  const l = sphereLevelOf(xp)
-  const gold = l.level >= 15
-  const next = SPHERE_PERKS[area].find((p) => p.level > l.level)
-  const { done, total } = stats.week
-  const pct = total ? Math.round((done / total) * 100) : 0
-  return (
-    <div className={`panel tight sphere-row${gold ? ' gold' : ''}${lagging ? ' lag' : ''}`} style={{ '--sc': AREA_COLOR[area] } as React.CSSProperties}>
-      <div className="sphere-icon">
-        <Px name={AREA_ICON[area]} size={28} />
-      </div>
-      <div className="stack" style={{ gap: 5, minWidth: 0 }}>
-        <div className="row between" style={{ gap: 6 }}>
-          <span style={{ fontWeight: 800 }}>
-            {title}
-            {lagging && <span className="lag-chip">отстаёт</span>}
-          </span>
-          <span className="tiny muted num">ур. {l.level}</span>
+      <div className="week-grid" role="table" aria-label="Сферы по дням недели">
+        <div className="wg-row wg-head" role="row">
+          <span />
+          {g.days.map((d, i) => (
+            <span key={d} className={`tiny${d === game.today ? ' now' : ''}`} role="columnheader">
+              {RU_WEEKDAYS[i]}
+            </span>
+          ))}
+          <span />
         </div>
-        <span className="small">
-          Эта неделя: <b className="num">{done}</b> из <b className="num">{total}</b> {plural(total, 'квеста', 'квестов', 'квестов')}
-          {total > 0 && <span className="muted"> ({pct}%)</span>}
-        </span>
-        <div className="bar sphere-bar" role="progressbar" aria-label={`${title}: квестов этой недели сделано ${pct}%`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
-          <i style={{ width: `${pct}%` }} />
-        </div>
-        <span className="tiny muted">
-          За арку: <b className="num">{stats.arcDone}</b> выполнено · до ур. {l.level + 1}: {Math.max(0, l.span - l.into)} очков
-          {next ? ` · на ур. ${next.level}: ${next.title}` : ' · все бонусы взяты'}
-        </span>
+        {areas.map((a) => (
+          <div key={a} className="wg-row" role="row" style={{ '--sc': AREA_COLOR[a] } as React.CSSProperties}>
+            <span className="wg-name small" role="rowheader">
+              <Px name={AREA_ICON[a]} size={18} />
+              {title(a)}
+            </span>
+            {g.cells[a].map((c, i) => {
+              const d = g.days[i]
+              const future = d > game.today
+              const r = c.total ? c.score / c.total : 0
+              const cls = future ? 'future' : !c.total ? 'none' : r >= 1 ? 'full' : r > 0 ? 'part' : 'zero'
+              return (
+                <i
+                  key={d}
+                  role="cell"
+                  className={`wg-cell ${cls}${d === game.today ? ' today' : ''}`}
+                  style={cls === 'part' ? ({ '--o': `${Math.round(28 + r * 52)}%` } as React.CSSProperties) : undefined}
+                  aria-label={`${RU_WEEKDAYS[i]}: ${future ? 'впереди' : c.total ? `${c.done} из ${c.total}` : 'нет квестов'}`}
+                />
+              )
+            })}
+            <span className="wg-sum num tiny">
+              {totals[a].done}/{totals[a].total}
+            </span>
+          </div>
+        ))}
       </div>
-      <span className="sphere-lvl num" aria-hidden>
-        {l.level}
-      </span>
     </div>
   )
 }

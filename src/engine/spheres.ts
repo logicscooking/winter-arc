@@ -108,3 +108,59 @@ export function sphereQuestStats(
   }
   return out
 }
+
+export interface SphereCell {
+  /** quests of the sphere planned that day */
+  total: number
+  /** done + mini quests (a count, like the day ring) */
+  done: number
+  /** done = 1, mini = 0.5 (the weight behind the percentages) */
+  score: number
+}
+
+export interface SphereWeekGrid {
+  /** Mon … Sun of the week of `today` */
+  days: DayKey[]
+  cells: Record<Area, SphereCell[]>
+  /** this week up to today / the whole last week: completion 0..1 per sphere, null when nothing was planned */
+  thisWeek: Record<Area, number | null>
+  lastWeek: Record<Area, number | null>
+}
+
+/**
+ * Sphere × day numbers for the radar and the week grid on «Персонаж». Pure: reads the replayed days
+ * (plan + marks) and the area of each quest. Future days stay empty; mini counts as half a quest in %.
+ */
+export function sphereWeekGrid(
+  game: { days: Record<DayKey, { plan: { id: string }[]; marks: Record<string, MarkStatus | undefined> }> },
+  quests: Pick<Quest, 'id' | 'area'>[],
+  today: DayKey,
+): SphereWeekGrid {
+  const monday = addDays(today, -weekday(today))
+  const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i))
+  const areaOf = (id: string) => questArea({ id, area: quests.find((q) => q.id === id)?.area })
+  const cellOf = (d: DayKey): Record<Area, SphereCell> => {
+    const out = Object.fromEntries(AREAS.map((a) => [a.id, { total: 0, done: 0, score: 0 }])) as Record<Area, SphereCell>
+    const r = d <= today ? game.days[d] : undefined
+    for (const p of r?.plan ?? []) {
+      const c = out[areaOf(p.id)]
+      const m = r!.marks[p.id]
+      c.total++
+      if (m === 'done') (c.done++, (c.score += 1))
+      else if (m === 'mini') (c.done++, (c.score += 0.5))
+    }
+    return out
+  }
+  const week = days.map(cellOf)
+  const last = Array.from({ length: 7 }, (_, i) => cellOf(addDays(monday, i - 7)))
+  const cells = Object.fromEntries(AREAS.map((a) => [a.id, week.map((w) => w[a.id])])) as Record<Area, SphereCell[]>
+  const ratio = (list: Record<Area, SphereCell>[]) =>
+    Object.fromEntries(
+      AREAS.map((a) => {
+        const t = list.reduce((s, w) => s + w[a.id].total, 0)
+        const sc = list.reduce((s, w) => s + w[a.id].score, 0)
+        return [a.id, t ? sc / t : null]
+      }),
+    ) as Record<Area, number | null>
+  return { days, cells, thisWeek: ratio(week), lastWeek: ratio(last) }
+}

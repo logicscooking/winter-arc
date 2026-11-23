@@ -2130,21 +2130,41 @@ body:has(.top-garland:not(.is-off)) .topbar::after {
 .hs-title { font-size: 0.72rem; font-weight: 900; color: var(--gold); line-height: 1; margin-top: -2px; }
 .fat-bar.xp.max > i { background: linear-gradient(90deg, var(--gold-mark), var(--gold-bright)); }
 
-.sphere-list { display: grid; gap: 8px; }
-.sphere-row { display: grid; grid-template-columns: 46px 1fr auto; gap: 12px; align-items: center; }
-.sphere-row.gold { border-color: var(--gold-mark); box-shadow: var(--shadow-1), inset 0 0 0 2px color-mix(in srgb, var(--gold-mark) 35%, transparent); }
-.sphere-row.lag { border-style: dashed; }
-.sphere-icon {
-  width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center;
-  background: color-mix(in srgb, var(--sc) 20%, var(--surface-2)); box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.16);
-}
-.sphere-row.gold .sphere-icon { outline: 2px solid var(--gold-mark); outline-offset: 1px; }
-.sphere-bar > i { background: var(--sc); }
-.sphere-lvl { font-size: 1.5rem; min-width: 32px; text-align: right; font-weight: 900; }
-.lag-chip {
-  margin-left: 6px; padding: 1px 7px; border-radius: 99px; font-size: 0.68rem; font-weight: 900; vertical-align: 2px;
-  background: var(--hp-soft); color: var(--hp);
-}
+.sphere-card { gap: 10px; }
+.radar { position: relative; width: 100%; max-width: 380px; margin: 0 auto; aspect-ratio: 300 / 236; }
+.radar svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.radar-ring { fill: none; stroke: var(--line); stroke-width: 1; }
+.radar-ring.outer { stroke: var(--mist); stroke-opacity: 0.55; }
+.radar-axis { stroke: var(--line); stroke-width: 1; }
+.radar-now { fill: color-mix(in srgb, var(--c1) 30%, transparent); stroke: var(--c1); stroke-width: 2.5; stroke-linejoin: round; }
+.radar-last { fill: color-mix(in srgb, var(--mist) 12%, transparent); stroke: var(--mist); stroke-width: 1.6; stroke-dasharray: 4 3; stroke-linejoin: round; }
+.radar-dot { stroke: var(--surface); stroke-width: 2; }
+.radar-tick { font-size: 8px; fill: var(--mist); font-family: var(--num-sm); }
+.radar-tip { position: absolute; display: grid; justify-items: center; gap: 0; transform: translate(-50%, -50%); font-size: 0.72rem; line-height: 1.15; text-align: center; min-width: 64px; }
+.radar-tip b { font-weight: 800; color: var(--ink); }
+.radar-tip .num { color: var(--sc); font-weight: 900; font-size: 0.82rem; filter: brightness(0.92); }
+.radar-ico { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 9px; background: color-mix(in srgb, var(--sc) 22%, var(--surface-2)); }
+.radar-tip.t0 { left: 50%; top: 12%; }
+.radar-tip.t1 { left: 87%; top: 50%; }
+.radar-tip.t2 { left: 50%; top: 91%; }
+.radar-tip.t3 { left: 13%; top: 50%; }
+.radar-legend { display: flex; justify-content: center; gap: 16px; color: var(--mist); }
+.radar-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.lg-now { width: 14px; height: 8px; border-radius: 3px; background: color-mix(in srgb, var(--c1) 30%, transparent); border: 2px solid var(--c1); box-sizing: border-box; }
+.lg-last { width: 14px; height: 0; border-top: 2px dashed var(--mist); }
+.week-grid { display: grid; gap: 5px; padding-top: 4px; border-top: 1px solid var(--line-soft); }
+.wg-row { display: grid; grid-template-columns: minmax(70px, 96px) repeat(7, minmax(0, 1fr)) 34px; gap: 5px; align-items: center; }
+.wg-head { text-align: center; color: var(--mist); }
+.wg-head .now { color: var(--ink); font-weight: 900; }
+.wg-name { display: flex; align-items: center; gap: 6px; font-weight: 700; min-width: 0; }
+.wg-cell { display: block; aspect-ratio: 1; max-height: 34px; width: 100%; border-radius: 7px; box-sizing: border-box; background: var(--surface-3); }
+.wg-cell.none { background: transparent; border: 1px solid var(--line-soft); }
+.wg-cell.zero { background: var(--surface-3); }
+.wg-cell.part { background: color-mix(in srgb, var(--sc) var(--o, 50%), var(--surface-3)); }
+.wg-cell.full { background: var(--sc); }
+.wg-cell.future { background: transparent; border: 1.5px dashed var(--line); }
+.wg-cell.today { outline: 2px solid var(--ink); outline-offset: 1px; }
+.wg-sum { text-align: right; color: var(--mist); }
 .perk-dots { display: flex; align-items: center; gap: 4px; min-width: 0; }
 .perk-dot {
   flex: none; width: 22px; height: 18px; border-radius: 6px; display: grid; place-items: center;
