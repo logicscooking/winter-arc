@@ -2338,3 +2338,9 @@ body:has(.top-garland:not(.is-off)) .topbar::after {
 .streak-best { display: block; margin-top: 2px; font-weight: 800; color: var(--ink-2); }
 .streak-card.big .streak-today { font-size: 0.95rem; }
 .streak-month-head { display: flex; justify-content: space-between; align-items: baseline; color: var(--ink-2); }
+
+/* Party: «Сделано X из Y» ring like on Today */
+.member-day-head .timer-ring { position: relative; flex: none; display: grid; place-items: center; }
+.member-day-head .timer-ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.member-ring-pct { position: relative; font-weight: 900; font-size: 0.8rem; color: var(--ink); }
+.member-done { font-weight: 900; font-size: 1.05rem; color: var(--ink); }

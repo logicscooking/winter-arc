@@ -18,6 +18,7 @@ import type { DuelPub } from './duels'
 import { publicRecap, publicWeek } from './week'
 import type { PubGoal, PubRecap } from './week'
 import { ARC_START, chapterOf, gameDayOf } from './time'
+import { dayStreak } from './streak'
 import type { AppData, DayKey, Outfit, SlipWhat } from './types'
 
 export type ShareKey = 'slips' | 'perfect' | 'level' | 'book'
@@ -123,7 +124,8 @@ export function buildPublicStats(data: AppData, game: GameState, now: Date): Pub
       t: (data.quests.find((q) => q.id === p.id)?.title ?? p.id).slice(0, 40),
       n: questStreak(game, p.id, today).last7,
     })),
-    honesty: game.honestyStreak,
+    // v0.24: the field keeps its name for old clients, the value is the closed-days streak
+    honesty: dayStreak(game, today).run,
     freezes: game.freezes,
     outfit: wornOutfit(data.profile?.outfit, level, data.purchases, game),
     // «Десятка в месяц» tells the income: public only with the money opt-in

@@ -13,7 +13,7 @@ import type { FeedEvent, Member, Party as PartyT } from '../cloud/state'
 import { createParty, deleteEvent, joinParty, leaveParty, markNudgesSeen, react, refreshParty, regenerateCode, sendNudge, setActiveParty, signedUrl } from '../cloud/party'
 import { AuthForm } from '../components/AuthForm'
 import { HeroAva, useUserOutfit } from '../components/HeroAva'
-import { Help, Sheet } from '../components/ui'
+import { Help, Ring, Sheet } from '../components/ui'
 import { RankBadge } from '../components/skills'
 import { RANKS } from '../engine'
 import type { Rank } from '../engine'
@@ -163,7 +163,7 @@ function DuelsTab() {
           <div className="row" style={{ gap: 10 }}>
             <HeroAva userId={m.id} size={40} />
             <b className="grow member-nick">{m.display_name}</b>
-            {m.stats && <span className="lvl-badge">УР {m.stats.level}</span>}
+            {m.stats && <span className="tiny muted num">Эло {typeof m.stats.elo === 'number' ? Math.round(m.stats.elo) : 1000}</span>}
           </div>
           <DuelArea friend={m} meId={me.id} members={members} />
         </article>
@@ -593,8 +593,8 @@ function MemberCard({ m, isMe, owner, onNudge }: { m: Member; isMe: boolean; own
   const sent = useSocial((st) => st.sentNudges[m.id])
   const cooling = sent !== undefined && Date.now() - sent < 3600_000
   // v0.23: Эло is the one rank; old snapshots may carry only the XP level (hp / xp are legacy and ignored)
-  const elo = typeof s?.elo === 'number' && Number.isFinite(s.elo) ? Math.max(0, Math.round(s.elo)) : undefined
-  const level = typeof s?.level === 'number' && Number.isFinite(s.level) ? Math.max(1, Math.min(10, Math.round(s.level))) : 1
+  // a friend on an old version has no Эло yet: everyone starts at 1000
+  const elo = typeof s?.elo === 'number' && Number.isFinite(s.elo) ? Math.max(0, Math.round(s.elo)) : 1000
   const honesty = typeof s?.honesty === 'number' && Number.isFinite(s.honesty) ? s.honesty : 0
   const updated = s ? (fresh ? `обновлено ${timeAgo(m.stats_at ?? new Date(s.at).toISOString())}` : 'сегодня ещё не заходил') : 'ещё нет данных'
   return (
@@ -612,14 +612,12 @@ function MemberCard({ m, isMe, owner, onNudge }: { m: Member; isMe: boolean; own
           {s ? (
             <>
               <div className="member-badges">
-                {elo === undefined && <span className="lvl-badge">УР {level}</span>}
-                {typeof s.title === 'string' && s.title && <span className="title-chip">{s.title.slice(0, 24)}</span>}
-                <span className="streak-chip" title="Дни подряд с исповедью" aria-label={`Честность: ${honesty} ${plural(honesty, 'день', 'дня', 'дней')} подряд`}>
-                  <Px name="flame" size={16} /> честность {honesty}
+                <span className="streak-chip" title="Закрытые дни подряд" aria-label={`Стрик: ${honesty} ${plural(honesty, 'день', 'дня', 'дней')} подряд`}>
+                  <Px name="flame" size={16} /> стрик {honesty}
                 </span>
                 {s.warmup && <span className="tag warm">разминка</span>}
               </div>
-              {elo !== undefined ? <EloBlock elo={elo} size={40} /> : <span className="tiny muted">Эло появится, когда друг обновит приложение</span>}
+              <EloBlock elo={elo} size={40} />
             </>
           ) : (
             <span className="tiny muted">Герой ещё не прислал статы</span>
@@ -650,16 +648,17 @@ function MemberDay({ s, fresh }: { s: PublicStats; fresh: boolean }) {
   return (
     <div className="member-day">
       <div className="member-day-head">
-        <Px name="quests" size={18} />
-        <span className="grow">Квесты дня</span>
+        <Ring progress={bulbs.length ? lit / bulbs.length : 0} size={52} stroke={6}>
+          <span className="member-ring-pct num">{bulbs.length ? Math.round((lit / bulbs.length) * 100) : 0}%</span>
+        </Ring>
+        <span className="grow member-done">
+          Сделано {lit} из {bulbs.length}
+        </span>
         {fresh && s.confessed && (
           <span className="tag auto">
             <Check size={11} aria-hidden strokeWidth={4} /> исповедь
           </span>
         )}
-        <span className="num">
-          {lit}/{bulbs.length}
-        </span>
       </div>
       {bulbs.length > 0 && (
         <div className="day-seg" style={{ gridTemplateColumns: `repeat(${bulbs.length}, 1fr)` }} role="img" aria-label={`Закрыто ${lit} из ${bulbs.length}`}>
