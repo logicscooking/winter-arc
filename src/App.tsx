@@ -154,7 +154,7 @@ export default function App() {
       <Snow />
       <TopGarland hidden={!shell} />
       <div className="status-shade" aria-hidden />
-      {top === 'pause' ? <Pause app={route.query.get('app') ?? 'instagram'} /> : !data.profile ? <Onboarding /> : missed.length > 0 ? <MissedDays days={missed} /> : <Shell top={top} />}
+      {top === 'pause' ? <Pause key={route.query.toString()} app={route.query.get('app') ?? 'instagram'} /> : !data.profile ? <Onboarding /> : missed.length > 0 ? <MissedDays days={missed} /> : <Shell top={top} />}
     </>
   )
 }
