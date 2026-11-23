@@ -6,6 +6,7 @@ PAUSE_URL = 'https://logicscooking.github.io/winter-arc/#/pause?app=instagram'
 
 def U(): return str(uuid.uuid4()).upper()
 def att(uid, name): return {'Value': {'OutputUUID': uid, 'Type': 'ActionOutput', 'OutputName': name}, 'WFSerializationType': 'WFTextTokenAttachment'}
+def tok(uid, name): return {'Value': {'string': '\ufffc', 'attachmentsByRange': {'{0, 1}': {'OutputUUID': uid, 'Type': 'ActionOutput', 'OutputName': name}}}, 'WFSerializationType': 'WFTextTokenString'}
 def txt(s): return {'Value': {'string': s, 'attachmentsByRange': {}}, 'WFSerializationType': 'WFTextTokenString'}
 def act(ident, uid=None, **p):
     if uid: p['UUID'] = uid
@@ -14,7 +15,7 @@ def now_number():
     d, f, n = U(), U(), U()
     return n, [
         act('is.workflow.actions.date', d, WFDateActionMode='Current Date'),
-        act('is.workflow.actions.format.date', f, WFDateFormatStyle='Custom', WFDateFormat=FMT, WFDate=att(d, 'Date')),
+        act('is.workflow.actions.format.date', f, WFDateFormatStyle='Custom', WFDateFormat=FMT, WFDate=tok(d, 'Date')),
         act('is.workflow.actions.detect.number', n, WFInput=att(f, 'Formatted Date')),
     ]
 def base(name, actions, **extra):
@@ -45,14 +46,14 @@ pause = [
     act('is.workflow.actions.detect.number', un, WFInput=att(gf, 'File')),
     *now_acts,
     act('is.workflow.actions.conditional', g, GroupingIdentifier=g, WFControlFlowMode=0, WFCondition=2,
-        WFInput={'Type': 'Variable', 'Variable': {'Value': {'OutputUUID': un, 'Type': 'ActionOutput', 'OutputName': 'Numbers',
+        WFInput={'Type': 'Variable', 'Variable': {'Value': {'OutputUUID': nn, 'Type': 'ActionOutput', 'OutputName': 'Numbers',
                  'Aggrandizements': [{'Type': 'WFCoercionVariableAggrandizement', 'CoercionItemClass': 'WFNumberContentItem'}]},
                  'WFSerializationType': 'WFTextTokenAttachment'}},
-        WFNumberValue=att(nn, 'Numbers')),
-    act('is.workflow.actions.comment', WFCommentActionText='Окно «Захожу» ещё идёт — не мешаем.'),
-    act('is.workflow.actions.conditional', GroupingIdentifier=g, WFControlFlowMode=1),
+        WFNumberValue=att(un, 'Numbers')),
     act('is.workflow.actions.url', url, WFURLActionURL=PAUSE_URL),
     act('is.workflow.actions.openurl', WFInput=att(url, 'URL'), Show=True),
+    act('is.workflow.actions.conditional', GroupingIdentifier=g, WFControlFlowMode=1),
+    act('is.workflow.actions.comment', WFCommentActionText='Окно «Захожу» ещё идёт — не мешаем.'),
     act('is.workflow.actions.conditional', GroupingIdentifier=g, WFControlFlowMode=2),
 ]
 
@@ -62,9 +63,9 @@ enter = [
     act('is.workflow.actions.comment', WFCommentActionText='Winter Arc. Вход: число минут. Запоминает, до какого времени пауза не мешает, и открывает Instagram.'),
     act('is.workflow.actions.detect.number', mn, WFInput={'Value': {'Type': 'ExtensionInput'}, 'WFSerializationType': 'WFTextTokenAttachment'}),
     act('is.workflow.actions.date', d, WFDateActionMode='Current Date'),
-    act('is.workflow.actions.adjustdate', ad, WFDate=att(d, 'Date'), WFAdjustOperation='Add',
+    act('is.workflow.actions.adjustdate', ad, WFDate=tok(d, 'Date'), WFAdjustOperation='Add',
         WFDuration={'Value': {'Unit': 'min', 'Magnitude': att(mn, 'Numbers')}, 'WFSerializationType': 'WFQuantityFieldValue'}),
-    act('is.workflow.actions.format.date', fd, WFDateFormatStyle='Custom', WFDateFormat=FMT, WFDate=att(ad, 'Adjusted Date')),
+    act('is.workflow.actions.format.date', fd, WFDateFormatStyle='Custom', WFDateFormat=FMT, WFDate=tok(ad, 'Adjusted Date')),
     act('is.workflow.actions.documentpicker.save', sv, WFInput=att(fd, 'Formatted Date'), WFAskWhereToSave=False,
         WFSaveFileOverwrite=True, WFFileDestinationPath=txt(FILE)),
     act('is.workflow.actions.url', iu, WFURLActionURL='instagram://'),
