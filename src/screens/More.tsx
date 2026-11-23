@@ -642,7 +642,8 @@ function BooksPage() {
 function PauseHelp() {
   const base = `${window.location.origin}${window.location.pathname}`
   const url = `${base}#/pause?app=instagram`
-  const shortcut = (name: string) => `${base}shortcuts/${encodeURIComponent(name)}.shortcut`
+  // raw GitHub, not Pages: an old service worker would answer Pages URLs with index.html
+  const shortcut = (name: string) => `https://raw.githubusercontent.com/logicscooking/winter-arc/main/public/shortcuts/${encodeURIComponent(name)}.shortcut`
   const say = useUi((s) => s.say)
   const auto = [
     'Открой «Команды» → вкладка «Автоматизация» → «+» → «Приложение».',
