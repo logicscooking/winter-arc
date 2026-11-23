@@ -35,8 +35,7 @@ export function MoneyBossesCard({ add, history }: { add?: boolean; history?: boo
             title="Боссы месяца"
             text={[
               'Каждый месяц пять боссов. HP — в долларах, урон — всё, что ты заработал в этом месяце (по курсу из «Ещё»).',
-              'Убил — XP и WF, и так каждый месяц: 1-го числа боссы воскресают. Первая победа над главным ($10 000) — золотой костюм и титул «Десятка в месяц».',
-              'Плюс 1 XP за каждые $10 заработка в «Деньги». Удалил запись — XP и победа пересчитаются.',
+              'Убил — WF-поинты, и так каждый месяц: 1-го числа боссы воскресают. Первая победа над главным ($10 000) — золотой костюм и титул «Десятка в месяц».',
             ]}
           />
         </span>
@@ -57,7 +56,7 @@ export function MoneyBossesCard({ add, history }: { add?: boolean; history?: boo
               <b>{formatUsd(L.usd)}</b> / {formatUsd(t.usd)} HP
             </span>
             <span className="tiny muted">
-              осталось <b className="num">{usdUp(t.usd - L.usd)}</b> · награда +{t.xp} XP, +{t.shards} WF
+              осталось <b className="num">{usdUp(t.usd - L.usd)}</b> · награда +{t.shards} WF
             </span>
           </div>
         </div>

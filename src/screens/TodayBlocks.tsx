@@ -12,7 +12,6 @@ import { buildProgram, programMinutes } from '../morning/program'
 import { BLOCK_COLOR_VAR, ItemRow, PickBlockSheet, TransitionRow, blockIcon, fmtDur, useCheck } from './PlanDay'
 import { todaySections, type DayProgress, type TodayMode, type TodayRow } from './todayItems'
 import type { PlanItem } from './planItems'
-import { MoneyBossesCard } from '../components/MoneyBosses'
 import './plan.css'
 
 const R = 38
@@ -202,11 +201,6 @@ export function TodayBlocks({ game, locked }: { game: GameState; locked: boolean
                 </span>
                 {total > 0 && <span className={`td-count${done >= total ? ' full' : ''}`}>{done}/{total}</span>}
               </header>
-              {s.area === 'money' && (
-                <div className="td-mboss">
-                  <MoneyBossesCard add />
-                </div>
-              )}
               {s.rows.length > 0 ? (
                 <div className="td-sec-items">{s.rows.map(row)}</div>
               ) : s.area !== 'misc' ? (
@@ -225,7 +219,6 @@ export function TodayBlocks({ game, locked }: { game: GameState; locked: boolean
           )
         })}
       </div>
-      {mode === 'time' && <MoneyBossesCard add />}
       {mode === 'time' && (
         <a className="small link-btn td-plan-link" href="#/plan">
           {blocks.length ? 'Блоки дня' : 'Разбить день на блоки'} <ChevronRight size={14} aria-hidden />
