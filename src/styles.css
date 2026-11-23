@@ -2314,8 +2314,9 @@ body:has(.top-garland:not(.is-off)) .topbar::after {
 .elo-bar i{display:block;height:100%;border-radius:99px;transition:width .4s ease}
 .elo-next{grid-area:next;font-size:.78rem;font-weight:800;color:var(--mist)}
 .elo-table{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
-.elo-table li{display:grid;justify-items:center;gap:2px;padding:6px 2px;white-space:nowrap;border-radius:10px;background:var(--surface-2);font-size:.68rem;font-weight:800;color:var(--mist)}
+.elo-table li{display:grid;justify-items:center;min-width:0;gap:2px;padding:6px 2px;white-space:nowrap;border-radius:10px;background:var(--surface-2);font-size:.68rem;font-weight:800;color:var(--mist)}
 .elo-table li.on{outline:2px solid var(--ink);outline-offset:-2px;color:var(--ink)}
+.elo-table .elo-badge{grid-area:auto}
 .hero-elo{display:flex;justify-content:center;width:100%;max-width:320px}
 .lvl-badge.elo{display:inline-flex;align-items:center;gap:4px}
 
