@@ -31,6 +31,7 @@ import { AiSettings } from '../components/ai'
 import { setTopGarlandPref, useTopGarlandPref } from '../components/festive'
 import { AREAS, TRANSITION_MIN, questArea, transitionText } from '../engine'
 import { Why } from './Why'
+import { HowTo } from './HowTo'
 
 /** game screens first, with their pixel icons */
 const GAME: { title: string; hint: string; icon: SpriteName; href: string }[] = [
@@ -85,6 +86,8 @@ export function More({ sub }: { sub?: string }) {
       return <AccountPage />
     case 'why':
       return <Why />
+    case 'howto':
+      return <HowTo />
   }
   return (
     <div className="stack-lg">
@@ -93,6 +96,14 @@ export function More({ sub }: { sub?: string }) {
         <span className="grow">
           Зачем мы здесь
           <small>Цель арки · 1 минута</small>
+        </span>
+        <ChevronRight size={18} color="var(--mist)" aria-hidden />
+      </a>
+      <a className="list-btn why-entry" href="#/more/howto">
+        <Px name="quests" size={34} />
+        <span className="grow">
+          Как играть
+          <small>Вся игра на одном экране</small>
         </span>
         <ChevronRight size={18} color="var(--mist)" aria-hidden />
       </a>

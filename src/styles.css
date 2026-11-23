@@ -2365,3 +2365,7 @@ body:has(.top-garland:not(.is-off)) .topbar::after {
 .member-day-head .timer-ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
 .member-ring-pct { position: relative; font-weight: 900; font-size: 0.8rem; color: var(--ink); }
 .member-done { font-weight: 900; font-size: 1.05rem; color: var(--ink); }
+
+/* «Ещё → Как играть» */
+.howto-card { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; }
+.howto-card ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; color: var(--ink-2); font-size: 0.92rem; line-height: 1.4; }
