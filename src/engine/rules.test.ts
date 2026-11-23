@@ -31,10 +31,10 @@ describe('уровни', () => {
 describe('квесты по главам', () => {
   const mains = (day: string) => activeQuestsFor(DEFAULT_QUESTS, day).filter((p) => p.role === 'main').map((p) => p.id)
   it('main по таблице', () => {
-    expect(mains('2026-11-23')).toEqual(['wake', 'phone'])
-    expect(mains('2026-12-10')).toEqual(['wake', 'light', 'phone', 'reading', 'deal'])
-    expect(mains('2027-01-10')).toEqual(['wake', 'reading', 'deal', 'workout', 'reels'])
-    expect(mains('2027-02-10')).toEqual(['wake', 'reading', 'deal', 'workout', 'skill'])
+    expect(mains('2026-11-23')).toEqual(['plinko', 'wake', 'phone'])
+    expect(mains('2026-12-10')).toEqual(['plinko', 'wake', 'light', 'phone', 'reading', 'deal'])
+    expect(mains('2027-01-10')).toEqual(['plinko', 'wake', 'reading', 'deal', 'workout', 'reels'])
+    expect(mains('2027-02-10')).toEqual(['plinko', 'wake', 'reading', 'deal', 'workout', 'skill'])
   })
   it('неактивные квесты не попадают в день', () => {
     const ids = activeQuestsFor(DEFAULT_QUESTS, '2026-11-23').map((p) => p.id)
@@ -42,12 +42,12 @@ describe('квесты по главам', () => {
     expect(ids).not.toContain('skill')
     expect(ids).toContain('water')
   })
-  it('не больше 5 main — лишние становятся side', () => {
+  it('не больше 6 main — лишние становятся side', () => {
     const qs: Quest[] = DEFAULT_QUESTS.map((q) => ({ ...q, roles: ['main', 'main', 'main', 'main'] }))
     const plan = activeQuestsFor(qs, '2026-12-10')
-    expect(plan.filter((p) => p.role === 'main')).toHaveLength(5)
+    expect(plan.filter((p) => p.role === 'main')).toHaveLength(6)
     // «Сферы»: Твиттер и Рассылка лидам выключены по умолчанию
-    expect(plan.filter((p) => p.role === 'side')).toHaveLength(qs.filter((q) => q.enabled).length - 5)
+    expect(plan.filter((p) => p.role === 'side')).toHaveLength(qs.filter((q) => q.enabled).length - 6)
   })
   it('бывший main стал side → «база», XP ×0.5', () => {
     const light = DEFAULT_QUESTS.find((q) => q.id === 'light')!
@@ -186,7 +186,7 @@ describe('бэкап', () => {
     const { settings: _s, ...rest } = d
     const n = normalizeData(JSON.parse(JSON.stringify(rest)))
     expect(n.settings.reelsLimit).toBe(20)
-    expect(n.quests).toHaveLength(16)
+    expect(n.quests).toHaveLength(17)
   })
 })
 

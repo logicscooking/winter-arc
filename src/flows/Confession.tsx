@@ -74,7 +74,7 @@ export function ConfessionSheet({ day }: { day: DayKey }) {
   const warmup = day < ARC_START
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft((d) => ({ ...d, [k]: v }))
 
-  const autoByConfession = new Set(['reels', 'bedtime', 'journal'])
+  const autoByConfession = new Set(['reels', 'bedtime', 'journal', 'plinko'])
   const open = plan.filter((p) => {
     const q = data.quests.find((x) => x.id === p.id)
     if (!q || autoByConfession.has(q.kind)) return false

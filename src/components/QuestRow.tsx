@@ -95,6 +95,10 @@ export function QuestRow({ plan, quest, status, auto, day, game, locked, wakeTar
       case 'journal':
         go('/today?journal=1')
         return
+      case 'plinko':
+        say('Кинь шар в «Судьбе дня» и сделай задание — квест отметится сам')
+        go('/destiny')
+        return
     }
     complete(el, 'done')
   }

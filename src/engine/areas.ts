@@ -37,6 +37,7 @@ export const QUEST_AREA: Record<string, Area> = {
   phone: 'misc',
   journal: 'misc',
   reels: 'misc',
+  plinko: 'misc',
 }
 
 export function questArea(q: Pick<Quest, 'id' | 'area'>): Area {
@@ -78,6 +79,8 @@ export function questTime(q: Pick<Quest, 'id' | 'kind'>, wake: number, part: 'mo
       return 17 * 60
     case 'reels':
       return 21 * 60
+    case 'plinko':
+      return 13 * 60 + 30
     case 'journal':
       return 22 * 60
     case 'reading':
@@ -140,7 +143,8 @@ export function eventDayLabel(date: DayKey, today: DayKey): string {
 
 // ---------- migration ----------
 
-export const AREAS_V = 1
+/** 2: «Плинко ×2» joins */
+export const AREAS_V = 2
 
 /**
  * One-time «Сферы» migration of existing data: the new quests join from `today` on (createdDay,
@@ -153,7 +157,9 @@ export function migrateAreas(d: AppData, today: DayKey): AppData {
   if ((d.ack?.areasV ?? 0) >= AREAS_V) return d
   const ids = new Set(d.quests.map((q) => q.id))
   let order = Math.max(-1, ...d.quests.map((q) => q.order))
-  const added = AREA_QUESTS.filter((q) => !ids.has(q.id)).map((q) => ({ ...q, roles: [...q.roles] as Quest['roles'], order: ++order, createdDay: today }))
+  const first = Math.min(0, ...d.quests.map((q) => q.order))
+  // «Плинко ×2» goes first so it stays among the MAX_MAIN mains
+  const added = AREA_QUESTS.filter((q) => !ids.has(q.id)).map((q) => ({ ...q, roles: [...q.roles] as Quest['roles'], order: q.id === 'plinko' ? first - 1 : ++order, createdDay: today }))
   return { ...d, quests: [...retitlePhone(d.quests), ...added], ack: { ...d.ack, areasV: AREAS_V } }
 }
 

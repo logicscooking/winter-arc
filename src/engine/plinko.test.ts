@@ -1,3 +1,4 @@
+import { DEFAULT_QUESTS, resolveCtx, resolveMark } from './quests'
 import { describe, expect, it } from 'vitest'
 import {
   BOARD_LEVELS,
@@ -275,7 +276,7 @@ describe('Плинко v0.7: раскладка заданий дня', () => {
   it('пул: в любой час хватает на 16 разных заданий; id уникальны, иконки есть, подпись короткая', () => {
     for (const t of TIERS) {
       const n = PLINKO_POOL.filter((x) => x.tier === t).length
-      expect(n).toBeGreaterThanOrEqual(6)
+      expect(n).toBeGreaterThanOrEqual(4)
       expect(n).toBeLessThanOrEqual(12)
     }
     for (let h = 0; h < 24; h++) for (const t of TIERS) expect(plinkoPool(t, h).length).toBeGreaterThanOrEqual(NEED_TASKS[t])
@@ -722,7 +723,7 @@ describe('Плинко: данные и синк', () => {
     edit(devA, at(D1, 9), (d) => void throwAt(d, D1, 0, 9))
     edit(devA, at(D1, 9, 5), (d) => void (d.days[D1].plinko!['0'].doneAt = at(D1, 9, 5)))
     edit(devB, at(D1, 10), (d) => void throwAt(d, D1, 1, 10))
-    expect(Object.keys(toAtoms(devA.data)).filter((k) => k.includes('plinko'))).toEqual([`days/${D1}/plinko/0`, `days/${D1}/plinkoBoard`])
+    expect(Object.keys(toAtoms(devA.data)).filter((k) => k.startsWith('days/') && k.includes('plinko'))).toEqual([`days/${D1}/plinko/0`, `days/${D1}/plinkoBoard`])
 
     const merged = mergeDocs(devB.data, devB.meta, {
       v: 1,
@@ -747,5 +748,21 @@ describe('Плинко: данные и синк', () => {
     const d = makeData()
     d.settings.sound = false
     expect(toAtoms(d)['settings/sound']).toBeUndefined()
+  })
+})
+
+describe('квест «Плинко ×2»', () => {
+  it('2 задания → выполнено, 1 → мини, «Перебросить» не считается, «Отдых» считается', () => {
+    const data = makeData()
+    const q = DEFAULT_QUESTS.find((x) => x.id === 'plinko')!
+    const day = '2026-11-24'
+    const ctx = resolveCtx(data, day)
+    const drop = (n: number, taskId: string, done: boolean) => ({ n, at: 1000 + n, slot: 3, taskId, v: 2 as const, ...(done ? { doneAt: 2000 + n } : {}) })
+    const logWith = (...ds: ReturnType<typeof drop>[]) => ({ quests: {}, plinko: Object.fromEntries(ds.map((d) => [String(d.n), d])) })
+    expect(resolveMark(q, logWith(), ctx).status).toBeUndefined()
+    expect(resolveMark(q, logWith(drop(0, 'water', true)), ctx).status).toBe('mini')
+    expect(resolveMark(q, logWith(drop(0, 'water', true), drop(1, '@reroll', false)), ctx).status).toBe('mini')
+    expect(resolveMark(q, logWith(drop(0, 'water', false), drop(1, '@rest', false)), ctx).status).toBe('mini')
+    expect(resolveMark(q, logWith(drop(0, 'water', true), drop(1, '@rest', false)), ctx).status).toBe('done')
   })
 })

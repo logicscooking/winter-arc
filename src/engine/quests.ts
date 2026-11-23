@@ -2,7 +2,8 @@ import { ARC_START, chapterOf, eveningMinutes, parseHM, wakeOnTarget, wakeTarget
 import { journalAnswered, journalStatus } from './journal'
 import type { AppData, DayKey, DayLog, MarkStatus, PlannedQuest, Quest, Role } from './types'
 
-export const MAX_MAIN = 5
+/** 5 by the chapter tables + «Плинко ×2» on top */
+export const MAX_MAIN = 6
 
 export const XP = {
   main: 20,
@@ -96,6 +97,8 @@ export const AREA_QUESTS: Quest[] = [
   { id: 'meditation', title: 'Медитация 10 мин', stat: 'mind', kind: 'check', area: 'misc', ifThen: 'Когда умылся утром → 10 минут тишины с таймером', mini: '3 медленных вдоха', roles: [S, S, S, S], enabled: true, order: 12 },
   { id: 'journal', title: 'Вечерний дневник', stat: 'mind', kind: 'journal', area: 'misc', ifThen: 'Когда лёг в кровать → 5 вопросов дневника, потом книга', mini: '1–2 ответа', roles: [S, S, S, S], enabled: true, order: 13 },
   { id: 'twitter', title: 'Твиттер: посты', stat: 'deal', kind: 'number', area: 'money', unit: 'постов', min: 1, goal: 3, ifThen: 'Когда сел за стол → сначала пост, потом лента', mini: 'Черновик поста', roles: [S, S, S, S], enabled: false, order: 14 },
+  // «Плинко ×2»: something random in every day, a main quest for everyone; the migration puts it first so it stays main
+  { id: 'plinko', title: 'Плинко ×2', stat: 'will', kind: 'plinko', area: 'misc', ifThen: 'Когда сел обедать → два броска в «Судьбе дня» и делаю, что выпало', mini: '1 бросок и его задание', roles: [M, M, M, M], enabled: true, order: -1 },
   { id: 'leads', title: 'Рассылка лидам', stat: 'deal', kind: 'number', area: 'money', unit: 'сообщений', min: 10, goal: 20, ifThen: 'Когда открыл ноутбук → 10 сообщений лидам до почты', mini: 'Хотя бы 1 сообщение', roles: [S, S, S, S], enabled: false, order: 15 },
 ]
 
@@ -207,6 +210,12 @@ export function resolveMark(q: Quest | undefined, log: DayLog | undefined, ctx: 
       if (!n) return { auto: true }
       const at = Math.max(...Object.values(log.journal ?? {}).map((a) => a.at))
       return { status: journalStatus(n), at, auto: true }
+    }
+    case 'plinko': {
+      // «Плинко ×2»: a done task or «Отдых» counts, «Перебросить» doesn't
+      const got = Object.values(log.plinko ?? {}).filter((d) => d.taskId !== '@reroll' && (d.doneAt || d.taskId === '@rest'))
+      if (!got.length) return { auto: true }
+      return { status: got.length >= 2 ? 'done' : 'mini', at: Math.max(...got.map((d) => d.doneAt ?? d.at)), auto: true }
     }
     default:
       return { auto: true }

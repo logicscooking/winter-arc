@@ -91,7 +91,7 @@ export function planItems(data: AppData, day: DayKey, { withAuto = false } = {})
     if (!q || (!withAuto && AUTO_KINDS.has(q.kind))) continue
     if (q.kind === 'deal' && (dealTask || dealNode)) continue
     // the diary closes from its answers: it opens (on «Сегодня» — the diary sheet)
-    const action: PlanAction = q.kind === 'deal' || q.kind === 'journal' ? 'open' : q.kind === 'reading' || q.kind === 'number' ? 'value' : 'mark'
+    const action: PlanAction = q.kind === 'deal' || q.kind === 'journal' || q.kind === 'plinko' ? 'open' : q.kind === 'reading' || q.kind === 'number' ? 'value' : 'mark'
     const m = marks[p.id]
     out.push({
       key: itemKey('quest', q.id),
@@ -106,7 +106,7 @@ export function planItems(data: AppData, day: DayKey, { withAuto = false } = {})
       action,
       part: questPart(q),
       badge: q.kind === 'reading' || q.kind === 'number' ? `${q.goal ?? q.min} ${q.unit ?? ''}`.trim() : undefined,
-      href: q.kind === 'deal' ? '#/deal' : q.kind === 'journal' ? '#/today?journal=1' : undefined,
+      href: q.kind === 'deal' ? '#/deal' : q.kind === 'journal' ? '#/today?journal=1' : q.kind === 'plinko' ? '#/destiny' : undefined,
       quest: q,
       plan: p,
       status: m?.status,

@@ -348,7 +348,7 @@ function QuestCard({ q }: { q: Quest }) {
               ))}
             </div>
           </div>
-          {q.kind !== 'check' && <p className="tiny muted">Этот квест отмечается автоматически ({{ wake: 'по чек-ину', reading: 'по страницам', deal: 'по Делу дня', reels: 'по исповеди', bedtime: 'по исповеди', caffeine: 'вручную, кола после 14:00 — пропуск', number: 'по числу', journal: 'по ответам дневника: 3 из 5 — выполнено, 1–2 — мини', check: '' }[q.kind]}).</p>}
+          {q.kind !== 'check' && <p className="tiny muted">Этот квест отмечается автоматически ({{ wake: 'по чек-ину', reading: 'по страницам', deal: 'по Делу дня', reels: 'по исповеди', bedtime: 'по исповеди', caffeine: 'вручную, кола после 14:00 — пропуск', number: 'по числу', journal: 'по ответам дневника: 3 из 5 — выполнено, 1–2 — мини', plinko: 'по броскам в «Судьбе дня»: 2 задания — выполнено, 1 — мини', check: '' }[q.kind]}).</p>}
           {q.enabled && (
             <button className="btn sm ghost" onClick={() => remove(q.id)}>
               Отключить квест

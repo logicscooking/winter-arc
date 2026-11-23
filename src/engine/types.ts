@@ -14,6 +14,7 @@ export type QuestKind =
   | 'caffeine' // tap, auto-missed if cola after 14:00
   | 'number' // numeric (steps, minutes)
   | 'journal' // «Вечерний дневник»: auto from the day's answers (≥3 → done, 1–2 → mini)
+  | 'plinko' // «Плинко ×2»: auto from the day's Plinko drops (2 done → done, 1 → mini)
 
 /** «Сферы»: the life area a row of «Сегодня» belongs to */
 export type Area = 'health' | 'money' | 'growth' | 'misc'

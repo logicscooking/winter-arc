@@ -7,6 +7,8 @@ import type { AppData, Confession, DayKey, DayLog, MarkStatus } from './types'
 export function makeData(over: Partial<AppData> = {}): AppData {
   const d = createInitialData()
   d.profile = { nick: 'Тест', avatar: '🐺', usualWake: '07:00', onboardDay: '2026-11-20' }
+  // the older rule tests were written before «Плинко ×2»; its own tests switch it back on
+  d.quests = d.quests.map((q) => (q.id === 'plinko' ? { ...q, enabled: false } : q))
   return { ...d, ...over }
 }
 
