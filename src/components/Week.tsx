@@ -2,7 +2,7 @@
  * «Неделя»: the goals card of «Сегодня», the goals sheet, the share sheet (PNG / text), the
  * «Скопировать для ИИ» sheet and a read-only итог for the party. The deck itself lives in WeekReview.
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, ChevronRight, ClipboardPaste, Copy, Download, Lock, LockOpen, Minus, Pencil, Plus, Share2, Sparkles, Trash2, X } from 'lucide-react'
 import {
   WEEK_LIMITS,
@@ -120,6 +120,9 @@ export function GoalRow({ g, onOpen }: { g: WeekGoal; onOpen?: () => void }) {
   const updateGoal = useStore((s) => s.updateWeekGoal)
   const fact = goalFact(g)
   const done = fact === 'done'
+  const [typing, setTyping] = useState(false)
+  const [draft, setDraft] = useState('')
+  const sent = useRef(false) // Enter and the blur that follows must not add twice
   return (
     <div className={`wk-goal ${fact}`}>
       <button className="pd-check sm" aria-pressed={done} aria-label={`${g.title}: ${done ? 'снять отметку' : 'выполнено'}`} onClick={() => updateGoal(g.id, done && g.target && (g.progress ?? 0) >= g.target ? { done: undefined, progress: g.target - 1 } : { done: !done || undefined }, nowWithOffset())}>
@@ -139,7 +142,35 @@ export function GoalRow({ g, onOpen }: { g: WeekGoal; onOpen?: () => void }) {
               <button className="wk-step-btn" aria-label={`${g.title}: минус 1`} disabled={!g.progress} onClick={() => bump(g.id, -1, nowWithOffset())}>
                 <Minus size={14} strokeWidth={3} />
               </button>
-              <span className="num wk-amount">{amountText(g)}</span>
+              {typing ? (
+                <form
+                  className="wk-add"
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    if (sent.current) return
+                    sent.current = true
+                    const n = Math.round(Number(draft.replace(',', '.')) * 100) / 100
+                    if (Number.isFinite(n) && n !== 0) bump(g.id, Math.max(n, -(g.progress ?? 0)), nowWithOffset())
+                    setTyping(false)
+                  }}
+                >
+                  <input
+                    className="num"
+                    type="text"
+                    inputMode="numeric"
+                    autoFocus
+                    placeholder="+ сколько"
+                    aria-label={`${g.title}: сколько добавить`}
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value.replace(/[^\d,.-]/g, ''))}
+                    onBlur={(e) => e.currentTarget.form?.requestSubmit()}
+                  />
+                </form>
+              ) : (
+                <button className="num wk-amount" aria-label={`${g.title}: ${amountText(g)}, вписать сколько добавить`} onClick={() => ((sent.current = false), setDraft(''), setTyping(true))}>
+                  {amountText(g)}
+                </button>
+              )}
               <button className="wk-step-btn" aria-label={`${g.title}: плюс 1`} onClick={() => bump(g.id, 1, nowWithOffset())}>
                 <Plus size={14} strokeWidth={3} />
               </button>

@@ -31,6 +31,8 @@
 .wk-step-btn:disabled { opacity: 0.4; }
 .wk-amount { min-width: 56px; padding: 0 2px; text-align: center; font-weight: 900; font-size: 0.86rem; color: var(--ink-2); white-space: nowrap; }
 .wk-goal.done .wk-amount { color: var(--pine); }
+button.wk-amount { background: none; border: 0; border-bottom: 1px dashed var(--line); border-radius: 0; padding: 2px; cursor: pointer; font-family: inherit; }
+.wk-add input { width: 72px; padding: 6px 4px; text-align: center; font-weight: 900; font-size: 16px; border-radius: 10px; border: 2px solid var(--c1); background: var(--surface-2); color: var(--ink); }
 
 .wk-ai { display: block; padding: 10px 12px; border-radius: 14px; background: var(--frost-soft); color: var(--ink-2); line-height: 1.4; }
 .wk-ai svg { color: var(--frost); vertical-align: -2px; }
