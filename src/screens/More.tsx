@@ -640,47 +640,74 @@ function BooksPage() {
 // ---------- pause ----------
 
 function PauseHelp() {
-  const url = `${window.location.origin}${window.location.pathname}#/pause?app=instagram`
+  const base = `${window.location.origin}${window.location.pathname}`
+  const url = `${base}#/pause?app=instagram`
+  const shortcut = (name: string) => `${base}shortcuts/${encodeURIComponent(name)}.shortcut`
   const say = useUi((s) => s.say)
-  const steps = [
-    'Открой приложение «Команды» на iPhone.',
-    'Вкладка «Автоматизация» → «+» → «Приложение».',
-    'Выбери Instagram (и отдельно TikTok), отметь «Открыто».',
-    'Выбери «Выполнять сразу» и выключи «Уведомлять при запуске».',
-    'Действие «Открыть URL» и вставь адрес ниже. Для TikTok замени instagram на tiktok.',
+  const auto = [
+    'Открой «Команды» → вкладка «Автоматизация» → «+» → «Приложение».',
+    'Выбери Instagram, отметь «Открыто», выбери «Выполнять сразу» и выключи «Уведомлять при запуске».',
+    'Действие «Запустить быструю команду» → выбери «WA Пауза». Больше ничего не нужно.',
   ]
   return (
     <Sub title="Пауза перед рилсами">
       <p className="muted">
         10 секунд вдоха перед Instagram{' '}
-        <Help title="Пауза перед рилсами" text={['Ничего не блокируется. При открытии Instagram сначала откроется Winter Arc: остаток лимита и 10 секунд вдоха. Дальше решаешь сам.', 'Лучше всего работает, когда Winter Arc добавлен на экран «Домой».']} />
+        <Help
+          title="Пауза перед рилсами"
+          text={[
+            'Ничего не блокируется. При открытии Instagram сначала откроется Winter Arc: остаток лимита и 10 секунд вдоха. Дальше решаешь сам.',
+            '«Захожу» запоминает выбранные минуты в «Командах» и открывает Instagram сам. Пока окно идёт, пауза не мешает, потом снова встречает.',
+            'Лучше всего работает, когда Winter Arc добавлен на экран «Домой».',
+          ]}
+        />
       </p>
-      <ol className="stack" style={{ paddingLeft: 22, margin: 0 }}>
-        {steps.map((s) => (
-          <li key={s}>{s}</li>
-        ))}
-      </ol>
-      <div className="panel stack">
+      <div className="stack">
+        <b>1. Поставь две быстрые команды</b>
+        <div className="row wrap">
+          <a className="btn sm primary" href={shortcut('WA Пауза')}>
+            WA Пауза
+          </a>
+          <a className="btn sm primary" href={shortcut('WA Захожу')}>
+            WA Захожу
+          </a>
+        </div>
+        <p className="tiny muted">
+          Открой каждую на iPhone и нажми «Добавить быструю команду». Если Safari скачал файл, открой его из «Загрузок». Имена не меняй: «WA Захожу» вызывается по имени.
+        </p>
+      </div>
+      <div className="stack">
+        <b>2. Настрой автоматизацию</b>
+        <ol className="stack" style={{ paddingLeft: 22, margin: 0 }}>
+          {auto.map((s) => (
+            <li key={s}>{s}</li>
+          ))}
+        </ol>
+        <p className="tiny muted">Была старая автоматизация с «Открыть URL»? Удали её, иначе после «Захожу» пауза будет открываться по кругу.</p>
+      </div>
+      <a className="btn sm ghost" href="#/pause?app=instagram">
+        Проверить паузу
+      </a>
+      <details className="panel stack">
+        <summary className="small">Для TikTok и других (без окна «Захожу»)</summary>
+        <p className="tiny muted">
+          В автоматизации для другого приложения используй действие «Открыть URL» с адресом ниже, заменив instagram на tiktok. Окна «Захожу» там нет: пауза будет встречать при каждом открытии.
+        </p>
         <code className="small" style={{ wordBreak: 'break-all', color: 'var(--pine)' }}>
           {url}
         </code>
-        <div className="row wrap">
-          <button
-            className="btn sm"
-            onClick={() => {
-              navigator.clipboard?.writeText(url).then(
-                () => say('Адрес скопирован'),
-                () => say('Скопируй адрес вручную'),
-              )
-            }}
-          >
-            Скопировать адрес
-          </button>
-          <a className="btn sm ghost" href="#/pause?app=instagram">
-            Проверить паузу
-          </a>
-        </div>
-      </div>
+        <button
+          className="btn sm"
+          onClick={() => {
+            navigator.clipboard?.writeText(url).then(
+              () => say('Адрес скопирован'),
+              () => say('Скопируй адрес вручную'),
+            )
+          }}
+        >
+          Скопировать адрес
+        </button>
+      </details>
     </Sub>
   )
 }

@@ -7,6 +7,12 @@ import { Ring } from '../components/ui'
 
 const NAMES: Record<string, string> = { instagram: 'Instagram', tiktok: 'TikTok', youtube: 'YouTube' }
 
+/** The importable «WA Захожу» shortcut (public/shortcuts): saves now+minutes, then opens Instagram,
+ *  so «WA Пауза» run by the automation lets the user in for that window instead of looping back here. */
+export const ENTER_SHORTCUT = 'WA Захожу'
+export const enterShortcutUrl = (min: number) =>
+  `shortcuts://run-shortcut?name=${encodeURIComponent(ENTER_SHORTCUT)}&input=text&text=${min}`
+
 export function Pause({ app }: { app: string }) {
   const data = useStore((s) => s.data)
   const logPause = useStore((s) => s.logPause)
@@ -37,6 +43,7 @@ export function Pause({ app }: { app: string }) {
     logPause(app, 'entered', min, nowWithOffset())
     setEntered(min)
     setState('entered')
+    if (app === 'instagram') window.location.href = enterShortcutUrl(min)
   }
 
   return (
@@ -119,7 +126,17 @@ export function Pause({ app }: { app: string }) {
         ) : (
           <div className="stack-lg">
             <div className="big-title">{entered} минут</div>
-            <p className="muted">Минуты подставятся в вечернюю исповедь. Поставь таймер, если хочешь выйти вовремя.</p>
+            <p className="muted">
+              {app === 'instagram'
+                ? `${name} откроется сам, пауза не будет мешать ${entered} мин. Минуты подставятся в вечерний чек-ин.`
+                : 'Минуты подставятся в вечерний чек-ин. Поставь таймер, если хочешь выйти вовремя.'}
+            </p>
+            {app === 'instagram' && (
+              <p className="tiny muted">
+                Не открылся? Поставь быструю команду «{ENTER_SHORTCUT}» (<a href="#/more/pause">как</a>) или{' '}
+                <a href={enterShortcutUrl(entered)}>запусти её ещё раз</a>.
+              </p>
+            )}
             <a className="btn ghost block" href="#/today">
               Вернуться в Winter Arc
             </a>
