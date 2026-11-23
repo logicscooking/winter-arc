@@ -238,7 +238,7 @@ function CreateSheet({ tree, tpl, examples: aiExamples, bridge, onClose }: { tre
             ))}
           </div>
         </div>
-        <Chips label="Сфера: туда идёт XP" options={SPHERES.map((a) => ({ id: SPHERE_STAT[a.id], label: a.title }))} value={SPHERE_STAT[STAT_SPHERE[stat]]} onChange={setStat} />
+        <Chips label="Сфера: туда идут очки" options={SPHERES.map((a) => ({ id: SPHERE_STAT[a.id], label: a.title }))} value={SPHERE_STAT[STAT_SPHERE[stat]]} onChange={setStat} />
         {tpl && (
           <p className="tiny muted">
             В шаблоне {tpl.traits.length} характеристики, {tpl.traits.reduce((s, t) => s + t.nodes.length, 0)} узлов и по одной цели каждого типа. Всё редактируется.

@@ -120,3 +120,19 @@
 }
 .streak-arc svg { color: var(--mist); }
 .streak-arc.ok { background: color-mix(in srgb, var(--pine) 16%, var(--surface-2)); }
+
+/* v0.23: plain sentences, labelled bars */
+.w13-plain { margin: 0; font-weight: 700; color: var(--ink-2); line-height: 1.4; }
+.w13-plain b { color: var(--ink); }
+.w13-plain b.ok { color: var(--pine); }
+.w13-bars-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-top: 6px; }
+.w13 .w13-bars { height: 150px; }
+.w13-bar-pct { height: 14px; text-align: center; font-size: 0.56rem; font-weight: 900; letter-spacing: -0.03em; color: var(--ink-2); white-space: nowrap; overflow: visible; }
+.w13 .w13-bar-track { height: 72%; }
+.w13-facts { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.w13-facts li { display: grid; grid-template-columns: minmax(64px, auto) 1fr; gap: 10px; align-items: baseline; }
+.w13-facts li > b { font-family: var(--num-sm); font-size: 1.45rem; font-weight: 900; text-align: right; }
+.w13-facts li > span { font-weight: 800; color: var(--ink); line-height: 1.25; }
+.w13-facts li small { display: block; font-weight: 700; font-size: 0.76rem; color: var(--mist); margin-top: 1px; }
+.w13-facts li.bad > b { color: var(--hp); }
+.w13-facts li.gold > b { color: var(--gold); font-size: 1.15rem; }

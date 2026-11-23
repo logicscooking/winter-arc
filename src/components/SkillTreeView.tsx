@@ -464,7 +464,7 @@ function NodeSheet({ node, prog, onClose, onPractice }: { node: SkillNode; prog:
           <button
             className="btn sm ghost"
             onClick={async () => {
-              if (await confirm({ title: `Удалить «${node.title}»?`, body: 'Практики узла тоже удалятся. XP за них уйдёт.', ok: 'Удалить', danger: true })) {
+              if (await confirm({ title: `Удалить «${node.title}»?`, body: 'Практики узла тоже удалятся. Очки сферы за них уйдут.', ok: 'Удалить', danger: true })) {
                 deleteNode(node.id)
                 onClose()
               }

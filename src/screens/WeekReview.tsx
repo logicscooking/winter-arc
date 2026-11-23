@@ -22,6 +22,7 @@ import {
   plural,
   recapOf,
   recapPrompt,
+  weekDayNotes,
   recapWindow,
   weekDays,
   weekDaysOf,
@@ -110,7 +111,7 @@ function WeekAi({ week }: { week: number }) {
           }}
         >
           <p className="small">{st.value}</p>
-          <p className="tiny muted">ИИ видел только числа: % квестов, идеальные дни, исповеди (сколько), XP, ранги и практики навыков без названий.</p>
+          <p className="tiny muted">ИИ видел только числа: % квестов, идеальные дни, исповеди (сколько), очки сфер, ранги и практики навыков без названий.</p>
         </AiPreview>
       )}
     </section>
@@ -153,7 +154,7 @@ export function WeekReview({ param }: { param?: string }) {
   )
 }
 
-/** The arc part of the weekly review: the week's numbers, XP/HP charts, the AI helper and the three questions */
+/** The arc part of the weekly review: the week's numbers, Эло / day-score charts, the AI helper and the three questions */
 function ArcWeek({ week, onReviewed }: { week: number; onReviewed: () => void }) {
   const game = useGame()
   const data = useStore((s) => s.data)
@@ -167,7 +168,8 @@ function ArcWeek({ week, onReviewed }: { week: number; onReviewed: () => void })
   const days = weekDays(week)
   const results = days.map((d) => game.days[d]).filter(Boolean)
   const perfect = results.filter((r) => r.perfect).length
-  const xp = results.reduce((s, r) => s + r.xp, 0)
+  const eloEnd = game.eloByDay[days.filter((d) => game.days[d]).at(-1) ?? ''] ?? game.elo
+  const eloDelta = eloEnd - (game.eloByDay[addDays(days[0], -1)] ?? 1000)
   const confessions = results.filter((r) => r.confession).length
   const markReviewed = onReviewed
 
@@ -177,7 +179,7 @@ function ArcWeek({ week, onReviewed }: { week: number; onReviewed: () => void })
         {(
           [
             ['Идеальных дней', perfect],
-            ['XP за неделю', xp],
+            ['Эло за неделю', `${eloDelta > 0 ? '+' : ''}${eloDelta}`],
             ['Исповедей', confessions],
           ] as const
         ).map(([k, v]) => (
@@ -191,8 +193,8 @@ function ArcWeek({ week, onReviewed }: { week: number; onReviewed: () => void })
       </div>
 
       <div className="cols">
-        <Chart title="XP по дням" days={days} series={[{ name: 'XP', color: 'var(--c-xp)', kind: 'bar' }]} values={[days.map((d) => (game.days[d] ? game.xpByDay[d] ?? 0 : null))]} yMin={0} />
-        <Chart title="HP по дням" days={days} series={[{ name: 'HP', color: 'var(--c-hp)', kind: 'line' }]} values={[days.map((d) => game.hpByDay[d] ?? null)]} yMin={0} yMax={100} />
+        <Chart title="Эло по дням" days={days} series={[{ name: 'Эло', color: 'var(--c1)', kind: 'line' }]} values={[days.map((d) => (game.days[d] ? game.eloByDay[d] ?? null : null))]} />
+        <Chart title="Как прошёл день" subtitle="Оценка 1–10 из исповеди" days={days} series={[{ name: 'Оценка', color: 'var(--c2)', kind: 'bar' }]} values={[days.map((d) => data.days[d]?.confession?.dayScore ?? null)]} yMin={0} yMax={10} />
       </div>
 
       <WeekAi week={week} />
@@ -378,8 +380,8 @@ export function WeekDeck({ monday }: { monday: DayKey }) {
       </div>
       <div className="deck-tiles">
         <div className="deck-tile">
-          <span>XP</span>
-          <b className="num">{nums.xp}</b>
+          <span>{nums.elo !== undefined ? 'Эло' : 'XP'}</span>
+          <b className="num">{nums.elo !== undefined ? `${nums.elo > 0 ? '+' : ''}${nums.elo}` : nums.xp}</b>
         </div>
         <div className="deck-tile">
           <span>Честность</span>
@@ -519,7 +521,7 @@ export function WeekDeck({ monday }: { monday: DayKey }) {
         <button
           className="btn sm"
           onClick={() => {
-            copyPrompt(recapPrompt([view]), say)
+            copyPrompt(recapPrompt([view], { notes: weekDayNotes(data, monday, today) }), say)
             setSheet('ai')
           }}
         >
@@ -585,10 +587,10 @@ export function WeekDeck({ monday }: { monday: DayKey }) {
               onClick={() => {
                 const now = nowWithOffset()
                 setRecap(monday, { doneAt: now.getTime(), numbers: nums }, now)
-                say(inWindow ? `Итог готов · +${WEEK_XP.recap} XP, +${WEEK_XP.recapShards} ❄` : 'Итог готов')
+                say(inWindow ? `Итог готов · +${WEEK_XP.recapShards} WF` : 'Итог готов')
               }}
             >
-              <Check size={18} strokeWidth={3} aria-hidden /> Итог готов{inWindow ? ` · +${WEEK_XP.recap} XP` : ''}
+              <Check size={18} strokeWidth={3} aria-hidden /> Итог готов{inWindow ? ` · +${WEEK_XP.recapShards} WF` : ''}
             </button>
           )}
           <button className="btn" onClick={() => setSheet('share')}>

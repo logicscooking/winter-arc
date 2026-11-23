@@ -101,7 +101,7 @@ export function DumpSheet({ day, onClose }: { day: DayKey; onClose: () => void }
       <div className="stack">
         <p className="small jr-lead">
           <Lock size={14} aria-hidden />
-          <span>Если есть вайб: всё, что крутится в голове, без порядка и цензуры. Видишь только ты. Бонус +{DUMP.xp} XP Разума раз в день.</span>
+          <span>Если есть вайб: всё, что крутится в голове, без порядка и цензуры. Видишь только ты. Бонус +{DUMP.xp} к сфере раз в день.</span>
         </p>
         <textarea
           className="textarea"

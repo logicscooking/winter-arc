@@ -4,7 +4,6 @@ import {
   CHEST,
   MAX_ACTIVE_SKILLS,
   STATS,
-  XP,
   activeSkills,
   chestsFor,
   childrenOf,
@@ -71,7 +70,7 @@ export function Deal() {
                   title="Навыки"
                   text={[
                     'Квесты держат уровень, навыки растут: практика → обратная связь → ступень.',
-                    `В фокусе до ${MAX_ACTIVE_SKILLS} навыков, остальные ждут в «Позже». ▶ на карточке — поток на этот навык, XP ×2.`,
+                    `В фокусе до ${MAX_ACTIVE_SKILLS} навыков, остальные ждут в «Позже». ▶ на карточке — поток на этот навык, очки ×2.`,
                   ]}
                 />
               </h2>
@@ -190,7 +189,7 @@ function SkillCard({ skill, view, theme, xp }: { skill: Skill; view: ReturnType<
           </span>
           <span className="tiny muted row" style={{ gap: 8 }}>
             <span>
-              {view.practices} практ. · {xp} XP
+              {view.practices} практ. · {xp} очков
             </span>
             <Strikes n={view.strikes.strikes} />
           </span>
@@ -206,7 +205,7 @@ function SkillCard({ skill, view, theme, xp }: { skill: Skill; view: ReturnType<
   )
 }
 
-const CHEST_NAME: Record<ChestType, string> = { repeat: 'Квесты', short: 'Задачи', mid: 'Навыки', shop: 'За ❄' }
+const CHEST_NAME: Record<ChestType, string> = { repeat: 'Квесты', short: 'Задачи', mid: 'Навыки', shop: 'За WF' }
 
 function Chests() {
   const data = useStore((s) => s.data)
@@ -282,8 +281,8 @@ function DealOfDay() {
               title="Дело дня"
               text={[
                 'Один шаг к деньгам на сегодня: задача проекта или узел навыка. Прицел у задачи или узла делает его Делом дня.',
-                `Закрыл — XP Дела${dealPlan ? ` и квест «Дело дня» (+${questXp(dealPlan.role, dealPlan.base, 'done')} XP)` : ''}. Подзадачи по +${XP.subtask} XP. Практика на узле тоже закрывает квест.`,
-                'Включи поток — всё, что закроешь внутри, даёт ×2 XP. До 90 минут, 3 потока в день, не после 22:00.',
+                `Закрыл — очки сферы «Деньги»${dealPlan ? ' и квест «Дело дня»' : ''}. Подзадачи тоже дают очки. Практика на узле тоже закрывает квест.`,
+                'Включи поток — всё, что закроешь внутри, даёт ×2 очков сферы. До 90 минут, 3 потока в день, не после 22:00.',
               ]}
             />
           </span>
@@ -296,7 +295,7 @@ function DealOfDay() {
             <>
               <h2>{deal.title}</h2>
               {parent && <span className="small muted">{parent.title}</span>}
-              <span className="tiny muted num">+{taskXp(data.tasks, deal)} XP</span>
+              <span className="tiny muted num">+{taskXp(data.tasks, deal)} к сфере</span>
             </>
           ) : (
             !node && <p>{open ? 'Нажми прицел у задачи или узла навыка.' : projects.length ? 'Добавь задачу в проект и нажми прицел.' : 'Создай проект ниже или выбери узел навыка.'}</p>

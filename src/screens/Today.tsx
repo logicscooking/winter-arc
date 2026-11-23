@@ -32,15 +32,14 @@ import { QuestRow } from '../components/QuestRow'
 import { AddTask, TaskTree } from '../components/TaskTree'
 import { Help, Hint, formatMMSS } from '../components/ui'
 import { Spark } from '../components/Spark'
-import { PAGES_GOAL, WAKE_GOAL, pagesValues, wakeValues, window7 } from '../store/trends'
+import { PAGES_GOAL, WAKE_GOAL, dayScoreValues, pagesValues, recoveryValues, wakeValues, window14, window7 } from '../store/trends'
 import { BAR_LADDERS, BAR_STEP_BONUS, barStep, barSuggestion } from '../engine'
 import { ThemeCard } from '../components/skills'
 import { MoneySheet } from '../components/Money'
 import { useWhySeen } from './Why'
 import { TransitionCard } from './PlanDay'
-import { DayRingCard, TodayBlocks } from './TodayBlocks'
+import { TodayBlocks } from './TodayBlocks'
 import { WeekGoalsCard } from '../components/Week'
-import { StreakCard } from '../components/Streak'
 import { todaySections } from './todayItems'
 import '../morning/morning.css'
 
@@ -131,7 +130,7 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
     celebrate({
       kind: 'perfect',
       title: 'Идеальный день',
-      text: warmup ? 'Все главные квесты разминки закрыты. Так держать 98 дней.' : 'Все главные квесты закрыты. При закрытии дня +5 HP.',
+      text: warmup ? 'Все главные квесты разминки закрыты. Так держать 98 дней.' : 'Все главные квесты закрыты. Закрой день исповедью — и Эло вырастет.',
     })
   }, [perfectNow, locked, today]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -142,7 +141,7 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
       key: 'comeback',
       icon: 'flame',
       title: 'Камбэк ещё возможен',
-      text: warmup ? '2-минутная замена: +5 XP Воли и +2 ❄.' : '2-минутная замена вернёт +5 HP.',
+      text: warmup ? '2-минутная замена: +2 WF.' : '2-минутная замена отменит −5 Эло и даст +2 WF.',
       cta: 'Сделать камбэк',
       run: () => open({ kind: 'comeback', slipId: activeSlip.id }),
       tone: 'hp',
@@ -153,7 +152,7 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
       key: 'yconf',
       icon: 'owl',
       title: 'Исповедь за вчера',
-      text: yesterday < ARC_START ? 'Закрой вчерашний день разминки: XP и ❄ ещё можно забрать до 16:00.' : 'Можно до 16:00. Без неё день закроется с −10 HP.',
+      text: yesterday < ARC_START ? 'Закрой вчерашний день разминки: WF ещё можно забрать до 16:00.' : 'Можно до 16:00. Без неё день закроется с −10 Эло.',
       cta: 'Закрыть вчера',
       run: () => open({ kind: 'confession', day: yesterday }),
     })
@@ -171,7 +170,7 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
       key: 'conf',
       icon: 'owl',
       title: 'Вечерний чек-ин',
-      text: 'Оценка дня 1–10 и честная исповедь закрывают день. +5 XP, +1 ❄.',
+      text: 'Оценка дня 1–10 и честная исповедь закрывают день: Эло дня засчитается, +1 WF.',
       cta: 'Закрыть день',
       run: () => open({ kind: 'confession', day: today }),
     })
@@ -201,10 +200,7 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
 
   return (
     <div>
-      <Hud game={game} mainsDone={doneMain} mainsTotal={mains.length} />
-      <div style={{ marginBottom: 22 }}>
-        <DayRingCard progress={progress} eloGain={game.today < ARC_START ? 0 : game.days[game.today]?.eloGain ?? 0} />
-      </div>
+      <Hud game={game} progress={progress} />
       <div style={{ marginBottom: 16 }}>
         <Hint id="areas-v1" title="Новое: сферы" art={['heart', 'coin']}>
           Включи свои квесты — например Твиттер и Рассылку лидам в Деньгах.{' '}
@@ -216,15 +212,6 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
       <div className="cols">
         <div className="stack-lg">
           <WhyCard />
-          {game.fallen && (
-            <section className="panel" style={{ borderColor: 'var(--hp)' }}>
-              <h3 style={{ color: 'var(--hp)' }}>Падение</h3>
-              <p className="small" style={{ marginTop: 6 }}>
-                3 идеальных дня подряд вернут 50 HP: {game.recovery} из 3{' '}
-                <Help title="Падение" text={['HP на нуле. Квест «Восстановление»: 3 идеальных дня подряд вернут 50 HP.', 'Пока не восстановишься, магазин наград закрыт.']} />
-              </p>
-            </section>
-          )}
 
           {hero ? (
             <section className={`now-card ${hero.tone ?? ''}`} aria-label="Что сделать сейчас">
@@ -251,7 +238,7 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
               <p className="muted">
                 {locked
                   ? 'Исповедь записана. Завтра новый день.'
-                  : `${laterQuest ? `Позже: ${laterQuest.title}. ` : 'Побочные квесты добавят XP. '}Исповедь откроется в ${formatHM(confessionOpensAt(today).getHours() * 60)}.`}
+                  : `${laterQuest ? `Позже: ${laterQuest.title}. ` : 'Побочные квесты добавят Эло. '}Исповедь откроется в ${formatHM(confessionOpensAt(today).getHours() * 60)}.`}
               </p>
             </section>
           )}
@@ -273,10 +260,10 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
           <TransitionCard />
           <BarOffers />
           <ThemeCard compact />
-          <StreakCard />
           <WeekGoalsCard />
 
           <TodayBlocks game={game} locked={locked} />
+          <DayCharts />
         </div>
 
         <div className="stack-lg" style={{ marginTop: 4 }}>
@@ -308,7 +295,7 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
                 <h3>Энергия на нуле уже две недели</h3>
               </div>
               <p className="small" style={{ color: 'var(--ink-2)' }}>
-                Может, это не лень, а зима. HP за это не снимается.{' '}
+                Может, это не лень, а зима. Эло за это не снимается.{' '}
                 <Help title="Энергия на нуле" text="Это может быть не лень, а зима и усталость. Свет по утрам, витамин D по анализу, врач, разговор с кем-то близким." />
               </p>
             </section>
@@ -316,7 +303,7 @@ function TodayMain({ pendingReview }: { pendingReview?: number }) {
           <section className="stack" style={{ gap: 6 }}>
             <div className="section-title" style={{ marginBottom: 0 }}>
               <h2>Своя задача</h2>
-              <span className="small muted">+3 XP · попадёт в «День»</span>
+              <span className="small muted">попадёт в «День»</span>
             </div>
             <div id="add-daily">
               <AddTask scope="daily" parentId={null} placeholder="Что сделать сегодня" />
@@ -386,6 +373,55 @@ function QuoteCard() {
       <blockquote>«Чтобы быть счастливым, нужно избавиться от двух вещей: страха перед плохим будущим и воспоминаний о плохом прошлом»</blockquote>
       <figcaption>Луций Сенека</figcaption>
     </figure>
+  )
+}
+
+/** Bottom of Today: how the days went (evening score) and how sleep restored (morning check-in), 14 days */
+function DayCharts() {
+  const data = useStore((s) => s.data)
+  const today = gameDayOf(useNow())
+  const days = window14(data, today)
+  const score = dayScoreValues(data, days, today)
+  const rec = recoveryValues(data, days, today)
+  const avg = (v: (number | null)[]) => {
+    const n = v.filter((x): x is number => x !== null)
+    return n.length ? Math.round((n.reduce((a, b) => a + b, 0) / n.length) * 10) / 10 : null
+  }
+  const last = (v: (number | null)[]) => [...v].reverse().find((x) => x !== null) ?? null
+  const fmt = (n: number | null) => (n === null ? '—' : String(n).replace('.', ','))
+  return (
+    <section className="stack" style={{ gap: 8 }} aria-label="Как проходят дни">
+      <div className="section-title" style={{ marginBottom: 0 }}>
+        <h2>Как проходят дни</h2>
+        <a className="small link-btn" href="#/entries">
+          Все записи →
+        </a>
+      </div>
+      <div className="mini-trends">
+        <a className="mini-trend" href="#/entries">
+          <span className="k">
+            Как прошёл день <span>14 дней</span>
+          </span>
+          <span className="v">
+            {fmt(last(score))}
+            <small>из 10 · в среднем {fmt(avg(score))}</small>
+          </span>
+          <Spark values={score} kind="bar" min={0} max={10} color="var(--c1)" label="Оценка дня 1–10 за 14 дней" />
+          {last(score) === null && <span className="note">Оценка появится после вечерней исповеди</span>}
+        </a>
+        <a className="mini-trend" href="#/entries">
+          <span className="k">
+            Восстановление после сна <span>14 дней</span>
+          </span>
+          <span className="v">
+            {fmt(last(rec))}
+            <small>из 10 · сон + энергия</small>
+          </span>
+          <Spark values={rec} kind="line" min={2} max={10} color="var(--c2, var(--frost))" label="Сон и энергия утром, 2–10, за 14 дней" />
+          {last(rec) === null && <span className="note">Точка появится после утреннего чек-ина</span>}
+        </a>
+      </div>
+    </section>
   )
 }
 
@@ -487,7 +523,7 @@ function SupportQuests() {
   const marks = marksFor(data, today, plan)
   return (
     <section className="stack">
-      <p className="small muted">Режим поддержки: база из главы III, только XP, без HP.</p>
+      <p className="small muted">Режим поддержки: база из главы III, без штрафов.</p>
       <div className="quests">
         {plan.map((p) => {
           const q = data.quests.find((x) => x.id === p.id)
@@ -534,7 +570,7 @@ function BarOffers() {
               </div>
             </div>
             <p className="small" style={{ margin: '8px 0 12px' }}>
-              {kind === 'up' ? '5 раз подряд норма.' : 'Две недели мини и пропуски.'} {ladder.steps[to].name}: <b>{ladder.steps[to].norm}</b>, XP квеста +{Math.round(to * BAR_STEP_BONUS * 100)}%.
+              {kind === 'up' ? '5 раз подряд норма.' : 'Две недели мини и пропуски.'} {ladder.steps[to].name}: <b>{ladder.steps[to].norm}</b>, очки сферы за квест +{Math.round(to * BAR_STEP_BONUS * 100)}%.
               {markedToday ? ' С завтрашнего дня.' : ''}
             </p>
             <div className="grid-2">

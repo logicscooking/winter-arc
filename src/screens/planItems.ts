@@ -79,7 +79,7 @@ export function planItems(data: AppData, day: DayKey, { withAuto = false } = {})
 
   if (dealTask) {
     const project = dealTask.parentId ? projectOf(data.tasks, dealTask) : undefined
-    out.push({ key: itemKey('task', dealTask.id), kind: 'task', id: dealTask.id, title: dealTask.title, sub: project && project.id !== dealTask.id ? `${dealSub} · ${project.title}` : dealSub, sprite: 'hammer', stat: dealTask.stat, group: 'deal', done: !!dealTask.doneAt, action: 'task', part: 'day', badge: `+${taskXp(data.tasks, dealTask) + (dealPlan ? questXp(dealPlan.role, dealPlan.base, 'done') : 0)} XP` })
+    out.push({ key: itemKey('task', dealTask.id), kind: 'task', id: dealTask.id, title: dealTask.title, sub: project && project.id !== dealTask.id ? `${dealSub} · ${project.title}` : dealSub, sprite: 'hammer', stat: dealTask.stat, group: 'deal', done: !!dealTask.doneAt, action: 'task', part: 'day', badge: `+${taskXp(data.tasks, dealTask) + (dealPlan ? questXp(dealPlan.role, dealPlan.base, 'done') : 0)}` + ' к сфере' })
   } else if (dealNode) {
     const skill = data.skills?.find((s) => s.id === dealNode.skillId)
     out.push({ key: itemKey('node', dealNode.id), kind: 'node', id: dealNode.id, title: dealNode.title, sub: dealSub, sprite: 'hammer', stat: skill?.stat ?? 'deal', group: 'deal', done: practicesToday(data, dealNode.id, day) > 0, action: 'open', part: 'day', href: `#/skill/${dealNode.skillId}` })
@@ -116,19 +116,19 @@ export function planItems(data: AppData, day: DayKey, { withAuto = false } = {})
 
   for (const t of projectTasksFor(data, day)) {
     const project = projectOf(data.tasks, t)
-    out.push({ key: itemKey('task', t.id), kind: 'task', id: t.id, title: t.title, sub: project.title, sprite: 'hammer', stat: t.stat, group: 'project', done: !!t.doneAt, action: 'task', part: 'day', badge: `+${taskXp(data.tasks, t)} XP` })
+    out.push({ key: itemKey('task', t.id), kind: 'task', id: t.id, title: t.title, sub: project.title, sprite: 'hammer', stat: t.stat, group: 'project', done: !!t.doneAt, action: 'task', part: 'day', badge: `+${taskXp(data.tasks, t)}` + ' к сфере' })
   }
 
   for (const t of data.tasks) {
     if (t.scope !== 'daily' || t.day !== day || t.id === dealTask?.id) continue
     if (data.tasks.some((c) => c.parentId === t.id)) continue // leaves only: the concrete step
-    out.push({ key: itemKey('task', t.id), kind: 'task', id: t.id, title: t.title, sprite: STAT_SPRITE[t.stat], stat: t.stat, group: 'own', done: !!t.doneAt, action: 'task', part: 'day', badge: `+${XP.subtask} XP` })
+    out.push({ key: itemKey('task', t.id), kind: 'task', id: t.id, title: t.title, sprite: STAT_SPRITE[t.stat], stat: t.stat, group: 'own', done: !!t.doneAt, action: 'task', part: 'day', badge: `+${XP.subtask}` + ' к сфере' })
   }
 
   for (const s of activeSkills(data)) {
     for (const g of data.goals ?? []) {
       if (g.skillId !== s.id || g.archived || (g.type !== 'short' && g.type !== 'repeat')) continue
-      out.push({ key: itemKey('goal', g.id), kind: 'goal', id: g.id, title: g.title, sub: skillName(s.id), sprite: 'trophy', stat: s.stat, group: 'skill', done: checkedOn(g, day), action: 'goal', part: 'day', badge: `+${GOAL_XP[g.type]} XP` })
+      out.push({ key: itemKey('goal', g.id), kind: 'goal', id: g.id, title: g.title, sub: skillName(s.id), sprite: 'trophy', stat: s.stat, group: 'skill', done: checkedOn(g, day), action: 'goal', part: 'day', badge: `+${GOAL_XP[g.type]}` + ' к сфере' })
     }
     for (const n of data.nodes ?? []) {
       if (n.skillId !== s.id || n.id === dealNode?.id) continue

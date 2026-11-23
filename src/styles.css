@@ -1786,11 +1786,17 @@ h3 { font-family: var(--display); font-weight: 700; font-size: 1.08rem; letter-s
 .day-line .day-counter small { font-size: 0.9rem; }
 .hud .ny-chip { margin-top: 0; justify-self: start; font-family: var(--display); font-weight: 700; border-radius: 99px; padding: 5px 12px 5px 8px; }
 .hero-strip {
-  display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 14px; align-items: center;
-  padding: 16px 16px 16px 10px; color: inherit; text-decoration: none;
+  display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 12px 14px; align-items: center;
+  padding: 14px 16px 14px 10px; color: inherit; text-decoration: none;
   background: var(--surface); border: var(--bw) solid var(--card-line); border-radius: var(--r-lg); box-shadow: var(--shadow-1);
 }
-.hero-strip:active { transform: translateY(2px); }
+.hs-left, .hs-right { color: inherit; text-decoration: none; }
+.hs-left:active, .hs-right:active { transform: translateY(2px); }
+.hs-day { grid-column: 1 / -1; padding: 12px 0 0 6px; border-top: var(--bw) dashed var(--card-line); }
+.hud-chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.hud .hud-chips .ny-chip { margin-top: 0; font-family: var(--display); font-weight: 700; border-radius: 99px; padding: 5px 12px 5px 8px; }
+.earned-chip { border: 0; cursor: pointer; background: color-mix(in srgb, var(--pine) 18%, var(--surface)); color: var(--ink); }
+.earned-chip:active { transform: translateY(1px); }
 .hs-left { display: grid; justify-items: center; gap: 8px; min-width: 0; }
 .hs-name { font-family: var(--display); font-weight: 800; font-size: 1.05rem; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hs-ava, .hero-ava {
@@ -2275,15 +2281,60 @@ body:has(.top-garland:not(.is-off)) .topbar::after {
 .streak-month .cell.future, .streak-month .cell.none { opacity: 0.45; }
 .streak-month .cell.today { outline: 2px solid var(--ink); outline-offset: -2px; }
 
-/* v0.22 «Эло как на FACEIT» */
-.elo-block{display:flex;align-items:center;gap:10px;width:100%}
-.elo-badge{flex:none}
-.elo-main{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
-.elo-line{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
-.elo-num{font-weight:800;font-size:1.05rem}
-.elo-lvl{font-weight:700;opacity:.85}
-.elo-gain{margin-left:auto;font-size:.78rem;font-weight:700;color:var(--ok,#3fbf5a)}
-.elo-bar{display:block;height:8px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden}
+/* v0.22 «Эло как на FACEIT» · v0.23 the one life rank */
+.elo-block{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"badge line" "bar bar" "next next";column-gap:12px;row-gap:6px;align-items:center;width:100%}
+.elo-badge{grid-area:badge;flex:none;filter:drop-shadow(0 2px 0 rgba(0,0,0,.25))}
+.elo-line{grid-area:line;display:flex;flex-direction:column;gap:2px;min-width:0}
+.elo-num{font-family:var(--display);font-weight:800;font-size:1rem;color:var(--ink-2);white-space:nowrap}
+.elo-num b{font-family:var(--num-sm);font-weight:900;font-size:1.65rem;color:var(--ink);letter-spacing:-.01em}
+.elo-today{display:flex;gap:8px;flex-wrap:wrap}
+.elo-gain{font-size:.8rem;font-weight:800;color:var(--pine);white-space:nowrap}
+.elo-loss{font-size:.8rem;font-weight:800;color:var(--hp);white-space:nowrap}
+.elo-bar{grid-area:bar;display:block;height:6px;border-radius:99px;background:color-mix(in srgb,var(--ink) 12%,transparent);overflow:hidden}
 .elo-bar i{display:block;height:100%;border-radius:99px;transition:width .4s ease}
+.elo-next{grid-area:next;font-size:.78rem;font-weight:800;color:var(--mist)}
+.elo-table{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.elo-table li{display:grid;justify-items:center;gap:2px;padding:6px 2px;white-space:nowrap;border-radius:10px;background:var(--surface-2);font-size:.68rem;font-weight:800;color:var(--mist)}
+.elo-table li.on{outline:2px solid var(--ink);outline-offset:-2px;color:var(--ink)}
 .hero-elo{display:flex;justify-content:center;width:100%;max-width:320px}
 .lvl-badge.elo{display:inline-flex;align-items:center;gap:4px}
+
+/* v0.23 «Все записи» */
+.ent-cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.ent-cal .wd { text-align: center; font-size: 0.7rem; font-weight: 800; color: var(--mist); }
+.ent-cell { display: grid; justify-items: center; align-content: center; gap: 2px; height: 46px; border-radius: 10px; background: var(--surface-2); color: var(--mist); }
+.ent-cell b { font-size: 0.86rem; font-weight: 800; }
+.ent-cell.has { background: color-mix(in srgb, var(--frost) 16%, var(--surface-2)); color: var(--ink); }
+.ent-cell.on { outline: 2px solid var(--ink); outline-offset: -2px; }
+.ent-cell.today b { text-decoration: underline; text-underline-offset: 3px; }
+.ent-cell:disabled { opacity: 0.4; }
+.ent-dots { display: flex; gap: 2px; height: 6px; }
+.ent-dots i, .ent-legend i { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+.ent-legend { display: flex; flex-wrap: wrap; gap: 12px; }
+.ent-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.entries i.j { background: var(--st-mind, #9a6ad6); }
+.entries i.c { background: var(--gold, #f2b84b); }
+.entries i.d { background: var(--frost, #6cc6f2); }
+.entries i.m { background: var(--pine, #43d57a); }
+.ent-card { display: grid; gap: 10px; }
+.ent-card h3 { display: flex; align-items: center; gap: 8px; margin: 0; }
+.ent-score { margin: 0; font-weight: 800; }
+.ent-score b { font-family: var(--num-sm); font-size: 1.5rem; margin-left: 4px; }
+.ent-score small { color: var(--mist); }
+.ent-qa { display: grid; gap: 2px; }
+.ent-qa span { font-size: 0.78rem; font-weight: 800; color: var(--mist); }
+.ent-qa p, .ent-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.45; }
+
+/* v0.23 big streak card on «Путь» */
+.streak-card.big { padding: 18px; gap: 14px; background: radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--ember, #ff8a3c) 16%, var(--surface)), var(--surface) 65%); }
+.streak-card.big.hot { border-color: color-mix(in srgb, var(--ember, #ff8a3c) 45%, var(--card-line)); }
+.streak-card.big .streak-flame { display: grid; place-items: center; width: 78px; height: 78px; border-radius: 22px; background: color-mix(in srgb, var(--ember, #ff8a3c) 18%, var(--surface-2)); flex: none; }
+.streak-card.big.hot .streak-flame .px { animation: flame-bob 1.6s ease-in-out infinite; }
+@keyframes flame-bob { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-2px) scale(1.05); } }
+@media (prefers-reduced-motion: reduce) { .streak-card.big.hot .streak-flame .px { animation: none; } }
+.streak-ear { display: block; font-size: 0.78rem; font-weight: 800; color: var(--mist); }
+.streak-card.big .streak-run { font-family: var(--display); font-size: 1.15rem; line-height: 1.05; }
+.streak-card.big .streak-run b { font-family: var(--num-sm); font-size: 3.2rem; color: var(--ember, var(--gold)); letter-spacing: -0.02em; margin-right: 4px; }
+.streak-best { display: block; margin-top: 2px; font-weight: 800; color: var(--ink-2); }
+.streak-card.big .streak-today { font-size: 0.95rem; }
+.streak-month-head { display: flex; justify-content: space-between; align-items: baseline; color: var(--ink-2); }

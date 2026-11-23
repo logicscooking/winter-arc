@@ -62,19 +62,6 @@ export function questReward(day: DayKey, p: Pick<PlannedQuest, 'id' | 'role' | '
   return { xp: crit ? Math.round(baseXp * CRIT.mult) : baseXp, baseXp, crit, shards: questShards(p.role, status) }
 }
 
-export const HP = {
-  start: 100,
-  max: 100,
-  miss: -10,
-  missTwice: -20,
-  noConfession: -10,
-  slip: -10,
-  comeback: 5,
-  perfect: 5,
-  recovered: 50,
-  recoveryDays: 3,
-} as const
-
 export const FREEZE = { per: 7, max: 2 } as const
 export const COMEBACK_WINDOW_MS = 60 * 60 * 1000
 export const REELS_LIMIT = 20

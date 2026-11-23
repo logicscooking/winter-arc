@@ -343,3 +343,12 @@
 .td-morning a { text-decoration: none; color: inherit; }
 .td-morning .pd-check.open > span { color: var(--pine); }
 .td-morning.done .pd-check.open > span { color: var(--pine-ink); }
+
+/* v0.23: the ring inside the Today hero card */
+.td-ring.bare { padding: 0; background: none; border: 0; box-shadow: none; border-radius: 0; grid-template-columns: 76px 1fr; gap: 12px; }
+.td-ring.bare .td-ring-dial { width: 76px; height: 76px; }
+.td-ring.bare .td-ring-dial b { font-size: 1.25rem; }
+.td-ring.bare .td-ring-text > b { font-size: 1rem; }
+.qrow-link { align-self: center; margin-right: 10px; text-decoration: none; color: var(--frost); white-space: nowrap; }
+.td-ring.bare .td-legend.areas { column-gap: 16px; }
+.td-ring.bare .td-legend li { font-size: 0.8rem; gap: 6px; }

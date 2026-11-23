@@ -501,14 +501,14 @@ describe('Плинко: особые лунки «Ещё раз» и «Отды�
   it('«Ещё раз»: шар не тратится, не даёт ни XP, ни ❄, серию не трогает', () => {
     const data = makeData()
     const base = computeState(data, nowAt(D1, 22))
-    expect(ballsLeft(data.days[D1])).toBe(5)
+    expect(ballsLeft(data.days[D1])).toBe(2)
     specialAt(data, D1, 0, 9, REROLL_ID)
-    expect(ballsLeft(data.days[D1])).toBe(5)
+    expect(ballsLeft(data.days[D1])).toBe(2)
     expect(ballsSpent(data.days[D1])).toBe(0)
     expect(rerollsLeft(data.days[D1])).toBe(PLINKO_REROLLS - 1)
     expect(nextThrow(data.days[D1])).toBe(1)
     throwAt(data, D1, 1, 9, 5)
-    expect(ballsLeft(data.days[D1])).toBe(4)
+    expect(ballsLeft(data.days[D1])).toBe(1)
     expect(plinkoEvents(data)).toEqual([])
     const st = computeState(data, nowAt(D1, 22))
     expect(st.xp).toBe(base.xp)
@@ -521,23 +521,23 @@ describe('Плинко: особые лунки «Ещё раз» и «Отды�
     for (let i = 0; i < PLINKO_REROLLS; i++) {
       specialAt(data, D1, n++, 9, REROLL_ID, i)
       expect(returnedThrows(data.days[D1]).size).toBe(i + 1)
-      expect(ballsLeft(data.days[D1])).toBe(5)
+      expect(ballsLeft(data.days[D1])).toBe(2)
     }
     expect(rerollsLeft(data.days[D1])).toBe(0)
     // the cap is reached: the next one spends the ball like an empty landing
     specialAt(data, D1, n++, 10, REROLL_ID)
     expect(returnedThrows(data.days[D1]).size).toBe(PLINKO_REROLLS)
-    expect(ballsLeft(data.days[D1])).toBe(4)
+    expect(ballsLeft(data.days[D1])).toBe(1)
     expect(plinkoEvents(data)).toEqual([])
-    // all 5 balls can still be used, and the day holds 3 returned + 5 spent throws
+    // both balls can still be used, and the day holds 3 returned + 2 spent throws
     while (nextThrow(data.days[D1]) !== null) throwAt(data, D1, n++, 11)
     expect(ballsLeft(data.days[D1])).toBe(0)
-    expect(n).toBe(PLINKO_MAX)
-    expect(plinkoDrops(data.days[D1])).toHaveLength(PLINKO_MAX)
+    expect(n).toBe(PLINKO_BALLS + PLINKO_REROLLS)
+    expect(plinkoDrops(data.days[D1])).toHaveLength(PLINKO_BALLS + PLINKO_REROLLS)
     expect(nextThrow(data.days[D1])).toBeNull()
     // survives normalisation and a JSON round-trip
     const back = normalizeData(JSON.parse(JSON.stringify(data)))
-    expect(plinkoDrops(back.days[D1])).toHaveLength(PLINKO_MAX)
+    expect(plinkoDrops(back.days[D1])).toHaveLength(PLINKO_BALLS + PLINKO_REROLLS)
     expect(ballsLeft(back.days[D1])).toBe(0)
   })
 
@@ -553,9 +553,9 @@ describe('Плинко: особые лунки «Ещё раз» и «Отды�
     expect(st.shards - base.shards).toBe(1)
     expect(st.xp).toBe(base.xp)
     expect(st.xpByStat).toEqual(base.xpByStat)
-    expect(st.hp).toBe(base.hp)
+    expect(st.elo).toBe(base.elo)
     // it spends a ball
-    expect(ballsLeft(data.days[D1])).toBe(4)
+    expect(ballsLeft(data.days[D1])).toBe(1)
     // determinism: the same log gives the same result, however many times it is replayed
     expect(computeState(structuredClone(data), nowAt(D1, 22)).shards).toBe(st.shards)
     // a stray doneAt does not pay twice
@@ -585,25 +585,23 @@ describe('Плинко: особые лунки «Ещё раз» и «Отды�
   })
 })
 
-describe('Плинко: 5 шаров в день', () => {
-  it('ровно 5 шаров, бонусов нет; завтра снова 5', () => {
+describe('Плинко: 2 шара в день', () => {
+  it('ровно 2 шара, бонусов нет; завтра снова 2', () => {
     const data = makeData()
-    expect(PLINKO_BALLS).toBe(5)
-    expect(ballsLeft(data.days[D1])).toBe(5)
+    expect(PLINKO_BALLS).toBe(2)
+    expect(ballsLeft(data.days[D1])).toBe(2)
     expect(nextThrow(data.days[D1])).toBe(0)
-    for (let n = 0; n < 4; n++) {
-      const d = throwAt(data, D1, n, 9 + n)
-      d.doneAt = d.at + 60_000 // done in time: no bonus ball any more
-    }
+    const d = throwAt(data, D1, 0, 9)
+    d.doneAt = d.at + 60_000 // done in time: no bonus ball any more
     expect(ballsLeft(data.days[D1])).toBe(1)
-    expect(nextThrow(data.days[D1])).toBe(4)
-    throwAt(data, D1, 4, 14)
+    expect(nextThrow(data.days[D1])).toBe(1)
+    throwAt(data, D1, 1, 14)
     expect(ballsLeft(data.days[D1])).toBe(0)
     expect(nextThrow(data.days[D1])).toBeNull()
-    expect(ballsLeft(data.days[addDays(D1, 1)])).toBe(5)
+    expect(ballsLeft(data.days[addDays(D1, 1)])).toBe(2)
   })
 
-  it('старый день с 6 бросками остаётся целым; сверх лимита (5 шаров + 3 возврата) выбрасывается', () => {
+  it('старый день с 6 бросками (было 5 шаров) остаётся целым; сверх лимита (5 + 3 возврата) выбрасывается', () => {
     const data = makeData()
     for (let n = 0; n < 6; n++)
       log(data, D1).plinko = {
@@ -616,7 +614,7 @@ describe('Плинко: 5 шаров в день', () => {
       slot: 0,
       taskId: 'focus60',
     }
-    expect(PLINKO_MAX).toBe(PLINKO_BALLS + PLINKO_REROLLS)
+    expect(PLINKO_MAX).toBe(5 + PLINKO_REROLLS)
     expect(plinkoDrops(data.days[D1])).toHaveLength(6)
     expect(ballsLeft(data.days[D1])).toBe(0)
     expect(normalizeData(data).days[D1].plinko?.[String(PLINKO_MAX)]).toBeUndefined()

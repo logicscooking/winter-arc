@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { EloBlock } from '../components/Elo'
 import { Check, Copy, Crown, Hand, Image as ImageIcon, LogIn, RefreshCw, Share2, ShieldCheck, Trash2, WifiOff } from 'lucide-react'
-import { DUEL, NUDGES, REACTIONS, feedText, incomingChallenges, levelOf, nudgeText, plural } from '../engine'
+import { DUEL, NUDGES, REACTIONS, feedText, incomingChallenges, nudgeText, plural } from '../engine'
 import type { Outfit, PublicStats } from '../engine'
 import { useToday } from '../store/hooks'
 import { useUi } from '../store/ui'
@@ -13,7 +13,7 @@ import type { FeedEvent, Member, Party as PartyT } from '../cloud/state'
 import { createParty, deleteEvent, joinParty, leaveParty, markNudgesSeen, react, refreshParty, regenerateCode, sendNudge, setActiveParty, signedUrl } from '../cloud/party'
 import { AuthForm } from '../components/AuthForm'
 import { HeroAva, useUserOutfit } from '../components/HeroAva'
-import { Bar, Help, HpBar, Sheet } from '../components/ui'
+import { Help, Sheet } from '../components/ui'
 import { RankBadge } from '../components/skills'
 import { RANKS } from '../engine'
 import type { Rank } from '../engine'
@@ -151,7 +151,7 @@ function DuelsTab() {
             title="Дуэли"
             text={[
               `3 дня с завтрашнего: кто закроет больше квестов дня. У друга 24 часа, чтобы принять.`,
-              `Каждый считает своё, итог — по обоим. Победа: +${DUEL.xp} XP и +${DUEL.shards} ❄. Одновременно — до ${DUEL.maxActive} дуэлей.`,
+              `Каждый считает своё, итог — по обоим. Победа: +${DUEL.shards} WF. Одновременно — до ${DUEL.maxActive} дуэлей.`,
             ]}
           />
         </h2>
@@ -239,7 +239,7 @@ function PartyScene({ me }: { me?: Outfit }) {
 function PartyIntro() {
   return (
     <div className="stack-lg">
-      <PageHead kicker="Пати" title="Собери команду" sub="До 8 друзей: уровень, HP и квесты друг друга." />
+      <PageHead kicker="Пати" title="Собери команду" sub="До 8 друзей: Эло, уровень и квесты друг друга." />
       <PartyScene />
       <section className="panel stack-lg">
         <div className="row between" style={{ gap: 8 }}>
@@ -247,7 +247,7 @@ function PartyIntro() {
           <Help title="Что видят друзья">
             <ul className="privacy-list">
               <li>
-                <Check size={16} aria-hidden /> Героя, уровень, HP, квесты дня и серии «X из 7»
+                <Check size={16} aria-hidden /> Героя, Эло, квесты дня и серии «X из 7»
               </li>
               <li>
                 <Check size={16} aria-hidden /> Серию честности и закрытые дни арки
@@ -592,11 +592,13 @@ function MemberCard({ m, isMe, owner, onNudge }: { m: Member; isMe: boolean; own
   const fresh = s?.day === today
   const sent = useSocial((st) => st.sentNudges[m.id])
   const cooling = sent !== undefined && Date.now() - sent < 3600_000
-  const lvl = s ? levelOf(s.xp) : undefined
-  const hp = s ? (s.warmup ? 100 : s.fallen ? 0 : s.hp) : 0
+  // v0.23: Эло is the one rank; old snapshots may carry only the XP level (hp / xp are legacy and ignored)
+  const elo = typeof s?.elo === 'number' && Number.isFinite(s.elo) ? Math.max(0, Math.round(s.elo)) : undefined
+  const level = typeof s?.level === 'number' && Number.isFinite(s.level) ? Math.max(1, Math.min(10, Math.round(s.level))) : 1
+  const honesty = typeof s?.honesty === 'number' && Number.isFinite(s.honesty) ? s.honesty : 0
   const updated = s ? (fresh ? `обновлено ${timeAgo(m.stats_at ?? new Date(s.at).toISOString())}` : 'сегодня ещё не заходил') : 'ещё нет данных'
   return (
-    <article className={`member ${isMe ? 'me' : ''} ${s?.fallen && !s.warmup ? 'fallen' : ''}`} aria-label={m.display_name}>
+    <article className={`member ${isMe ? 'me' : ''}`} aria-label={m.display_name}>
       <div className="member-top">
         <span className="profile-ava member-ava">
           <PixelAvatar outfit={outfit} size={64} title={`Герой ${m.display_name}`} />
@@ -607,31 +609,17 @@ function MemberCard({ m, isMe, owner, onNudge }: { m: Member; isMe: boolean; own
             {isMe && <span className="tag">ты</span>}
             {owner && <Crown size={15} color="var(--gold-mark)" aria-label="создатель пати" />}
           </div>
-          {s && lvl ? (
+          {s ? (
             <>
               <div className="member-badges">
-                {s.elo === undefined && <span className="lvl-badge">УР {s.level}</span>}
+                {elo === undefined && <span className="lvl-badge">УР {level}</span>}
                 {typeof s.title === 'string' && s.title && <span className="title-chip">{s.title.slice(0, 24)}</span>}
-                <span className="streak-chip" title="Дни подряд с исповедью" aria-label={`Честность: ${s.honesty} ${plural(s.honesty, 'день', 'дня', 'дней')} подряд`}>
-                  <Px name="flame" size={16} /> честность {s.honesty}
+                <span className="streak-chip" title="Дни подряд с исповедью" aria-label={`Честность: ${honesty} ${plural(honesty, 'день', 'дня', 'дней')} подряд`}>
+                  <Px name="flame" size={16} /> честность {honesty}
                 </span>
+                {s.warmup && <span className="tag warm">разминка</span>}
               </div>
-              <span className="meter">
-                <Px name="heart" size={18} />
-                <HpBar hp={hp} />
-                {s.warmup ? <span className="tag warm">разминка</span> : <span className="num hp-v">{s.fallen ? 'падение' : `${hp}/100`}</span>}
-              </span>
-              {s.elo !== undefined ? (
-                <EloBlock elo={s.elo} size={40} />
-              ) : (
-                <span className="meter">
-                  <Px name="star" size={18} />
-                  <Bar value={lvl.progress} label="Опыт до следующего уровня" />
-                  <span className="num">
-                    {lvl.into}/{lvl.span}
-                  </span>
-                </span>
-              )}
+              {elo !== undefined ? <EloBlock elo={elo} size={40} /> : <span className="tiny muted">Эло появится, когда друг обновит приложение</span>}
             </>
           ) : (
             <span className="tiny muted">Герой ещё не прислал статы</span>

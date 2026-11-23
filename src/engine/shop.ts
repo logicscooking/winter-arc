@@ -33,8 +33,7 @@ export function dopaminePrice(basePrice: number, chapter: ChapterId, discount: b
   return discount ? Math.max(1, Math.ceil(p * (1 - DOPAMINE_DISCOUNT))) : p
 }
 
-export function canBuy(shards: number, price: number, fallen: boolean): { ok: boolean; reason?: string } {
-  if (fallen) return { ok: false, reason: 'Во время падения магазин закрыт' }
-  if (shards < price) return { ok: false, reason: `Не хватает ${price - shards} ❄` }
+export function canBuy(shards: number, price: number): { ok: boolean; reason?: string } {
+  if (shards < price) return { ok: false, reason: `Не хватает ${price - shards} WF` }
   return { ok: true }
 }

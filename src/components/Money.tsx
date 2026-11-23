@@ -169,11 +169,11 @@ export function MoneySheet({ onClose }: { onClose: () => void }) {
         )}
         <button className="btn amber block" type="submit" disabled={!amount}>
           <Px name="coin" size={20} /> {amount ? `Записать ${formatRub(amount)}` : 'Записать'}
-          {xp > 0 && <span className="money-xp num">+{xp} XP</span>}
+          {xp > 0 && <span className="money-xp num">+{xp} к сфере</span>}
         </button>
         <p className="tiny muted center">
-          1 XP за каждые $10 месяца, по курсу {usdRateOf(data)} ₽.{' '}
-          <Help title="XP за заработок" text={['В сферу «Деньги»: 1 XP за каждые $10, заработанные за календарный месяц. $10 000 за месяц ≈ 1 000 XP плюс награды боссов месяца.', 'Записи месяца складываются, мелочь не пропадает. Удалил запись — XP и боссы пересчитаются.']} />
+          1 очко сферы за каждые $10 месяца, по курсу {usdRateOf(data)} ₽.{' '}
+          <Help title="Очки за заработок" text={['В сферу «Деньги»: 1 очко за каждые $10, заработанные за календарный месяц. $10 000 за месяц ≈ 1 000 очков плюс награды боссов месяца.', 'Записи месяца складываются, мелочь не пропадает. Удалил запись — Очки и боссы пересчитаются.']} />
         </p>
       </form>
     </Sheet>
@@ -213,7 +213,7 @@ export function UsdRateRow() {
       <span>
         <span style={{ fontWeight: 700 }}>Курс $</span>
         <span className="tiny muted" style={{ display: 'block' }}>
-          Для боссов месяца и XP, ₽ за $1
+          Для боссов месяца и «Заработано $», ₽ за $1
         </span>
       </span>
       <input className="input num" style={{ width: 88 }} inputMode="decimal" value={raw} onChange={(e) => setRaw(e.target.value.replace(/[^\d.,]/g, ''))} onBlur={commit} onKeyDown={(e) => e.key === 'Enter' && commit()} aria-label="Курс доллара в рублях" />
@@ -273,7 +273,7 @@ export function MoneyCard() {
                   className="icon-btn"
                   aria-label={`Удалить ${formatRub(x.amount)}`}
                   onClick={async () => {
-                    if (await confirm({ title: `Удалить ${formatRub(x.amount)}?`, body: 'Запись уйдёт и с другого устройства. XP и боссы месяца пересчитаются.', ok: 'Удалить', danger: true })) del(x.id)
+                    if (await confirm({ title: `Удалить ${formatRub(x.amount)}?`, body: 'Запись уйдёт и с другого устройства. Очки и боссы месяца пересчитаются.', ok: 'Удалить', danger: true })) del(x.id)
                   }}
                 >
                   <Trash2 size={16} />

@@ -374,7 +374,7 @@ export function TransitionRow({ day, slot, isToday, inList }: { day: DayKey; slo
     }
     setTransition(day, slot.id, nowWithOffset().getTime())
     reward(el, { xp: TRANSITION.xp })
-    say(`Переход сделан: +${TRANSITION.xp} XP Тела`, () => useStore.getState().setTransition(day, slot.id, null))
+    say('Переход сделан', () => useStore.getState().setTransition(day, slot.id, null))
   }
   const time = formatHM(slot.at)
   // inList: a plain row inside a «Сегодня» section; otherwise the dashed timeline row of «План дня»
@@ -389,7 +389,7 @@ export function TransitionRow({ day, slot, isToday, inList }: { day: DayKey; slo
           {inList ? <span className="pd-item-title">Переход · {time}</span> : <b>Переход · {time}</b>}
           <small>{inList ? transitionShort(transitionReps(cfg, sex), sex) : transitionText(transitionReps(cfg, sex), sex)}</small>
         </span>
-        <span className={inList ? `qrow-badge num${done ? ' on' : ''}` : 'pd-xp num'}>+{TRANSITION.xp} XP</span>
+        <span className={inList ? `qrow-badge num${done ? ' on' : ''}` : 'pd-xp num'}>+{TRANSITION.xp} к Здоровью</span>
       </button>
       {open && <RepsSheet onClose={() => setOpen(false)} />}
     </div>
@@ -558,7 +558,7 @@ function PlanTab({ day, today }: { day: DayKey; today: DayKey }) {
           text={[
             'День — это несколько блоков: «Утро · фокус», «Дела», «Вечер». Нажми на свободное место кольца — блок начнётся с этого времени.',
             'Дела из списка «Без времени» ставятся в блок тапом. Галочки здесь те же, что на «Сегодня».',
-            `Переходы в 12:00, 15:00 и 18:00: ${transitionText(reps, sex)}. +${TRANSITION.xp} XP Тела за каждый. Те же галочки, что на «Сегодня».`,
+            `Переходы в 12:00, 15:00 и 18:00: ${transitionText(reps, sex)}. +${TRANSITION.xp} к сфере «Здоровье» за каждый. Те же галочки, что на «Сегодня».`,
             'Сон на кольце — по целям подъёма и отбоя. Работа: не больше 6 ч и до 17:00.',
           ]}
         />
@@ -981,7 +981,7 @@ function RepsSheet({ onClose }: { onClose: () => void }) {
     <Sheet title="Переход" onClose={onClose}>
       <div className="stack">
         <p className="small" style={{ color: 'var(--ink-2)' }}>
-          В 12:00, 15:00 и 18:00 — разогнать кровь и переключить голову. Минимум: {transitionText(min, sex)}, больше — по желанию. <b>+{TRANSITION.xp} XP Тела</b> за каждый.
+          В 12:00, 15:00 и 18:00 — разогнать кровь и переключить голову. Минимум: {transitionText(min, sex)}, больше — по желанию. <b>+{TRANSITION.xp} к сфере «Здоровье»</b> за каждый.
         </p>
         {sex === 'f' ? (
           <>
@@ -1151,7 +1151,7 @@ export function TransitionCard() {
       <span className="grow">
         <b>Переход в {formatHM(slot.at)}</b>
         <small>
-          {transitionText(r, sex)} · {when} · +{TRANSITION.xp} XP
+          {transitionText(r, sex)} · {when} · +{TRANSITION.xp} к Здоровью
         </small>
       </span>
       <button
@@ -1161,7 +1161,7 @@ export function TransitionCard() {
         onClick={(e) => {
           setTransition(today, slot.id, nowWithOffset().getTime())
           reward(e.currentTarget, { xp: TRANSITION.xp })
-          say(`Переход сделан: +${TRANSITION.xp} XP Тела`, () => useStore.getState().setTransition(today, slot.id, null))
+          say('Переход сделан', () => useStore.getState().setTransition(today, slot.id, null))
         }}
       >
         <span />

@@ -7,6 +7,7 @@ import type { SyncDoc, SyncMeta } from './sync'
 import { at, confess, makeData, nowAt } from './testkit'
 import type { AppData, WeekGoal, WeekRecap } from './types'
 import {
+  weekDayNotes,
   WEEK_XP,
   bumpProgress,
   goalFact,
@@ -229,6 +230,27 @@ describe('public stats and privacy', () => {
     expect(party).toMatch(/### Волк/)
     expect(party).toMatch(/### Маша/)
     expect(party).toMatch(/\[Ник\]/)
+  })
+
+  it('личный промпт для ИИ видит оценку дня, «почему так» и дневник; промпт пати — нет', () => {
+    const d = sample()
+    d.days[SUN].confession!.dayScore = 7
+    d.days[SUN].confession!.dayWhy = 'ПОЧЕМУ-ТАК'
+    const notes = weekDayNotes(d, MON, SUN)
+    expect(notes).toHaveLength(1)
+    expect(notes[0]).toMatchObject({ day: SUN, score: 7, why: 'ПОЧЕМУ-ТАК', main: 'СЕКРЕТ-ИСПОВЕДИ' })
+    const v = viewFromPub(publicRecap(d, SUN)!, 'Волк')
+    const own = recapPrompt([v], { notes })
+    expect(own).toMatch(/оценка дня 7\/10/)
+    expect(own).toMatch(/Почему так: ПОЧЕМУ-ТАК/)
+    expect(own).toMatch(/Что я понял о себе\? СЕКРЕТ-ДНЕВНИКА/)
+    expect(own).toMatch(/закономерности/)
+    expect(own).not.toMatch(/СЕКРЕТ-ВЫБРОСА/)
+    const party = recapPrompt([v, { ...v, name: 'Маша' }], { party: 'Зима', notes })
+    expect(party).not.toMatch(/ПОЧЕМУ-ТАК|СЕКРЕТ|оценка дня/)
+    // public stats never carry them
+    const now = nowAt(SUN, 23)
+    expect(JSON.stringify(buildPublicStats(d, computeState(d, now), now))).not.toMatch(/ПОЧЕМУ-ТАК/)
   })
 })
 

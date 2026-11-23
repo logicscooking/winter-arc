@@ -3,22 +3,23 @@
  * Each char is a palette key (see palette.ts); '.' is transparent.
  */
 export const SPRITES = {
+  /** v0.23: the currency «WF-поинты» (Winterfaceit points): a blue coin with «WF» (the id stays `shard`) */
   shard: [
     '................',
-    '.......kk.......',
-    '......kiik......',
-    '.....kiIIbk.....',
-    '....kiiIIbbk....',
-    '....kiwIIbbk....',
-    '...kiiIIIbbBk...',
-    '...kiIIIIbbBk...',
-    '...kiIIIIbbBk...',
-    '...kiIIIIbbBk...',
-    '....kIIIbbBk....',
-    '....kiIIbbBk....',
-    '.....kIIbBk.....',
-    '......kIbk......',
-    '.......kk.......',
+    '.....kkkkkk.....',
+    '...kkIIIIIIkk...',
+    '..kIIbbbbbbBBk..',
+    '..kIbbbbbbbbBk..',
+    '.kIwbbbwbwwwbBk.',
+    '.kIwbbbwbwbbbBk.',
+    '.kIwbwbwbwwbbBk.',
+    '.kIwbwbwbwbbbBk.',
+    '.kIbwbwbbwbbbBk.',
+    '.kIbbbbbbbbbBBk.',
+    '..kbbbbbbbbBBk..',
+    '..kBbbbbbbBBBk..',
+    '...kkBBBBBBkk...',
+    '.....kkkkkk.....',
     '................',
   ],
   snowflake: [

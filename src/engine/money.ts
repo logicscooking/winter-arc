@@ -142,3 +142,21 @@ export function usdRateOf(data: Pick<AppData, 'settings'>): number {
 }
 
 export const formatUsd = (n: number) => `$${Math.floor(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')}`
+
+/** v0.23 «Заработано $X» on Today: this calendar month's income; $ only when the user set «Курс $» (else ₽) */
+export function monthEarned(data: Pick<AppData, 'incomes' | 'settings'>, today: DayKey): { rub: number; usd?: number } {
+  const month = today.slice(0, 7)
+  const rub = incomesOf(data)
+    .filter((x) => x.day.slice(0, 7) === month && x.day <= today)
+    .reduce((s, x) => s + x.amount, 0)
+  const raw = Number(data.settings.usdRate)
+  const hasRate = data.settings.usdRate !== undefined && Number.isFinite(raw) && raw >= USD_RATE_MIN && raw <= USD_RATE_MAX
+  return hasRate ? { rub, usd: rub / raw } : { rub }
+}
+
+/** v0.23 «Графики»: ₽ earned on each day (0 for none) */
+export function incomeByDay(data: Pick<AppData, 'incomes'>, days: DayKey[]): number[] {
+  const by = new Map<DayKey, number>()
+  for (const x of incomesOf(data)) by.set(x.day, (by.get(x.day) ?? 0) + x.amount)
+  return days.map((d) => by.get(d) ?? 0)
+}

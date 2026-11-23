@@ -344,7 +344,7 @@ function NodeRow({ node, prog, onPractice }: { node: SkillNode; prog: TraitView[
             <button
               className="btn sm ghost"
               onClick={async () => {
-                if (await confirm({ title: `Удалить «${node.title}»?`, body: 'Практики узла тоже удалятся. XP за них уйдёт.', ok: 'Удалить', danger: true })) deleteNode(node.id)
+                if (await confirm({ title: `Удалить «${node.title}»?`, body: 'Практики узла тоже удалятся. Очки сферы за них уйдут.', ok: 'Удалить', danger: true })) deleteNode(node.id)
               }}
             >
               <Trash2 size={16} />
@@ -524,7 +524,7 @@ function GoalNode({ goal, goals, issues, depth, onAdd }: { goal: Goal; goals: Go
           <span className="goal-title">{goal.title}</span>
           <span className="tiny muted row wrap" style={{ gap: 6 }}>
             <span className={`gtag t-${goal.type}`}>{TYPE_TAG[goal.type]}</span>
-            <span>+{GOAL_XP[goal.type]} XP</span>
+            <span>+{GOAL_XP[goal.type]} к сфере</span>
             {goal.type === 'repeat' && (
               <span className="num">
                 {weekTicks(goal, today)}/{goal.perWeek} на неделе
@@ -698,7 +698,7 @@ function GoalSheet({ skillId, preset, onClose }: { skillId: string; preset: { ty
             <button key={t} className={`type-tile t-${t}`} aria-pressed={type === t} onClick={() => setType(t)}>
               <b>{GOAL_META[t].name}</b>
               <small>{GOAL_META[t].time}</small>
-              <small className="num">+{GOAL_XP[t]} XP</small>
+              <small className="num">+{GOAL_XP[t]} к сфере</small>
             </button>
           ))}
         </div>
@@ -807,7 +807,7 @@ function SkillEdit({ id, onClose }: { id: string; onClose: () => void }) {
             className="btn ghost"
             style={{ color: 'var(--hp)' }}
             onClick={async () => {
-              if (await confirm({ title: `Удалить «${skill.title}»?`, body: 'Дерево, практики и цели удалятся, XP за них уйдёт. Можно вместо этого убрать в «Позже».', ok: 'Удалить', danger: true })) {
+              if (await confirm({ title: `Удалить «${skill.title}»?`, body: 'Дерево, практики и цели удалятся, очки сферы за них уйдут. Можно вместо этого убрать в «Позже».', ok: 'Удалить', danger: true })) {
                 del(id)
                 go('/deal')
               }

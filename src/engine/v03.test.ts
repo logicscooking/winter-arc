@@ -81,7 +81,7 @@ describe('Судьба дня', () => {
     expect(computeState(data, nowAt(D1, 12)).days[D1].destinyWon).toBe(true)
   })
 
-  it('HP и закрытие дня не меняются из-за судьбы', () => {
+  it('Эло и закрытие дня не меняются из-за судьбы', () => {
     const a = makeData()
     const b = makeData()
     for (const d of [a, b]) {
@@ -90,7 +90,7 @@ describe('Судьба дня', () => {
       confess(d, D1)
     }
     log(b, D1).destiny = { ref: 'quest', id: 'phone', startedAt: at(D1, 11), minutes: 25 }
-    expect(computeState(b, nowAt(D1, 22)).hp).toBe(computeState(a, nowAt(D1, 22)).hp)
+    expect(computeState(b, nowAt(D1, 22)).elo).toBe(computeState(a, nowAt(D1, 22)).elo)
   })
 })
 

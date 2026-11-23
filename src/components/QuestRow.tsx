@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { Check, Minus, X } from 'lucide-react'
-import { BAR_LADDERS, BAR_STEP_BONUS, SHARDS, barMin, barStep, formatHM, questReward, questStreak, questXp, statusFromValue, questArea } from '../engine'
+import { BAR_LADDERS, BAR_STEP_BONUS, SHARDS, barMin, barStep, formatHM, questReward, questStreak, statusFromValue, questArea } from '../engine'
 import type { DayKey, GameState, MarkStatus, PlannedQuest, Quest } from '../engine'
 import { useStore } from '../store/store'
 import { go, nowWithOffset, reward, useFx } from '../store/hooks'
 import { useUi } from '../store/ui'
-import { Px, STAT_SPRITE, questSprite } from '../pixel/Pixel'
+import { Px, questSprite } from '../pixel/Pixel'
 
 interface Props {
   plan: PlannedQuest
@@ -39,7 +39,7 @@ export function QuestRow({ plan, quest, status, auto, day, game, locked, wakeTar
   const ladder = BAR_LADDERS[quest.id]
   const step = ladder ? barStep({ bars }, quest.id, day) : 0
   const barNorm = ladder && bars?.some((b) => b.questId === quest.id) ? ladder.steps[step] : undefined
-  const doneXp = Math.round(questXp(plan.role, plan.base, 'done') * (1 + BAR_STEP_BONUS * step))
+  const doneShards = questReward(day, plan, 'done').shards
   const completed = status === 'done' || status === 'mini'
 
   /** every change to a mark gets an undo */
@@ -50,13 +50,13 @@ export function QuestRow({ plan, quest, status, auto, day, game, locked, wakeTar
     say(text, () => restoreMark(day, quest.id, snapshot))
   }
 
-  /** XP floaters + the reward card (stat progress, ❄, CRITICAL, «Судьба») */
+  /** WF floaters + the reward card (stat progress, WF, CRITICAL, «Судьба») */
   const celebrate = (el: Element, s: MarkStatus, at: number) => {
     const r0 = questReward(day, plan, s)
     const r = s === 'done' ? { ...r0, xp: Math.round(r0.xp * (1 + BAR_STEP_BONUS * step)) } : r0
     const z = useStore.getState().data.days[day]?.destiny
     const destiny = z?.ref === 'quest' && z.id === quest.id && at >= z.startedAt && at <= z.startedAt + z.minutes * 60_000 ? SHARDS.destiny : 0
-    reward(el, { xp: r.xp })
+    reward(el, {})
     useFx.getState().showPop({ title: quest.title, stat: plan.stat, area: questArea(quest), fromXp: game.xpBySphere[questArea(quest)], xp: r.xp, shards: r.shards, crit: r.crit, destiny })
   }
 
@@ -170,7 +170,7 @@ export function QuestRow({ plan, quest, status, auto, day, game, locked, wakeTar
           <div className="row wrap" style={{ gap: 8 }}>
             {status !== 'done' && !numeric && quest.kind !== 'deal' && (
               <button className="btn sm primary" onClick={(e) => complete(e.currentTarget, 'done')}>
-                Сделал · +{doneXp} XP
+                Сделал · +{doneShards} WF
               </button>
             )}
             {numeric && (
@@ -219,7 +219,7 @@ export function QuestRow({ plan, quest, status, auto, day, game, locked, wakeTar
 
   if (compact) {
     const sub = [plan.role === 'main' ? 'главный' : '', auto && status ? 'авто' : '', quest.kind === 'reels' || quest.kind === 'bedtime' ? 'по исповеди' : quest.kind === 'wake' && wakeTarget !== undefined ? `цель ${formatHM(wakeTarget)}` : quest.kind === 'deal' && !completed ? 'закрой Дело дня' : ''].filter(Boolean).join(' · ')
-    const badge = numeric ? (value ? `${value}/${quest.goal ?? quest.min} ${quest.unit ?? ''}` : `${quest.goal ?? quest.min} ${quest.unit ?? ''}`).trim() : `+${doneXp} XP`
+    const badge = numeric ? (value ? `${value}/${quest.goal ?? quest.min} ${quest.unit ?? ''}` : `${quest.goal ?? quest.min} ${quest.unit ?? ''}`).trim() : `+${doneShards} WF`
     return (
       <div className={`qrow ${status ?? ''}${completed ? ' done' : ''}`}>
         <button className="pd-check" onClick={(e) => onCheck(e.currentTarget)} aria-label={`${quest.title}: ${status ? STATUS_WORD[status] : 'отметить'}`} aria-pressed={completed} disabled={locked && !status}>
@@ -251,14 +251,9 @@ export function QuestRow({ plan, quest, status, auto, day, game, locked, wakeTar
       <button className="quest-body" onClick={() => !locked && setMenu(!menu)} disabled={locked} aria-expanded={menu} aria-label={`${quest.title}: варианты — мини-версия, пропуск`} style={{ cursor: locked ? 'default' : 'pointer' }}>
         <div className="quest-title">{quest.title}</div>
         <div className="quest-sub">
-          <span className="xp-chip" title="XP за выполнение">
-            <Px name={STAT_SPRITE[quest.stat]} size={18} />+{doneXp} XP
+          <span className="ice-chip" title="WF-поинты за выполнение">
+            <Px name="shard" size={18} />+{doneShards} WF
           </span>
-          {plan.role === 'main' && (
-            <span className="ice-chip" title="Осколки за выполнение">
-              <Px name="shard" size={18} />+{SHARDS.main}
-            </span>
-          )}
           {streak.last7 > 0 && (
             <span className="streak-chip" title={`Серия: ${streak.current}, лучшая ${streak.best}`} aria-label={`${streak.last7} из последних 7 дней`}>
               <Px name="flame" size={18} />

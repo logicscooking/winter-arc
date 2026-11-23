@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Lock, Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import { CHAPTERS, GEAR, SHOP_CHEST, SHOP_ITEMS, canBuy, chapterOf, dopaminePrice, formatDayShort, gameDayOf, gearPrice, gearPurchaseId, hasPerk, levelOf, ownsGear, priceMultiplier, wornOutfit } from '../engine'
 import type { GearItem, Rarity, ShopKind } from '../engine'
 import { useStore } from '../store/store'
@@ -34,7 +34,7 @@ export function Shop({ tab: initialTab }: { tab?: string } = {}) {
   const [adding, setAdding] = useState(false)
 
   const doBuy = (el: Element, item: { itemId: string; title: string; price: number; kind: ShopKind }) => {
-    const c = canBuy(game.shards, item.price, game.fallen)
+    const c = canBuy(game.shards, item.price)
     if (!c.ok) return say(c.reason!)
     const id = buy(item, nowWithOffset())
     reward(el, { shards: -item.price })
@@ -49,14 +49,14 @@ export function Shop({ tab: initialTab }: { tab?: string } = {}) {
   const worn = wornOutfit(data.profile?.outfit, level, data.purchases, game)
   const shopGear = GEAR.filter((g) => g.price !== undefined && !g.legendary)
   const legendGear = GEAR.filter((g) => g.price !== undefined && g.legendary)
-  // v0.16 sphere perks: «Деньги 10» dopamine −10%, «Развитие 10» the ❄ chest −20
+  // v0.16 sphere perks: «Деньги 10» dopamine −10%, «Развитие 10» the WF chest −20
   const dopaDiscount = hasPerk(game.xpBySphere, 'money', 'dopamine')
   const chestPrice = SHOP_CHEST.price - (hasPerk(game.xpBySphere, 'growth', 'chest') ? SHOP_CHEST.discount : 0)
   const prizes = data.rewards.filter((r) => r.rarity)
 
   const doChest = (el: Element) => {
     if (!prizes.length) return say('Отметь редкость у своих наград — они станут призами сундука')
-    const c = canBuy(game.shards, chestPrice, game.fallen)
+    const c = canBuy(game.shards, chestPrice)
     if (!c.ok) return say(c.reason!)
     const id = buyChest(chestPrice, nowWithOffset())
     reward(el, { shards: -chestPrice })
@@ -70,9 +70,9 @@ export function Shop({ tab: initialTab }: { tab?: string } = {}) {
     return (
       <button
         key={g.id}
-        className={`tile ${owned || canBuy(game.shards, p, game.fallen).ok ? '' : 'locked'}${g.legendary ? ' legend' : ''}`}
+        className={`tile ${owned || canBuy(game.shards, p).ok ? '' : 'locked'}${g.legendary ? ' legend' : ''}`}
         aria-pressed={worn[g.slot] === g.id}
-        disabled={!owned && game.fallen}
+       
         onClick={(e) => {
           if (owned) {
             setOutfit({ [g.slot]: g.id })
@@ -108,20 +108,13 @@ export function Shop({ tab: initialTab }: { tab?: string } = {}) {
       <div className="wallet">
         <Px name="shard" size={44} />
         <div>
-          <small>Мои осколки</small>
+          <small>Мои WF-поинты</small>
           <span className="num">{game.shards}</span>
         </div>
         <small style={{ textAlign: 'right', maxWidth: 130 }}>
-          Откуда ❄ <Help title="Откуда осколки" text="За квесты, исповедь, камбэк, Судьбу дня, каждый новый уровень, бонусы сфер, вехи «Путь к $10k» и «Покоритель зимы» в конце арки." />
+          Откуда WF <Help title="Откуда WF-поинты" text="За квесты, исповедь, камбэк, Судьбу дня, каждый новый уровень, бонусы сфер, вехи «Путь к $10k» и «Покоритель зимы» в конце арки." />
         </small>
       </div>
-
-      {game.fallen && (
-        <div className="panel row" style={{ borderColor: 'var(--hp)' }}>
-          <Lock color="var(--hp)" aria-hidden />
-          <p className="small grow">Падение: магазин откроют 3 идеальных дня.</p>
-        </div>
-      )}
 
       <div className="seg-switch" role="tablist" aria-label="Раздел магазина" style={{ alignSelf: 'flex-start' }}>
         {(
@@ -147,9 +140,9 @@ export function Shop({ tab: initialTab }: { tab?: string } = {}) {
               <div className="tile-grid">
                 {SHOP_ITEMS.map((it) => {
                   const p = dopaminePrice(it.basePrice, ch, dopaDiscount)
-                  const ok = canBuy(game.shards, p, game.fallen).ok
+                  const ok = canBuy(game.shards, p).ok
                   return (
-                    <button key={it.id} className={`tile ${ok ? '' : 'locked'}`} disabled={game.fallen} onClick={(e) => doBuy(e.currentTarget, { itemId: it.id, title: it.title, price: p, kind: it.kind })} title={it.hint}>
+                    <button key={it.id} className={`tile ${ok ? '' : 'locked'}`} onClick={(e) => doBuy(e.currentTarget, { itemId: it.id, title: it.title, price: p, kind: it.kind })} title={it.hint}>
                       <span className="tile-art">
                         <Px name={SHOP_SPRITE[it.id] ?? 'gift'} size={48} />
                       </span>
@@ -167,14 +160,14 @@ export function Shop({ tab: initialTab }: { tab?: string } = {}) {
 
           {tab === 'custom' && (
             <>
-              <p className="small muted">Кино, кроссовки, ужин — по своей цене в ❄.</p>
+              <p className="small muted">Кино, кроссовки, ужин — по своей цене в WF.</p>
               <div className="panel chest-buy">
                 <Px name="chest" size={44} />
                 <div className="stack" style={{ gap: 2 }}>
-                  <b>Сундук за ❄</b>
+                  <b>Сундук за WF</b>
                   <span className="tiny muted">{prizes.length ? `Одна из ${prizes.length} твоих наград с редкостью. Без редкой — шанс растёт.` : 'Призы — твои награды с редкостью: отметь «сундук» у наград ниже.'}</span>
                 </div>
-                <button className={`btn ${canBuy(game.shards, chestPrice, game.fallen).ok && prizes.length ? 'primary' : ''}`} disabled={game.fallen} onClick={(e) => doChest(e.currentTarget)} aria-label={`Открыть сундук за ${chestPrice} ❄`}>
+                <button className={`btn ${canBuy(game.shards, chestPrice).ok && prizes.length ? 'primary' : ''}`} onClick={(e) => doChest(e.currentTarget)} aria-label={`Открыть сундук за ${chestPrice} WF`}>
                   <Px name="shard" size={16} /> {chestPrice}
                 </button>
               </div>
@@ -188,9 +181,9 @@ export function Shop({ tab: initialTab }: { tab?: string } = {}) {
                 {data.rewards.map((r) => (
                   <div key={r.id} style={{ position: 'relative' }}>
                     <button
-                      className={`tile ${canBuy(game.shards, r.price, game.fallen).ok ? '' : 'locked'}`}
+                      className={`tile ${canBuy(game.shards, r.price).ok ? '' : 'locked'}`}
                       style={{ width: '100%' }}
-                      disabled={game.fallen}
+                     
                       onClick={(e) => doBuy(e.currentTarget, { itemId: r.id, title: r.title, price: r.price, kind: 'custom' })}
                     >
                       <span className="tile-art">
@@ -235,7 +228,7 @@ export function Shop({ tab: initialTab }: { tab?: string } = {}) {
                 >
                   <div className="row">
                     <input className="input grow" placeholder="Своя награда" value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Название награды" maxLength={60} autoFocus />
-                    <input className="input num" style={{ width: 88 }} placeholder="❄" type="number" inputMode="numeric" min={1} max={9999} value={price} onChange={(e) => setPrice(e.target.value.replace(/[^\d]/g, ''))} aria-label="Цена в осколках" />
+                    <input className="input num" style={{ width: 88 }} placeholder="WF" type="number" inputMode="numeric" min={1} max={9999} value={price} onChange={(e) => setPrice(e.target.value.replace(/[^\d]/g, ''))} aria-label="Цена в WF-поинтах" />
                   </div>
                   <div className="chips" role="radiogroup" aria-label="Иконка">
                     {REWARD_ICONS.map((n) => (

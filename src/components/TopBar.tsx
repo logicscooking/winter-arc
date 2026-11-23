@@ -69,7 +69,7 @@ const MORE_TITLES: Record<string, string> = {
 /** The top bar for a route; screens that need their own (week review) render it themselves */
 export function RouteTopBar({ top, sub, query }: { top: string; sub?: string; query: URLSearchParams }) {
   const game = useGame()
-  const shop = <BarBtn icon="gift" label={`Магазин наград, осколков: ${game.shards}`} href="#/shop" badge={game.shards} />
+  const shop = <BarBtn icon="gift" label={`Магазин наград, WF-поинтов: ${game.shards}`} href="#/shop" badge={game.shards} />
   switch (top) {
     case 'deal':
       return <TopBar title="Путь" left={shop} right={<BarBtn icon="dial" label="План дня" href="#/plan" />} />
@@ -86,6 +86,8 @@ export function RouteTopBar({ top, sub, query }: { top: string; sub?: string; qu
       return <TopBar title="Поток" left={<BackBtn href="#/deal" />} />
     case 'charts':
       return <TopBar title="Графики" left={<BackBtn href="#/more" />} />
+    case 'entries':
+      return <TopBar title="Все записи" left={<BackBtn />} />
     case 'shop':
       return <TopBar title="Магазин" left={<BackBtn />} right={<BarBtn icon="hero" label="Образ" href="#/avatar" />} />
     case 'avatar':

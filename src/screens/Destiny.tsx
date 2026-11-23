@@ -43,8 +43,8 @@ const fmtMult = (m: number) => `×${String(m).replace('.', ',')}`
 
 /**
  * «Судьба дня»: Плинко. 16 slots, each with its own task laid out for the day; the ball falls by real
- * physics from a crypto-random start. Centre — easy, edges — hard and fat in XP. 5 balls a day.
- * Two tier-2 slots are specials: «Ещё раз» (the ball comes back, up to 3 a day) and «Отдых» (+1 ❄ for nothing).
+ * physics from a crypto-random start. Centre — easy, edges — hard and fat in rewards. 2 balls a day (v0.23).
+ * Two tier-2 slots are specials: «Ещё раз» (the ball comes back, up to 3 a day) and «Отдых» (+1 WF for nothing).
  * The reward comes only after «Сделал»; a task closed in time grows the streak (an XP multiplier).
  */
 export function Destiny() {
@@ -124,10 +124,10 @@ export function Destiny() {
     setFalling(null)
     const kind = dropSpecial(drop)
     if (kind) {
-      // a special has no card: just the result, and the ❄ of «Отдых» is paid by the replay of this drop
+      // a special has no card: just the result, and the WF of «Отдых» is paid by the replay of this drop
       setOpen(null)
       if (kind === 'rest') {
-        setNotice({ id: Date.now(), kind, title: `Отдых: +${PLINKO_REST_SHARDS} ❄`, sub: 'Без задания и без вины. Серия не тронута' })
+        setNotice({ id: Date.now(), kind, title: `Отдых: +${PLINKO_REST_SHARDS} WF`, sub: 'Без задания и без вины. Серия не тронута' })
         reward(document.querySelector('.pk-stage'), { shards: PLINKO_REST_SHARDS })
         if (sound) sfxRest()
         buzz([20, 40, 20])
@@ -175,11 +175,11 @@ export function Destiny() {
     setOpen(null)
   }
 
-  const moreHint = `Все ${PLINKO_BALLS} шаров на сегодня брошены. Завтра — новые ${PLINKO_BALLS} и новая доска.`
+  const moreHint = `Оба шара на сегодня брошены. Завтра — снова ${PLINKO_BALLS} и новая доска.`
 
   return (
     <div className="stack-lg">
-      <p className="small muted page-sub">Шар выберет маленькое полезное дело · {PLINKO_BALLS} в день</p>
+      <p className="small muted page-sub">Шар выберет маленькое полезное дело · {PLINKO_BALLS} шара в день</p>
 
       <div className="pk-wrap">
         <Santa falling={falling !== null} sound={sound} cheer={cheer} />
@@ -228,9 +228,9 @@ export function Destiny() {
                   <Px name={iconOf(sp.icon)} size={30} />
                   <span className="grow">
                     <b>{sp.title}</b>
-                    <small className="muted">{sp.kind === 'rest' ? `+${PLINKO_REST_SHARDS} ❄, без XP, серия не тронута` : returned.has(d.n) ? 'Шар вернулся, не потрачен' : 'Перебросов не осталось, шар потрачен'}</small>
+                    <small className="muted">{sp.kind === 'rest' ? `+${PLINKO_REST_SHARDS} WF, без очков сферы, серия не тронута` : returned.has(d.n) ? 'Шар вернулся, не потрачен' : 'Перебросов не осталось, шар потрачен'}</small>
                   </span>
-                  <span className="pk-row-state num">{sp.kind === 'rest' ? `✓ +${PLINKO_REST_SHARDS} ❄` : returned.has(d.n) ? '↺' : '✕'}</span>
+                  <span className="pk-row-state num">{sp.kind === 'rest' ? `✓ +${PLINKO_REST_SHARDS} WF` : returned.has(d.n) ? '↺' : '✕'}</span>
                 </div>
               )
             const task = plinkoTaskById(d.taskId)
@@ -244,7 +244,7 @@ export function Destiny() {
                 <span className="grow">
                   <b>{task?.title ?? 'Задание'}</b>
                   <small className="muted">
-                    ×{PLINKO_TIERS[tier].mult} · +{Math.round(PLINKO_TIERS[tier].xp * mult)} XP +{PLINKO_TIERS[tier].shards} ❄
+                    ×{PLINKO_TIERS[tier].mult} · +{Math.round(PLINKO_TIERS[tier].xp * mult)} к сфере · +{PLINKO_TIERS[tier].shards} WF
                   </small>
                 </span>
                 <span className="pk-row-state num">{doneR ? `✓ +${doneR.xp}${doneInTime(d) ? ' ⚡' : ''}` : left > 0 ? formatLeft(left) : 'Время вышло'}</span>

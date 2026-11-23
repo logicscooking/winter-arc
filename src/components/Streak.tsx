@@ -1,39 +1,48 @@
-import { dayStreak, gameDayOf, monthClosed } from '../engine'
+import { dayStreak, gameDayOf, monthClosed, plural } from '../engine'
 import { Px } from '../pixel/Pixel'
 import { useGame, useNow } from '../store/hooks'
 import { Help } from './ui'
-import { ArcLine } from './ThirteenWeeks'
 
-/** «Серия» on Today: closed days in a row, the month's closed days and a small calendar to keep it going */
+/** «Стрик» at the top of «Путь»: closed days in a row, big; the record, a nudge and this month's calendar */
 export function StreakCard() {
   const game = useGame()
   const today = gameDayOf(useNow())
   const s = dayStreak(game, today)
   const m = monthClosed(game, today)
+  const msg = s.todayDone
+    ? `Сегодня закрыт ✓ Завтра серия станет ${s.run + 1}.`
+    : s.run > 0
+      ? `Не проеби серию: закрой главные квесты сегодня — будет ${s.run + 1}.`
+      : 'Начни серию: закрой главные квесты сегодня.'
+  const record = s.run > 0 && s.run >= s.best
   return (
-    <section className="streak-card" aria-label="Серия">
+    <section className={`streak-card big${s.run > 0 ? ' hot' : ''}`} aria-label={`Стрик: ${s.run} ${plural(s.run, 'день', 'дня', 'дней')} подряд`}>
       <div className="streak-top">
-        <Px name="flame" size={40} />
+        <span className="streak-flame" aria-hidden>
+          <Px name="flame" size={64} />
+        </span>
         <div className="grow">
+          <span className="streak-ear">Стрик выполненных дней</span>
           <div className="streak-run">
-            <b className="num">{s.run}</b> {plural(s.run)} подряд
+            <b className="num">{s.run}</b> {plural(s.run, 'день', 'дня', 'дней')} подряд
           </div>
-          <small className="muted">
-            Рекорд {s.best} · закрыто {m.title}: <b>{m.closed}</b>{m.past > 0 && ` из ${m.past}`}
-          </small>
+          <small className="streak-best">{record ? 'Это твой рекорд 🔥' : `Рекорд — ${s.best} ${plural(s.best, 'день', 'дня', 'дней')}`}</small>
         </div>
         <Help
-          title="Серия"
+          title="Стрик"
           text={[
-            'День закрыт, когда все главные квесты сделаны или в мини.',
+            'День выполнен, когда все главные квесты сделаны или в мини.',
             'Заморозка держит серию, но не прибавляет. Сегодня серию не ломает, пока день не кончился.',
           ]}
         />
       </div>
-      <p className={`streak-today ${s.todayDone ? 'done' : ''}`}>
-        {s.todayDone ? `Сегодня закрыт ✓ Серия ${s.run}` : `Закрой главные квесты сегодня — серия станет ${s.run + 1}`}
-      </p>
-      <ArcLine />
+      <p className={`streak-today ${s.todayDone ? 'done' : ''}`}>{msg}</p>
+      <div className="streak-month-head small">
+        <b>Закрыто {m.title}</b>
+        <span className="num">
+          {m.past > 0 ? `${m.closed} из ${m.past} ${plural(m.past, 'дня', 'дней', 'дней')}` : m.closed}
+        </span>
+      </div>
       <div className="streak-month" role="img" aria-label={`Закрыто ${m.title} ${m.closed} дней`}>
         {['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'].map((d) => (
           <span key={d} className="wd">
@@ -51,12 +60,4 @@ export function StreakCard() {
       </div>
     </section>
   )
-}
-
-function plural(n: number) {
-  const a = n % 10
-  const b = n % 100
-  if (a === 1 && b !== 11) return 'день'
-  if (a >= 2 && a <= 4 && (b < 12 || b > 14)) return 'дня'
-  return 'дней'
 }

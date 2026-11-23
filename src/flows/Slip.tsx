@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ARC_START, COMEBACK_WINDOW_MS, HP, PRESET_SWAPS, SHARDS, WHAT_LABEL, WHY_LABEL, XP, gameDayOf } from '../engine'
+import { ARC_START, COMEBACK_WINDOW_MS, ELO, PRESET_SWAPS, SHARDS, WHAT_LABEL, WHY_LABEL, gameDayOf } from '../engine'
 import type { SlipWhat, SlipWhy } from '../engine'
 import { useStore } from '../store/store'
 import { nowWithOffset, reward } from '../store/hooks'
@@ -23,21 +23,21 @@ export function SlipFlow() {
   const submit = (el: Element) => {
     if (!what || !why) return
     const id = addSlip(what, why, note.trim(), nowWithOffset())
-    if (!warmup) reward(el, { hp: HP.slip })
+    if (!warmup) reward(el, { elo: ELO.slip })
     open({ kind: 'comeback', slipId: id })
   }
 
   return (
     <Sheet title="Слился" onClose={close}>
       <div className="stack-lg">
-        <p className="small muted">{warmup ? 'Разминка: срыв запишется в лог триггеров, HP не снимется. Камбэк всё равно даст XP.' : 'Признаться выгоднее, чем скрыть: урон сразу, но камбэк в течение часа вернёт половину.'}</p>
+        <p className="small muted">{warmup ? 'Разминка: срыв запишется в лог триггеров, Эло не снимется. Камбэк всё равно даст WF.' : 'Признаться выгоднее, чем скрыть: −5 Эло сразу, но камбэк в течение часа отменит минус.'}</p>
         <Chips label="Что" options={WHATS} value={what} onChange={setWhat} />
         <Chips label="Почему" options={WHYS} value={why} onChange={setWhy} />
         <Field label="Заметка (необязательно)">
           <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Что было перед этим" />
         </Field>
         <button className="btn danger block" disabled={!what || !why} onClick={(e) => submit(e.currentTarget)}>
-          {warmup ? 'Признаться' : 'Признаться, −10 HP'}
+          {warmup ? 'Признаться' : 'Признаться, −5 Эло'}
         </button>
       </div>
     </Sheet>
@@ -63,7 +63,7 @@ export function ComebackFlow({ slipId }: { slipId: string }) {
   const done = (el: Element) => {
     const s = swap === 'custom' ? custom.trim() || 'Своя замена' : swap
     comeback(slip.id, s, nowWithOffset())
-    reward(el, { hp: slip.day < ARC_START ? undefined : HP.comeback, shards: SHARDS.comeback, xp: XP.comeback })
+    reward(el, { elo: slip.day < ARC_START ? undefined : -ELO.slip, shards: SHARDS.comeback })
     setTimeout(close, 700)
   }
 
@@ -90,7 +90,7 @@ export function ComebackFlow({ slipId }: { slipId: string }) {
             />
             {swap === 'custom' && <input className="input" value={custom} onChange={(e) => setCustom(e.target.value)} placeholder="Что сделаешь за 2 минуты" autoFocus />}
             <button className="btn primary block" onClick={(e) => done(e.currentTarget)}>
-              {slip.day < ARC_START ? 'Сделал: +2 ❄, +5 XP Воли' : 'Сделал: +5 HP, +2 ❄, +5 XP Воли'}
+              {slip.day < ARC_START ? `Сделал: +${SHARDS.comeback} WF` : `Сделал: −5 Эло отменится, +${SHARDS.comeback} WF`}
             </button>
             <button className="btn ghost block" onClick={close}>
               Сделаю позже (таймер на «Сегодня»)

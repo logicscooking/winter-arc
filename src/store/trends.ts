@@ -34,17 +34,29 @@ export function pagesValues(data: AppData, days: DayKey[], today: DayKey) {
   })
 }
 
-export function xpValues(game: GameState, days: DayKey[], today: DayKey) {
-  return days.map((d) => (future(d, today) || !game.days[d] ? null : (game.xpByDay[d] ?? 0)))
+/** the last 14 days (or from the first replayed day) */
+export function window14(data: AppData, today: DayKey): DayKey[] {
+  const first = replayStartOf(data)
+  const start = addDays(today, -13) < first ? first : addDays(today, -13)
+  return daysRange(start, addDays(start, 13))
 }
 
-export function hpValues(game: GameState, days: DayKey[], today: DayKey) {
-  return days.map((d) => (future(d, today) ? null : (game.hpByDay[d] ?? null)))
+/** «Как прошёл день»: the evening dayScore 1–10 */
+export function dayScoreValues(data: AppData, days: DayKey[], today: DayKey) {
+  return days.map((d) => (future(d, today) ? null : (data.days[d]?.confession?.dayScore ?? null)))
 }
 
-/** XP per day only counts when something happened, so an empty week reads as empty */
-export function anyXp(values: (number | null)[]) {
-  return values.some((v) => v !== null && v > 0)
+/** «Восстановление после сна»: morning check-in sleep 1–5 + energy 1–5 → 2–10 */
+export function recoveryValues(data: AppData, days: DayKey[], today: DayKey) {
+  return days.map((d) => {
+    const c = data.days[d]?.checkin
+    return future(d, today) || !c ? null : c.sleep + c.energy
+  })
+}
+
+/** Эло at the end of each day (the open day too) */
+export function eloValues(game: GameState, days: DayKey[], today: DayKey) {
+  return days.map((d) => (future(d, today) ? null : (game.eloByDay[d] ?? null)))
 }
 
 export const WAKE_GOAL = WAKE_GOAL_MIN

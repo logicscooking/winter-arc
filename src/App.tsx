@@ -14,6 +14,7 @@ import { SkillNew } from './screens/SkillNew'
 import { Flow } from './screens/Flow'
 import { Hero } from './screens/Hero'
 import { Charts } from './screens/Charts'
+import { Entries } from './screens/Entries'
 import { Shop } from './screens/Shop'
 import { More } from './screens/More'
 import { Onboarding } from './screens/Onboarding'
@@ -44,7 +45,7 @@ const NAV: { path: string; label: string; icon: SpriteName; tab: boolean }[] = [
   { path: '/deal', label: 'Путь', icon: 'fir', tab: true },
   { path: '/party', label: 'Пати', icon: 'campfire', tab: true },
   { path: '/hero', label: 'Персонаж', icon: 'hero', tab: true },
-  // 5 tabs max on the phone: the rest opens from «Сегодня» (Судьба, План, ❄ → Магазин) and from «Ещё»
+  // 5 tabs max on the phone: the rest opens from «Сегодня» (Судьба, План, WF → Магазин) and from «Ещё»
   { path: '/destiny', label: 'Судьба дня', icon: 'plinko', tab: false },
   { path: '/plan', label: 'План дня', icon: 'dial', tab: false },
   { path: '/shop', label: 'Магазин', icon: 'shard', tab: false },
@@ -52,7 +53,7 @@ const NAV: { path: string; label: string; icon: SpriteName; tab: boolean }[] = [
   { path: '/more', label: 'Ещё', icon: 'chest', tab: true },
 ]
 /** sub-screens that light up a tab */
-const TAB_OF: Record<string, string> = { '/morning': '/today', '/avatar': '/hero', '/charts': '/more', '/skill': '/deal', '/skill-new': '/deal', '/flow': '/deal', '/duels': '/party', '/money': '/party' }
+const TAB_OF: Record<string, string> = { '/morning': '/today', '/avatar': '/hero', '/charts': '/more', '/entries': '/today', '/skill': '/deal', '/skill-new': '/deal', '/flow': '/deal', '/duels': '/party', '/money': '/party' }
 
 /** the theme's top bar color as #rrggbb: the tokens are color-mix()es, so let the browser resolve them */
 function barColor() {
@@ -189,6 +190,9 @@ function Shell({ top }: { top: string }) {
       break
     case 'charts':
       screen = <Charts />
+      break
+    case 'entries':
+      screen = <Entries />
       break
     case 'shop':
       screen = <Shop tab={route.query.get('tab') ?? undefined} />

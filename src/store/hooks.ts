@@ -63,7 +63,7 @@ export interface Celebration {
   kind: 'perfect' | 'level' | 'final'
 }
 
-/** Bottom card after a completion: stat progress, XP, ❄, CRITICAL */
+/** Bottom card after a completion: sphere progress (internal points), WF, CRITICAL */
 export interface RewardPop {
   id: number
   title: string
@@ -124,7 +124,8 @@ export function haptic(pattern: number | number[] = 12) {
   }
 }
 
-export function reward(el: Element | null | { x: number; y: number }, parts: { xp?: number; shards?: number; hp?: number }) {
+/** Floaters after an action: WF-поинты and Эло. `xp` (internal sphere points) is accepted but no longer shown. */
+export function reward(el: Element | null | { x: number; y: number }, parts: { xp?: number; shards?: number; elo?: number }) {
   let x = window.innerWidth / 2
   let y = window.innerHeight / 2
   if (el && 'getBoundingClientRect' in el) {
@@ -137,10 +138,9 @@ export function reward(el: Element | null | { x: number; y: number }, parts: { x
   }
   const push = useFx.getState().push
   let dy = 0
-  if (parts.xp) push({ x, y: y - dy, text: `+${parts.xp} XP`, tone: 'xp' }), (dy += 26)
-  if (parts.shards) push({ x: x + 14, y: y - dy, text: `${parts.shards > 0 ? '+' : ''}${parts.shards} ❄`, tone: 'ice' }), (dy += 26)
-  if (parts.hp) push({ x: x - 10, y: y - dy, text: `${parts.hp > 0 ? '+' : ''}${parts.hp} HP`, tone: parts.hp > 0 ? 'hp' : 'bad' })
-  haptic(parts.hp && parts.hp < 0 ? [30, 40, 30] : 12)
+  if (parts.shards) push({ x: x + 14, y: y - dy, text: `${parts.shards > 0 ? '+' : ''}${parts.shards} WF`, tone: 'ice' }), (dy += 26)
+  if (parts.elo) push({ x: x - 10, y: y - dy, text: `${parts.elo > 0 ? '+' : '−'}${Math.abs(parts.elo)} Эло`, tone: parts.elo > 0 ? 'xp' : 'bad' })
+  haptic(parts.elo && parts.elo < 0 ? [30, 40, 30] : 12)
 }
 
 // ---------- hash router ----------

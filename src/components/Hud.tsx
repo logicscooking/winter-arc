@@ -1,10 +1,15 @@
-import { ARC_DAYS, ARC_START, CHAPTERS, addDays, arcDayNumber, chapterOf, diffDays, heroTitle, eloLevel, plural, weekOf } from '../engine'
+import { useState } from 'react'
+import { ARC_DAYS, ARC_START, CHAPTERS, arcDayNumber, chapterOf, diffDays, eloLevel, formatRub, formatUsd, gameDayOf, monthEarned, plural, weekOf } from '../engine'
 import type { GameState } from '../engine'
 import { useStore } from '../store/store'
+import { useNow } from '../store/hooks'
 import { Banner, useHint } from './ui'
 import { PixelAvatar, Px } from '../pixel/Pixel'
 import { useWornOutfit } from '../pixel/useHero'
 import { EloBlock } from './Elo'
+import { MoneySheet } from './Money'
+import { DayRingCard } from '../screens/TodayBlocks'
+import type { DayProgress } from '../screens/todayItems'
 
 const NEW_YEAR = '2027-01-01'
 
@@ -20,7 +25,25 @@ export function NewYearChip({ today }: { today: string }) {
   )
 }
 
-export function Hud({ game, mainsDone, mainsTotal }: { game: GameState; mainsDone: number; mainsTotal: number }) {
+/** «Заработано $X» this month ($ by «Курс $», ₽ without it); tap → «Заработал» sheet */
+export function EarnedChip() {
+  const data = useStore((s) => s.data)
+  const today = gameDayOf(useNow())
+  const [open, setOpen] = useState(false)
+  const m = monthEarned(data, today)
+  return (
+    <>
+      <button type="button" className="ny-chip earned-chip" onClick={() => setOpen(true)} aria-label={`Заработано за месяц ${m.usd !== undefined ? formatUsd(m.usd) : formatRub(m.rub)}. Записать доход`}>
+        <Px name="coin" size={18} />
+        Заработано {m.usd !== undefined ? formatUsd(m.usd) : formatRub(m.rub)}
+      </button>
+      {open && <MoneySheet onClose={() => setOpen(false)} />}
+    </>
+  )
+}
+
+/** Today's hero card: avatar + party nick, Эло with the FACEIT badge, the day ring, then the chips */
+export function Hud({ game, progress }: { game: GameState; progress: DayProgress }) {
   const profile = useStore((s) => s.data.profile)!
   const outfit = useWornOutfit()
   const warmup = game.today < ARC_START
@@ -28,9 +51,10 @@ export function Hud({ game, mainsDone, mainsTotal }: { game: GameState; mainsDon
   const ch = CHAPTERS[chapterOf(game.today)]
   const lvl = eloLevel(game.elo)
   const toArc = diffDays(game.today, ARC_START)
-  const [hpHint, dismissHp] = useHint('hp')
-  const gainToday = game.days[game.today]?.eloGain ?? 0
-  const mainPct = mainsTotal ? Math.round((mainsDone / mainsTotal) * 100) : 0
+  const [eloHint, dismissElo] = useHint('elo-v23')
+  const r = game.days[game.today]
+  const gainToday = warmup ? 0 : (r?.eloGain ?? 0)
+  const lossToday = warmup ? 0 : (r?.eloLoss ?? 0)
   return (
     <header className="hud">
       <div className="day-line">
@@ -47,71 +71,29 @@ export function Hud({ game, mainsDone, mainsTotal }: { game: GameState; mainsDon
           </span>
         )}
       </div>
-      <a className="hero-strip" href="#/hero" aria-label={`${profile.nick}, Эло ${game.elo}, уровень ${lvl.level}, HP ${game.hp}. Открыть персонажа`} style={game.fallen ? { borderColor: 'var(--hp)' } : undefined}>
-        <span className="hs-left">
-          <span className="hs-name">{profile.nick}</span>
-          <span className="hs-title">{heroTitle(game)}</span>
+      <section className="hero-strip" aria-label="Герой и день">
+        <a className="hs-left" href="#/hero" aria-label={`${profile.nick}, Эло ${game.elo}, уровень ${lvl.level}. Открыть персонажа`}>
           <span className="hs-ava">
             <PixelAvatar outfit={outfit} size={78} title={`Аватар ${profile.nick}`} />
           </span>
-          <span className={`hp-badge${game.hp <= 30 ? ' low' : ''}`}>
-            <Px name="heart" size={18} />
-            <span className="num">{game.hp}/100</span>
-          </span>
-        </span>
-        <span className="hs-right">
-          <EloBlock elo={game.elo} size={50} gain={warmup ? 0 : gainToday} />
-          <span className="hs-k">
-            <Px name="quests" size={16} />
-            <span className="num">
-              Главные: {mainsDone}/{mainsTotal}
-            </span>
-          </span>
-          <span className="fat-row">
-            <span className="fat-bar gold" role="progressbar" aria-label="Главные квесты сегодня" aria-valuemin={0} aria-valuemax={100} aria-valuenow={mainPct}>
-              <i style={{ width: `${mainPct ? Math.max(mainPct, 4) : 0}%` }} />
-            </span>
-            <span className="num">{mainPct}%</span>
-          </span>
-        </span>
-      </a>
-      <NewYearChip today={game.today} />
-      {hpHint && (
-        <Banner icon="heart" title="HP — твоя жизнь в арке" art={['heart', 'shard']} onClose={dismissHp}>
-          Падает за пропуски{warmup ? ' (в разминке не тратится)' : ''}. Осколки ❄ — валюта магазина наград.
+          <span className="hs-name">{profile.nick}</span>
+        </a>
+        <a className="hs-right" href="#/hero" aria-hidden tabIndex={-1}>
+          <EloBlock elo={game.elo} size={58} gain={gainToday} loss={lossToday} />
+        </a>
+        <div className="hs-day">
+          <DayRingCard progress={progress} bare />
+        </div>
+      </section>
+      <div className="hud-chips">
+        <NewYearChip today={game.today} />
+        <EarnedChip />
+      </div>
+      {eloHint && (
+        <Banner icon="star" title="Эло — твой жизненный ранг" art={['star', 'shard']} onClose={dismissElo}>
+          Тело, дисциплина, ум: за закрытый день до +15. Молчание −10, «Слился» −5. Деньги — это боссы месяца. WF-поинты — валюта магазина наград.
         </Banner>
       )}
-      {!warmup && <ArcStrip game={game} />}
     </header>
-  )
-}
-
-export function ArcStrip({ game }: { game: GameState }) {
-  const starts = new Set(CHAPTERS.map((c) => c.start))
-  return (
-    <div>
-      <div className="arc" role="img" aria-label="98 дней арки: сделанные, пропущенные и сегодняшний день">
-        {Array.from({ length: ARC_DAYS }, (_, i) => {
-          const d = addDays(ARC_START, i)
-          const r = game.days[d]
-          let cls = ''
-          if (d === game.today) cls = 'today'
-          else if (r?.closed) cls = r.frozen ? 'frozen' : r.perfect ? 'perfect' : r.missedMain.length < r.plan.filter((p) => p.role === 'main').length ? 'ok' : 'miss'
-          else if (d > game.today) cls = 'future'
-          if (starts.has(d) && cls !== 'today') cls += ' ch'
-          return <i key={d} className={cls} title={d} />
-        })}
-      </div>
-      <div className="arc-legend">
-        {CHAPTERS.map((c) => {
-          const left = (diffDays(ARC_START, c.start) / ARC_DAYS) * 100
-          return (
-            <span key={c.id} style={{ left: `${left}%` }}>
-              {c.id === 0 ? 'Пролог' : c.name}
-            </span>
-          )
-        })}
-      </div>
-    </div>
   )
 }

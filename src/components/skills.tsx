@@ -150,11 +150,11 @@ export function PracticeSheet({ nodeId, onClose }: { nodeId: string; onClose: ()
         </label>
         {!full && (
           <p className="tiny muted">
-            Без строки — половина XP <Help title="Обратная связь" text="Без строки отзыва практика даёт половину XP. Ступень узла растёт, только когда отзыв есть хотя бы у половины его практик." />
+            Без строки — половина очков <Help title="Обратная связь" text="Без строки отзыва практика даёт половину XP. Ступень узла растёт, только когда отзыв есть хотя бы у половины его практик." />
           </p>
         )}
         <button className="btn primary block" disabled={used >= PRACTICE_LIMIT} onClick={(e) => save(e.currentTarget)}>
-          {used >= PRACTICE_LIMIT ? `Лимит ${PRACTICE_LIMIT} в день на узел` : full ? `Записать практику +${xp} XP` : `Записать без отзыва · +${xp} XP`}
+          {used >= PRACTICE_LIMIT ? `Лимит ${PRACTICE_LIMIT} в день на узел` : full ? `Записать практику +${xp} к сфере` : `Записать без отзыва · +${xp} к сфере`}
         </button>
         <p className="tiny muted center">
           {used}/{PRACTICE_LIMIT} сегодня{m.flow ? ' · поток ×2' : ''}
@@ -202,7 +202,7 @@ export function ThemeCard({ compact }: { compact?: boolean }) {
           </div>
         </div>
         <p className="small">
-          {next.focus}. Навык-тема даст ×1,5 XP всю главу.
+          {next.focus}. Навык-тема даст ×1,5 очков всю главу.
         </p>
         {chooser(due.next)}
       </section>
@@ -217,7 +217,7 @@ export function ThemeCard({ compact }: { compact?: boolean }) {
           <Px name="star" size={22} />
           <span>
             <span className="tiny muted">Тема сезона · {CHAPTERS[ch].name}</span>
-            <b style={{ display: 'block' }}>{curSkill ? `${curSkill.title} · ×1,5 XP` : 'не выбрана'}</b>
+            <b style={{ display: 'block' }}>{curSkill ? `${curSkill.title} · ×1,5 очков` : 'не выбрана'}</b>
           </span>
         </span>
         <button className="link-btn" onClick={() => setPick(!pick)}>
@@ -283,7 +283,7 @@ export function FlowButton({ skillId, label = 'Поток', className = 'btn pri
     )
   return (
     <button className={className} onClick={() => startFlowAndGo(undefined, skillId)}>
-      <Px name="play" size={20} /> {label} <span className="flow-x num">×{FLOW.mult} XP</span>
+      <Px name="play" size={20} /> {label} <span className="flow-x num">×{FLOW.mult}</span>
     </button>
   )
 }

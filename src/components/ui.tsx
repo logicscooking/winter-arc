@@ -30,21 +30,6 @@ export function Bar({ value, kind = 'xp', label }: { value: number; kind?: 'xp' 
   )
 }
 
-export function HpBar({ hp }: { hp: number }) {
-  return (
-    <div className="hp-seg" role="progressbar" aria-label="HP" aria-valuemin={0} aria-valuemax={100} aria-valuenow={hp}>
-      {Array.from({ length: 10 }, (_, i) => {
-        const fill = Math.max(0, Math.min(1, (hp - i * 10) / 10))
-        return (
-          <i key={i}>
-            <b style={{ transform: `scaleX(${fill})` }} />
-          </i>
-        )
-      })}
-    </div>
-  )
-}
-
 export function Sheet({ title, onClose, children, wide }: { title?: ReactNode; onClose: () => void; children: ReactNode; wide?: boolean }) {
   const box = useRef<HTMLDivElement>(null)
   useEffect(() => {

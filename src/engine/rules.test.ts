@@ -121,9 +121,8 @@ describe('магазин', () => {
     expect(prices(3)).toEqual([30, 24, 20])
   })
   it('во время падения покупать нельзя', () => {
-    expect(canBuy(100, 15, true).ok).toBe(false)
-    expect(canBuy(10, 15, false).ok).toBe(false)
-    expect(canBuy(15, 15, false).ok).toBe(true)
+    expect(canBuy(10, 15).ok).toBe(false)
+    expect(canBuy(15, 15).ok).toBe(true)
   })
 })
 

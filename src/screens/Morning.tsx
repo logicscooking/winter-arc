@@ -112,7 +112,6 @@ function Intro() {
       {final && <FinalPicker value={final} onChange={(f) => setSettings({ morningFinal: f })} />}
 
       <div className="mi-reward">
-        <span className="reward-chip gold">+{MORNING.xp} XP</span>
         <span className="reward-chip ice">
           <Px name="shard" size={20} /> +{MORNING.shards}
         </span>
@@ -423,7 +422,7 @@ function Finish() {
       </div>
       {s.rewarded ? (
         <div className="mi-reward center-row">
-          <span className="reward-chip gold">+{MORNING.xp} XP · {statName(MORNING.stat)}</span>
+          <span className="reward-chip gold">+{MORNING.xp} к сфере «Здоровье»</span>
           <span className="reward-chip ice">
             <Px name="shard" size={20} /> +{MORNING.shards}
           </span>

@@ -3,7 +3,7 @@ import { ELO, eloGain, eloLevel, eloShare } from './elo'
 import { computeState } from './replay'
 import { questArea } from './areas'
 import { ARC_START, addDays } from './time'
-import { confess, doMains, makeData, mark, nowAt } from './testkit'
+import { at, confess, doMains, log, makeData, mark, nowAt, perfectDays } from './testkit'
 import type { Area } from './types'
 
 const D1 = ARC_START
@@ -82,5 +82,59 @@ describe('Эло: реплей', () => {
     expect(st.eloLevel).toBe(10)
     expect(st.elo).toBeGreaterThan(2001)
     expect(st.levelUps.map((l) => l.level)).toEqual([5, 6, 7, 8, 9, 10])
+  })
+})
+
+describe('Эло: штрафы вместо HP', () => {
+  it('день без исповеди после дедлайна −10, до дедлайна ничего', () => {
+    const data = makeData()
+    expect(computeState(data, nowAt(addDays(D1, 1), 15)).elo).toBe(1000)
+    const st = computeState(data, nowAt(addDays(D1, 1), 16, 1))
+    expect(st.days[D1]).toMatchObject({ retro: true, eloGain: 0, eloLoss: ELO.noConfession })
+    expect(st.elo).toBe(990)
+  })
+
+  it('«Слился» −5 сразу, каждый; камбэк в окне отменяет', () => {
+    const data = makeData()
+    data.slips.push({ id: 'a', at: at(D1, 10), day: D1, what: 'reels', why: 'auto' })
+    data.slips.push({ id: 'b', at: at(D1, 12), day: D1, what: 'cola', why: 'auto' })
+    expect(computeState(data, nowAt(D1, 13)).elo).toBe(990)
+    data.slips[0].comebackAt = at(D1, 10, 30)
+    const st = computeState(data, nowAt(D1, 13))
+    expect(st.elo).toBe(995)
+    expect(st.days[D1].eloLoss).toBe(ELO.slip)
+  })
+
+  it('Эло не падает ниже 100', () => {
+    const data = makeData()
+    for (let i = 0; i < 200; i++) data.slips.push({ id: `s${i}`, at: at(D1, 9, 0, i), day: D1, what: 'reels', why: 'auto' })
+    const st = computeState(data, nowAt(D1, 20))
+    expect(st.elo).toBe(ELO.floor)
+    expect(eloLevel(st.elo).level).toBe(1)
+    // the peak level stays for rewards and gear
+    expect(st.eloLevel).toBe(4)
+  })
+
+  it('заморозка: ни плюса, ни минуса (и срывы дня тоже не считаются)', () => {
+    const data = makeData()
+    perfectDays(data, D1, 7)
+    const f = addDays(D1, 7)
+    mark(data, f, 'water')
+    confess(data, f)
+    log(data, f).freeze = true
+    data.slips.push({ id: 's', at: at(f, 11), day: f, what: 'reels', why: 'auto' })
+    const before = computeState(data, nowAt(addDays(D1, 6), 22))
+    const st = computeState(data, nowAt(f, 22))
+    expect(st.days[f]).toMatchObject({ frozen: true, eloGain: 0, eloLoss: 0 })
+    expect(st.elo).toBe(before.elo)
+  })
+
+  it('разминка: срывы и молчание Эло не трогают', () => {
+    const data = makeData()
+    const w = addDays(D1, -2)
+    data.slips.push({ id: 's', at: at(w, 11), day: w, what: 'reels', why: 'auto' })
+    const st = computeState(data, nowAt(D1, 10))
+    expect(st.elo).toBe(1000)
+    expect(st.days[w].eloLoss).toBe(0)
   })
 })

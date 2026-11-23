@@ -73,7 +73,7 @@ function Node({ t, props, depth }: { t: Task; props: Props; depth: number }) {
   const remove = async () => {
     const ok = await confirm({
       title: isProject ? 'Удалить проект?' : 'Удалить задачу?',
-      body: kids.length ? `«${t.title}» и все подзадачи (${descCount(tasks, t.id)}) исчезнут. XP за уже закрытые пропадёт.` : `«${t.title}» исчезнет из списка.`,
+      body: kids.length ? `«${t.title}» и все подзадачи (${descCount(tasks, t.id)}) исчезнут. Очки сферы за уже закрытые пропадут.` : `«${t.title}» исчезнет из списка.`,
       ok: 'Удалить',
       danger: true,
     })
@@ -117,7 +117,7 @@ function Node({ t, props, depth }: { t: Task; props: Props; depth: number }) {
                 перенесено {t.postponed} {plural(t.postponed, 'раз', 'раза', 'раз')}
               </span>
             )}
-            {!isProject && depth === 1 && t.scope === 'deal' && <span className="tiny muted">30 XP</span>}
+            {!isProject && depth === 1 && t.scope === 'deal' && <span className="tiny muted">+30 к сфере</span>}
           </div>
           {needsSplitHint(t) && (
             <p className="tiny" style={{ color: 'var(--gold)', marginTop: 4 }}>

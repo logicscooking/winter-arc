@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Check, ChevronRight, Minus, Play, Plus } from 'lucide-react'
-import { AREAS, MORNING, blockAt, formatHM, gameDayOf, journalAnswered, journalStatus, planBlocksOf, questXp, wakeTargetFor } from '../engine'
+import { AREAS, MORNING, blockAt, formatHM, gameDayOf, journalAnswered, journalStatus, planBlocksOf, wakeTargetFor } from '../engine'
 import type { Area, CalEvent, DayKey, GameState } from '../engine'
 import { useStore } from '../store/store'
 import { go, useNow, useRoute } from '../store/hooks'
@@ -53,7 +53,7 @@ function useTodayMode(): [TodayMode, (m: TodayMode) => void] {
 }
 
 /** Day progress: one ring split by areas (rows + warm-up + переходы + events of today), a legend per area */
-export function DayRingCard({ progress, eloGain = 0 }: { progress: DayProgress; eloGain?: number }) {
+export function DayRingCard({ progress, bare }: { progress: DayProgress; bare?: boolean }) {
   const pct = progress.total ? Math.round((progress.done / progress.total) * 100) : 0
   const full = progress.total > 0 && progress.done === progress.total
   const parts = AREAS.filter((a) => progress.areas[a.id][1] > 0)
@@ -67,7 +67,7 @@ export function DayRingCard({ progress, eloGain = 0 }: { progress: DayProgress; 
     return seg
   })
   return (
-    <section className="td-ring" aria-label={`Прогресс дня: ${pct}%`}>
+    <section className={`td-ring${bare ? ' bare' : ''}`} aria-label={`Прогресс дня: ${pct}%`}>
       <div className={`td-ring-dial${full ? ' full' : ''}`} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label="Прогресс дня">
         <svg viewBox="0 0 100 100" aria-hidden>
           {segs.length === 0 && <circle className="track" cx="50" cy="50" r={R} />}
@@ -110,7 +110,6 @@ export function DayRingCard({ progress, eloGain = 0 }: { progress: DayProgress; 
             )
           })}
         </ul>
-        {eloGain > 0 && <span className="elo-gain" style={{ marginLeft: 0 }}>+{eloGain} Эло сегодня</span>}
       </div>
     </section>
   )
@@ -146,7 +145,7 @@ export function TodayBlocks({ game, locked }: { game: GameState; locked: boolean
     if (r.type === 'event') return <EventRow key={r.key} ev={r.event!} label={r.label} onCheck={() => toggleEvent(r.event!)} onOpen={() => setSheet({ kind: 'event', event: r.event })} />
     if (r.type === 'dump') return <DumpRow key={r.key} done={r.done} onOpen={() => setSheet({ kind: 'dump' })} />
     const it = r.it!
-    if (it.quest?.kind === 'journal' && it.plan) return <JournalRow key={r.key} day={today} xp={questXp(it.plan.role, it.plan.base, 'done')} onOpen={() => setSheet({ kind: 'journal' })} />
+    if (it.quest?.kind === 'journal' && it.plan) return <JournalRow key={r.key} day={today} onOpen={() => setSheet({ kind: 'journal' })} />
     if (it.kind === 'quest' && it.quest && it.plan && it.action !== 'open')
       return (
         <div id={`q-${it.id}`} key={it.key}>
@@ -167,7 +166,7 @@ export function TodayBlocks({ game, locked }: { game: GameState; locked: boolean
               'Квадрат слева — выполнено. Тап по квесту — мини-версия или пропуск, по делу — в какой блок.',
               '«Сферы» — Здоровье, Деньги, Развитие и Разное (события, медитация, телефон, дневник). «Время» — по блокам плана или утро, день, вечер.',
               'Ошибся — внизу появится «Отменить».',
-              'Пропустил главный — минус HP при закрытии дня.',
+              'Эло дня — доля сделанных квестов без «Денег»: каждый пропуск его уменьшает.',
             ]}
           />
         </h2>
@@ -270,16 +269,16 @@ function MorningRow({ done }: { done: boolean }) {
         <Px name="sun" size={22} />
         <span className="grow">
           <span className="pd-item-title">Утренняя инвестиция</span>
-          <small>{done ? `сделано · +${MORNING.shards} ❄` : `~${min} мин · зарядка с музыкой`}</small>
+          <small>{done ? 'сделано сегодня' : `~${min} мин · зарядка с музыкой`}</small>
         </span>
-        <span className={`qrow-badge num${done ? ' on' : ''}`}>+{MORNING.xp} XP</span>
+        <span className={`qrow-badge num${done ? ' on' : ''}`}>+{MORNING.shards} WF</span>
       </a>
     </div>
   )
 }
 
 /** «Вечерний дневник»: the check shows the status (3 answers — done, 1–2 — mini); any tap opens the sheet */
-function JournalRow({ day, xp, onOpen }: { day: DayKey; xp: number; onOpen: () => void }) {
+function JournalRow({ day, onOpen }: { day: DayKey; onOpen: () => void }) {
   const n = useStore((s) => journalAnswered(s.data.days[day]))
   const status = journalStatus(n)
   return (
@@ -296,8 +295,10 @@ function JournalRow({ day, xp, onOpen }: { day: DayKey; xp: number; onOpen: () =
           <span className="pd-item-title">Вечерний дневник</span>
           <small>{n ? `${n}/5${status === 'mini' ? ` · ещё ${3 - n} до полного` : ' · закрыт'}` : '5 вопросов о дне'}</small>
         </span>
-        <span className={`qrow-badge num${status ? ' on' : ''}`}>+{xp} XP</span>
       </button>
+      <a className="qrow-badge qrow-link" href="#/entries" aria-label="Все записи: дневник, исповеди, чек-ины по дням">
+        все записи
+      </a>
     </div>
   )
 }

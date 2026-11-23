@@ -40,7 +40,7 @@ export function Flow() {
             <div className="grow">
               <span className="tiny muted">{capped && summary.id === capped.id ? 'Мягкий стоп · перерыв 10 мин' : 'Поток завершён'}</span>
               <h2>
-                Закрыто {game.flowStats[summary.id]?.closed ?? 0}, XP +{game.flowStats[summary.id]?.xp ?? 0}
+                Закрыто {game.flowStats[summary.id]?.closed ?? 0}, к сфере +{game.flowStats[summary.id]?.xp ?? 0}
               </h2>
             </div>
           </div>
@@ -54,8 +54,8 @@ export function Flow() {
       )}
 
       <p className="small muted page-sub">
-        Всё, что закроешь внутри, — ×2 XP{' '}
-        <Help title="Поток" text={[`Таймер глубокой работы. Практики навыка, задачи и Дело дня, закрытые внутри, дают ×${FLOW.mult} XP.`, `До ${FLOW.maxMin} минут, потом мягкий стоп и перерыв ${FLOW.breakMin} минут. ${FLOW.perDay} потока в день, после 22:00 не стартует — сон важнее.`, 'Обычно поток включают прямо из навыка или из Дела дня.']} />
+        Всё, что закроешь внутри, — ×2 очков сферы{' '}
+        <Help title="Поток" text={[`Таймер глубокой работы. Практики навыка, задачи и Дело дня, закрытые внутри, дают ×${FLOW.mult} очков сферы.`, `До ${FLOW.maxMin} минут, потом мягкий стоп и перерыв ${FLOW.breakMin} минут. ${FLOW.perDay} потока в день, после 22:00 не стартует — сон важнее.`, 'Обычно поток включают прямо из навыка или из Дела дня.']} />
       </p>
       <div className="flow-rules">
         <span>
@@ -136,7 +136,7 @@ function LiveFlow({ flow, onStop }: { flow: FlowSession; onStop: () => void }) {
       <div className="center stack" style={{ gap: 4 }}>
         <span className="tiny muted">Поток · {skill ? skill.title : deal ? 'Дело дня' : 'глубокая работа'}</span>
         <span className="reward-chip gold" style={{ alignSelf: 'center' }}>
-          <Px name="play" size={20} /> ×2 XP
+          <Px name="play" size={20} /> ×2 к сфере
         </span>
       </div>
       <div style={{ display: 'grid', placeItems: 'center' }}>
@@ -145,7 +145,7 @@ function LiveFlow({ flow, onStop }: { flow: FlowSession; onStop: () => void }) {
         </Ring>
       </div>
       <p className="center small muted">
-        Закрыто {stats?.closed ?? 0} · XP +{stats?.xp ?? 0}
+        Закрыто {stats?.closed ?? 0} · к сфере +{stats?.xp ?? 0}
       </p>
       <button className="btn block danger" onClick={onStop}>
         Стоп

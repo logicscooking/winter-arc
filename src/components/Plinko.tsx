@@ -430,12 +430,12 @@ export function PlinkoBoard({ tasks, rerollsLeft, notice, restSlot, ready, sound
                 {showTask.title}
               </b>
               <small className="num">
-                ×{r.mult} · +{r.xp} XP · +{r.shards} ❄ · {r.minutes >= 60 ? `${r.minutes / 60} ч` : `${r.minutes} мин`}
+                ×{r.mult} · +{r.xp} к сфере · +{r.shards} WF · {r.minutes >= 60 ? `${r.minutes / 60} ч` : `${r.minutes} мин`}
               </small>
             </span>
           </>
         ) : (
-          <span className="pk-ribbon-hint">Тапни лунку — покажу задание. Центр лёгкий, края жирные по XP. «Ещё раз» и «Отдых» — не задания</span>
+          <span className="pk-ribbon-hint">Тапни лунку — покажу задание. Центр лёгкий, края жирные по наградам. «Ещё раз» и «Отдых» — не задания</span>
         )}
       </div>
       {fresh && isSpecial(landing?.task) && !falling && (
@@ -447,7 +447,7 @@ export function PlinkoBoard({ tasks, rerollsLeft, notice, restSlot, ready, sound
       {landing?.jackpot && (
         <div className="pk-jackpot" role="status" key={landing.id}>
           <span>ДЖЕКПОТ</span>
-          <small>×{PLINKO_TIERS[BOARD_TIERS[landing.slot]].mult} XP</small>
+          <small>×{PLINKO_TIERS[BOARD_TIERS[landing.slot]].mult} к сфере</small>
         </div>
       )}
     </div>
@@ -528,14 +528,14 @@ export function PlinkoCard({ icon, title, hint, tier, statLabel, xp, shards, str
           <p className="small muted">{hint}</p>
         </div>
       </div>
-      <div className="pk-card-reward num" aria-label={`+${showXp} XP, +${showIce} снежинок`}>
-        <span className="xp">+{xpRun} XP</span>
-        <span className="ice">+{iceRun} ❄</span>
+      <div className="pk-card-reward num" aria-label={`+${showXp} очков сферы, +${showIce} WF-поинтов`}>
+        <span className="xp">+{xpRun} к сфере</span>
+        <span className="ice">+{iceRun} WF</span>
         {streak > 1 && !expired && !done && <span className="pk-streak">серия {fmtMult(streak)}</span>}
         {!done && expired && <span className="small muted">после таймера — половина</span>}
       </div>
       {done ? (
-        <div className="pk-card-done">Сделано: +{doneXp} XP</div>
+        <div className="pk-card-done">Сделано: +{doneXp} к сфере</div>
       ) : (
         <>
           <div className={`pk-timer ${expired ? 'out' : ''}`} role="timer">
@@ -547,7 +547,7 @@ export function PlinkoCard({ icon, title, hint, tier, statLabel, xp, shards, str
             />
             <span className="pk-timer-text num">{expired ? 'Время вышло' : formatLeft(left)}</span>
           </div>
-          {!expired && <p className="tiny muted pk-card-note">Успеешь до нуля — серия {fmtMult(nextStreak)} на XP следующего броска. «Позже» сбрасывает серию.</p>}
+          {!expired && <p className="tiny muted pk-card-note">Успеешь до нуля — серия {fmtMult(nextStreak)} на награду следующего броска. «Позже» сбрасывает серию.</p>}
           <div className="pk-card-actions">
             <button className="btn primary" onClick={(e) => onDone?.(e.currentTarget)}>
               Сделал

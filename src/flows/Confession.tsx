@@ -25,9 +25,8 @@ function Summary({ before, after, day, onClose }: { before: GameState; after: Ga
   const r = after.days[day]
   const warmup = day < ARC_START
   const rows: [string, string, string][] = [
-    ['XP за день', `+${r?.xp ?? 0}`, 'var(--gold)'],
-    warmup ? ['HP', 'в разминке не тратится', 'var(--mist)'] : ['HP', `${after.hp - before.hp >= 0 ? '+' : ''}${after.hp - before.hp} → ${after.hp}`, after.hp >= before.hp ? 'var(--pine)' : 'var(--hp)'],
-    ['Осколки', `${after.shards - before.shards >= 0 ? '+' : ''}${after.shards - before.shards} ❄`, 'var(--frost)'],
+    warmup ? ['Эло', 'в разминке не меняется', 'var(--mist)'] : ['Эло', `${after.elo - before.elo >= 0 ? '+' : '−'}${Math.abs(after.elo - before.elo)} → ${after.elo}`, after.elo >= before.elo ? 'var(--pine)' : 'var(--hp)'],
+    ['WF-поинты', `${after.shards - before.shards >= 0 ? '+' : ''}${after.shards - before.shards} WF`, 'var(--frost)'],
     ...(warmup ? [] : [['Закрыто дней арки', `${after.conqueror.closed} / ${CONQUEROR.need}`, 'var(--ink)'] as [string, string, string]]),
   ]
   return (
@@ -43,7 +42,6 @@ function Summary({ before, after, day, onClose }: { before: GameState; after: Ga
           </div>
         ))}
       </div>
-      {after.fallen && !before.fallen && <p style={{ color: 'var(--hp)' }}>HP на нуле. Падение: 3 идеальных дня подряд вернут 50 HP.</p>}
       <button className="btn primary block" onClick={onClose}>
         Спокойной ночи
       </button>
@@ -104,7 +102,7 @@ export function ConfessionSheet({ day }: { day: DayKey }) {
     const after = computeState(useStore.getState().data, at)
     haptic([15, 40, 15])
     setDone({ before: b, after })
-    if (after.days[day]?.perfect) celebrate({ kind: 'perfect', title: 'Идеальный день', text: warmup ? 'Разминка закрыта на все главные.' : '+5 HP за все главные квесты.' })
+    if (after.days[day]?.perfect) celebrate({ kind: 'perfect', title: 'Идеальный день', text: warmup ? 'Разминка закрыта на все главные.' : 'Все главные квесты закрыты — максимум Эло за день.' })
   }
 
   const isLate = day !== gameDayOf(now)
@@ -135,7 +133,7 @@ export function ConfessionSheet({ day }: { day: DayKey }) {
           value={draft.sugar}
           onChange={(v) => set('sugar', v)}
         />
-        {draft.sugar === 'outside' && <p className="small" style={{ color: 'var(--hp)', marginTop: -12 }}>{warmup ? 'Запишется как «Слился» — в разминке без урона.' : 'Засчитается как «Слился» задним числом: −10 HP.'}</p>}
+        {draft.sugar === 'outside' && <p className="small" style={{ color: 'var(--hp)', marginTop: -12 }}>{warmup ? 'Запишется как «Слился» — в разминке без урона.' : 'Засчитается как «Слился» задним числом: −5 Эло.'}</p>}
         <Chips
           label="Кола после 14:00"
           options={[
@@ -190,7 +188,7 @@ export function ConfessionSheet({ day }: { day: DayKey }) {
             <Snowflake color="var(--frost)" aria-hidden />
             <div className="grow">
               <h3>Потратить заморозку?</h3>
-              <p className="small muted">{freezesAvail ? `Защитит серии и HP за этот день. В запасе: ${freezesAvail}.` : 'Заморозок нет. Их дают за 7 идеальных дней подряд.'}</p>
+              <p className="small muted">{freezesAvail ? `Защитит серию и Эло за этот день: ни плюса, ни минуса. В запасе: ${freezesAvail}.` : 'Заморозок нет. Их дают за 7 идеальных дней подряд.'}</p>
             </div>
           </button>
         )}
@@ -199,16 +197,15 @@ export function ConfessionSheet({ day }: { day: DayKey }) {
           <div className="kv small">
             <span className="muted">Итог дня</span>
             <span className="num" style={{ textAlign: 'right' }}>
-              <span className="xp-v">+{pr?.xp ?? 0} XP</span>{' '}
               {!warmup && (
-                <span style={{ color: preview.hp >= before.hp ? 'var(--pine)' : 'var(--hp)' }}>
-                  {preview.hp - before.hp >= 0 ? '+' : ''}
-                  {preview.hp - before.hp} HP
+                <span style={{ color: preview.elo >= before.elo ? 'var(--pine)' : 'var(--hp)' }}>
+                  {preview.elo - before.elo >= 0 ? '+' : '−'}
+                  {Math.abs(preview.elo - before.elo)} Эло
                 </span>
               )}{' '}
               <span className="ice-v">
                 {preview.shards - before.shards >= 0 ? '+' : ''}
-                {preview.shards - before.shards} ❄
+                {preview.shards - before.shards} WF
               </span>
             </span>
           </div>

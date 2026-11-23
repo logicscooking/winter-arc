@@ -9,7 +9,7 @@
  * once per day (DayLog.plinkoBoard), by the tier of each position: centre easy, edges hard.
  *
  * Two of the tier-2 slots are not tasks but specials: «Перебросить» (the ball comes back, up to
- * PLINKO_REROLLS times a day) and «Отдых» (legal rest: +1 ❄, nothing else). Their ids live in the same
+ * PLINKO_REROLLS times a day) and «Отдых» (legal rest: +1 WF, nothing else). Their ids live in the same
  * plinkoBoard and the same drop log (`taskId: '@reroll' | '@rest'`), so the replay pays them like any drop.
  *
  * v0.6 drops (risk boards of 7/9/11 slots, no `v`) keep their stored slot and are scored as before.
@@ -19,12 +19,14 @@ import type { AppData, DayKey, DayLog, PlinkoDrop, PlinkoRisk, StatId } from './
 
 export type PlinkoTier = 1 | 2 | 3 | 4 | 5
 
-/** balls per game day, fixed */
-export const PLINKO_BALLS = 5
+/** balls per game day, fixed (v0.23: 2, was 5) */
+export const PLINKO_BALLS = 2
+/** balls a day before v0.23: stored days may hold that many throws */
+export const PLINKO_LEGACY_BALLS = 5
 /** returned balls («Перебросить») a day; later ones just spend the ball */
 export const PLINKO_REROLLS = 3
-/** highest throw count ever stored: 5 balls + 3 returned ones (v0.6 allowed 6): older drops stay valid */
-export const PLINKO_MAX = PLINKO_BALLS + PLINKO_REROLLS
+/** highest throw number + 1 a stored day may hold: old days had 5 balls, so the limit stays 5 + rerolls */
+export const PLINKO_MAX = Math.max(PLINKO_BALLS, PLINKO_LEGACY_BALLS) + PLINKO_REROLLS
 /** slots on the v0.7 board */
 export const BOARD_SLOTS = 16
 /** tier by distance from the centre: 8 levels, centre pair = 0, edge pair = 7 */
@@ -40,7 +42,7 @@ export const PLINKO_BASE_XP = 3
 /** «серия»: each task closed in time adds ×0.2 to the next throw, up to ×2 */
 export const PLINKO_STREAK = { step: 0.2, max: 2 } as const
 
-/** Reward and timer per tier. Compare: side quest 10 XP / 2 ❄, main quest 20 XP / 3 ❄. */
+/** Reward and timer per tier. Compare: side quest 10 XP / 2 WF, main quest 20 XP / 3 WF. */
 export const PLINKO_TIERS: Record<PlinkoTier, { mult: number; xp: number; shards: number; minutes: number }> = {
   1: { mult: 1, xp: PLINKO_BASE_XP * 1, shards: 1, minutes: 10 },
   2: { mult: 2, xp: PLINKO_BASE_XP * 2, shards: 1, minutes: 20 },
@@ -76,7 +78,7 @@ export function tierOfSlot(slot: number, risk: PlinkoRisk = 'mid'): PlinkoTier {
 /** pseudo task ids of the special slots (a real task id never starts with «@») */
 export const REROLL_ID = '@reroll'
 export const REST_ID = '@rest'
-/** ❄ for «Отдых» */
+/** WF for «Отдых» */
 export const PLINKO_REST_SHARDS = 1
 
 export interface PlinkoSpecial {
@@ -105,7 +107,7 @@ export const PLINKO_SPECIALS: Record<PlinkoSpecial['id'], PlinkoSpecial> = {
     kind: 'rest',
     title: 'Отдых',
     short: 'Отдых',
-    hint: `Заданий нет, отдыхай без вины: сразу +${PLINKO_REST_SHARDS} ❄. XP нет, серию не трогает`,
+    hint: `Заданий нет, отдыхай без вины: сразу +${PLINKO_REST_SHARDS} WF. XP нет, серию не трогает`,
     icon: 'campfire',
   },
 }
@@ -950,7 +952,7 @@ export interface PlinkoEvent {
   stat?: StatId
 }
 
-/** Replay input: one reward per closed drop, on the drop's day; «Отдых» pays its ❄ the moment it lands */
+/** Replay input: one reward per closed drop, on the drop's day; «Отдых» pays its WF the moment it lands */
 export function plinkoEvents(data: Pick<AppData, 'days'>): PlinkoEvent[] {
   const out: PlinkoEvent[] = []
   const streaks = plinkoStreaks(data.days)

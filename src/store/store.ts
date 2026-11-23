@@ -180,7 +180,7 @@ interface Store {
   addExtra: (skillId: string, now: Date) => boolean
   setDealNode: (day: DayKey, nodeId: string | null) => void
   openChest: (type: ChestType, now: Date) => string | null
-  /** v0.16 «Сундук за ❄»: the purchase and its prize (seeded by the purchase id); returns the purchase id */
+  /** v0.16 «Сундук за WF»: the purchase and its prize (seeded by the purchase id); returns the purchase id */
   buyChest: (price: number, now: Date) => string
   // ---- v0.5 ----
   /** keeps the best streak of a repeat goal once it is beaten */
@@ -780,7 +780,7 @@ export const useStore = create<Store>()(
           const pid = uid()
           const r = rollChest(day, 'shop', pityCount(data.chests), data.rewards, pid)
           update((d) => {
-            d.purchases.push({ id: pid, at: now.getTime(), day, itemId: 'chest', title: 'Сундук за ❄', price, kind: 'chest' })
+            d.purchases.push({ id: pid, at: now.getTime(), day, itemId: 'chest', title: 'Сундук за WF', price, kind: 'chest' })
             ;(d.chests ??= []).push({ id: shopChestId(pid), day, type: 'shop', at: now.getTime(), ...(r.reward ? { rewardId: r.reward.id, rewardTitle: r.reward.title, rarity: r.rarity } : {}) })
           })
           return pid

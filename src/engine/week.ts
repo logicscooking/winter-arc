@@ -4,12 +4,17 @@
  *
  * PRIVACY: goals and the finished итог are meant for the party, so `publicWeek` / `publicRecap`
  * publish them — except goals marked «только мне», an итог marked hidden and money without the
- * opt-in. Nothing here may read the diary, the dump, notes or confessions: diary lines appear as
+ * opt-in. Nothing public here may read the diary, the dump, notes or confessions: diary lines appear as
  * suggestions only on the device (WeekReview), and only what the user types into an insight leaves it.
+ * v0.23: the one exception is the PERSONAL «Скопировать для ИИ» prompt (`recapPrompt` without `party`,
+ * with `notes` from `weekDayNotes`): it adds each day's score, «Почему так?», «Что было главным» and the
+ * diary answers, so the AI can find patterns. It only goes to the clipboard by the user's tap. The party
+ * prompt ignores `notes`, and publicWeek / publicRecap / social.ts never call weekDayNotes.
  */
-import { gameDayOf, addDays, formatDayRu, parseDay, RU_MONTHS_GEN } from './time'
+import { gameDayOf, addDays, formatDayRu, parseDay, RU_MONTHS_GEN, RU_WEEKDAYS, weekday } from './time'
 import { weekStartOf } from './skills'
 import { moneyShareOn } from './money'
+import { JOURNAL_PROMPTS } from './journal'
 import type { AppData, DayKey, PlanDraft, StatId, WeekGoal, WeekFigures, WeekRecap } from './types'
 
 export const WEEK_LIMITS = {
@@ -179,6 +184,7 @@ function sanitizeNumbers(raw: unknown): WeekFigures | undefined {
       .filter((q) => q && str(q.t, 40))
       .map((q) => ({ t: str(q.t, 40), n: n(q.n, 7), ...(typeof q.s === 'number' && q.s > 0 ? { s: n(q.s) } : {}), ...(str(q.u, WEEK_LIMITS.unit) ? { u: str(q.u, WEEK_LIMITS.unit) } : {}) })),
     ...(typeof x.money === 'number' && Number.isFinite(x.money) && x.money >= 0 ? { money: Math.min(1e9, Math.round(x.money)) } : {}),
+    ...(typeof x.elo === 'number' && Number.isFinite(x.elo) ? { elo: Math.max(-1000, Math.min(1000, Math.round(x.elo))) } : {}),
   }
 }
 
@@ -389,7 +395,7 @@ export function goalLine(g: PubGoal): string {
 }
 
 export function numbersLines(n: WeekFigures): string[] {
-  const out = [`Дни выполнены на ${n.pct}%${n.perfect ? ` · идеальных ${n.perfect}` : ''}`, `XP за неделю: ${n.xp} · серия честности ${n.streak}`]
+  const out = [`Дни выполнены на ${n.pct}%${n.perfect ? ` · идеальных ${n.perfect}` : ''}`, `${n.elo !== undefined ? `Эло за неделю: ${n.elo > 0 ? '+' : ''}${n.elo}` : `XP за неделю: ${n.xp}`} · серия честности ${n.streak}`]
   for (const q of n.quests) out.push(`${q.t}: ${q.s ? `${fmtN(q.s)}${q.u ? ` ${q.u}` : ''} · ` : ''}${q.n} из 7 дн`)
   if (n.money !== undefined) out.push(`Заработано: ${Math.round(n.money).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} ₽`)
   return out
@@ -411,13 +417,58 @@ export function recapText(v: RecapView): string {
 
 const FORMAT = ['ВЫВОД: <2–3 предложения: главное о неделе>', 'ЦЕЛЬ: <действие> | <число> <единица>', 'ЦЕЛЬ: <действие без числа>']
 
-/** A ready Russian prompt: own week or the whole party. Only what the decks show */
-export function recapPrompt(views: RecapView[], o: { party?: string } = {}): string {
+/** PRIVATE notes of one day for the own AI prompt: confession score / why / main and the diary answers */
+export interface DayNote {
+  day: DayKey
+  score?: number
+  why?: string
+  main?: string
+  diary: { q: string; a: string }[]
+}
+
+const clip = (s: string | undefined, max = 400) => (s ?? '').replace(/\s+/g, ' ').trim().slice(0, max)
+
+/** The week's days (Mon … today) that hold a score, a reason or diary answers — for the PERSONAL prompt only */
+export function weekDayNotes(data: Pick<AppData, 'days'>, monday: DayKey, today: DayKey): DayNote[] {
+  const out: DayNote[] = []
+  for (const day of weekDaysOf(monday)) {
+    if (day > today) break
+    const log = data.days[day]
+    const c = log?.confession
+    const diary = JOURNAL_PROMPTS.map((p) => ({ q: p.text, a: clip(log?.journal?.[p.id]?.text) })).filter((x) => x.a)
+    const note: DayNote = { day, diary }
+    if (typeof c?.dayScore === 'number') note.score = c.dayScore
+    if (clip(c?.dayWhy)) note.why = clip(c?.dayWhy)
+    if (clip(c?.main)) note.main = clip(c?.main)
+    if (note.score !== undefined || note.why || note.main || diary.length) out.push(note)
+  }
+  return out
+}
+
+export function dayNotesLines(notes: DayNote[]): string[] {
+  const out: string[] = []
+  for (const n of notes) {
+    out.push(`${RU_WEEKDAYS[weekday(n.day)]}, ${formatDayRu(n.day)}${n.score !== undefined ? ` — оценка дня ${n.score}/10` : ''}`)
+    if (n.why) out.push(`Почему так: ${n.why}`)
+    if (n.main) out.push(`Главное: ${n.main}`)
+    for (const x of n.diary) out.push(`${x.q} ${x.a}`)
+    out.push('')
+  }
+  return out
+}
+
+/**
+ * A ready Russian prompt: own week or the whole party. Only what the decks show — plus, for the OWN
+ * week only, the private `notes` (scores, reasons, diary). The party prompt never includes them.
+ */
+export function recapPrompt(views: RecapView[], o: { party?: string; notes?: DayNote[] } = {}): string {
   const party = !!o.party
+  const notes = party ? [] : (o.notes ?? [])
   const blocks = views.map((v) => {
     const head = party ? `### ${v.name ?? 'Участник'}` : `### Моя неделя · ${weekLabel(v.week)}`
     return [head, recapText({ ...v, name: undefined }).split('\n').slice(1).join('\n').trim()].join('\n')
   })
+  if (notes.length) blocks.push(['### Дни недели: оценка, почему так, дневник', ...dayNotesLines(notes)].join('\n').trim())
   const intro = party
     ? `Ты — тренер нашей пати «${o.party}» в Winter Arc (зимний челлендж привычек и дел). Ниже итоги недели участников: цели (план/факт), цифры, инсайты, провалы и черновики планов.`
     : 'Ты — мой тренер в Winter Arc (зимний челлендж привычек и дел). Ниже итог моей недели: цели (план/факт), цифры, инсайты, провалы и черновик плана.'
@@ -431,6 +482,7 @@ export function recapPrompt(views: RecapView[], o: { party?: string } = {}): str
         'ЦЕЛЬ: [Ник] <действие без числа>',
       ]
     : [
+        ...(notes.length ? ['Посмотри на оценки дней, «почему так» и ответы дневника: найди закономерности — что поднимает и что роняет день — и учти их в выводе и целях.'] : []),
         'Сделай короткий вывод недели и предложи 3–5 конкретных целей на следующую неделю.',
         'Цели — действия, а не метрики результата: «20 постов», «100 сообщений лидам», а не «+1000 подписчиков». Учитывай провалы и причины, не завышай: лучше реалистично, чем красиво.',
         'Ответь строго в формате, без вступлений и пояснений:',

@@ -54,11 +54,12 @@ export interface PublicStats {
   day: DayKey
   /** v0.22: FACEIT Эло level 1…10 (older snapshots: the XP level, no `elo`) */
   level: number
-  xp: number
   /** v0.22: Эло (not private). Missing in older snapshots */
   elo?: number
-  hp: number
-  fallen: boolean
+  /** legacy (≤ v0.22): XP and HP are gone from the game, old snapshots of friends may still carry them */
+  xp?: number
+  hp?: number
+  fallen?: boolean
   warmup: boolean
   chapter: number
   /** today's quests in plan order: M/m main lit/unlit, S/s side lit/unlit */
@@ -111,10 +112,7 @@ export function buildPublicStats(data: AppData, game: GameState, now: Date): Pub
     v: 1,
     day: today,
     level,
-    xp: game.xp,
     elo: game.elo,
-    hp: game.hp,
-    fallen: game.fallen,
     warmup: today < ARC_START,
     chapter: chapterOf(today),
     bulbs: bulbs.join(''),

@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { ARC_START, confessionOpensAt, formatHM, gameDayOf, isConfessionOpen, parseHM, reelsLimitFor, wakeTargetFor } from '../engine'
+import { ARC_START, ELO_FLOORS, confessionOpensAt, eloLevel, formatHM, formatRub, formatUsd, gameDayOf, incomeByDay, isConfessionOpen, monthEarned, parseHM, reelsLimitFor, wakeTargetFor } from '../engine'
 import { useStore } from '../store/store'
 import { go, useGame, useNow } from '../store/hooks'
 import { useUi } from '../store/ui'
 import { Chart } from '../components/Chart'
 import { Heatmap } from '../components/Heatmap'
-import { PAGES_GOAL, PAGES_MIN, WAKE_GOAL, allDays, anyXp, hpValues, pagesValues, wakeValues, window7, xpValues } from '../store/trends'
+import { PAGES_GOAL, PAGES_MIN, WAKE_GOAL, allDays, eloValues, pagesValues, wakeValues, window7 } from '../store/trends'
 
 export function Charts() {
   const data = useStore((s) => s.data)
@@ -28,9 +28,26 @@ export function Charts() {
   const reels = val((d) => data.days[d]?.confession?.reelsMin)
   const limit = days.map((d) => reelsLimitFor(data, d))
   const pages = pagesValues(data, days, today)
-  const hp = hpValues(game, days, today)
-  const xpRaw = xpValues(game, days, today)
-  const xp = anyXp(xpRaw) ? xpRaw : xpRaw.map(() => null)
+  const elo = eloValues(game, days, today)
+  const nextFloor = ELO_FLOORS[eloLevel(game.elo).level] as number | undefined
+  // «Заработано»: $ by «Курс $» when it is set, else ₽; bars per day + the running total of the calendar month
+  const rate = monthEarned(data, today).usd !== undefined ? Number(data.settings.usdRate) : undefined
+  const conv = (rub: number) => (rate ? Math.floor(rub / rate) : rub)
+  const earnedDay = incomeByDay(data, days)
+  const monthRun: (number | null)[] = []
+  {
+    // the month total of the first shown day starts from the incomes before it in the same month
+    const first = days[0]
+    let run = first ? incomeByDay(data, Array.from({ length: Number(first.slice(8)) - 1 }, (_, i) => `${first.slice(0, 8)}${String(i + 1).padStart(2, '0')}`)).reduce((a, b) => a + b, 0) : 0
+    days.forEach((d, i) => {
+      if (i > 0 && d.slice(8) === '01') run = 0
+      run += earnedDay[i]
+      monthRun.push(future(d) ? null : conv(run))
+    })
+  }
+  const earned = earnedDay.map((v, i) => (future(days[i]) ? null : conv(v)))
+  const fmtMoney = (v: number) => (rate ? formatUsd(v) : formatRub(v))
+  const anyMoney = earnedDay.some((v) => v > 0) || monthRun.some((v) => !!v)
 
   const checkinBtn = !data.days[today]?.checkin ? (
     <button className="btn sm primary" onClick={() => open({ kind: 'checkin', day: today })}>
@@ -127,25 +144,27 @@ export function Charts() {
             empty={{ text: 'Запиши страницы в квесте «Чтение»', action: toToday }}
           />
           <Chart
-            title="HP по дням"
-            subtitle={warmup ? 'В разминке HP не тратится — линия стоит на 100' : 'На конец дня'}
+            title="Эло по дням"
+            subtitle={warmup ? 'В разминке Эло не меняется — линия стоит на 1000' : 'На конец дня: +0–15 за закрытый день, −10 за молчание, −5 за «Слился»'}
             days={days}
             today={today}
-            series={[{ name: 'HP', color: 'var(--c-hp)', kind: 'line' }]}
-            values={[hp]}
-            yMin={0}
-            yMax={100}
+            series={[{ name: 'Эло', color: 'var(--c1)', kind: 'line' }]}
+            values={[elo]}
+            refs={nextFloor ? [{ name: `Ур. ${eloLevel(game.elo).level + 1} с ${nextFloor}`, style: 'goal', value: nextFloor }] : undefined}
           />
           <Chart
-            title="XP по дням"
-            subtitle="Квесты, задачи, исповедь, камбэки"
+            title={`Заработано${rate ? ', $' : ', ₽'}`}
+            subtitle={`Столбики — доход дня, линия — сумма с начала месяца. Сейчас за месяц: ${fmtMoney(monthRun.filter((v): v is number => v !== null).at(-1) ?? 0)}`}
             days={days}
             today={today}
-            series={[{ name: 'XP', color: 'var(--c-xp)', kind: 'bar' }]}
-            values={[xp]}
+            series={[
+              { name: 'За день', color: 'var(--c2)', kind: 'bar' },
+              { name: 'С начала месяца', color: 'var(--gold-mark)', kind: 'line' },
+            ]}
+            values={[earned, monthRun]}
             yMin={0}
-            yMax={xp.some((v) => v) ? undefined : 100}
-            empty={{ text: 'Отметь любой квест — тут вырастет первый столбик', action: toToday }}
+            format={fmtMoney}
+            empty={anyMoney ? undefined : { text: 'Запиши доход кнопкой «+» → «Заработал»', action: toToday }}
           />
         </div>
       </div>

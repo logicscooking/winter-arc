@@ -22,9 +22,10 @@ import {
   levelOf,
   plural,
   sphereLevelOf,
+  sphereQuestStats,
   wornOutfit,
 } from '../engine'
-import type { Area, GameState, GearItem, Outfit } from '../engine'
+import type { Area, GameState, GearItem, Outfit, SphereQuestStats } from '../engine'
 import { useStore } from '../store/store'
 import { haptic, useGame } from '../store/hooks'
 import { MoneyBossSprite, PixelAvatar, Px } from '../pixel/Pixel'
@@ -35,20 +36,25 @@ import { AREA_COLOR } from '../screens/TodayBlocks'
 // ---------- spheres ----------
 
 export function SphereList({ game }: { game: GameState }) {
+  const quests = useStore((s) => s.data.quests)
   const lag = laggingSphere(game.xpBySphere)
+  const stats = useMemo(() => sphereQuestStats(game, quests, game.today), [game, quests])
   return (
     <div className="sphere-list">
       {SPHERES.map((s) => (
-        <SphereRow key={s.id} area={s.id} title={s.title} xp={game.xpBySphere[s.id]} lagging={lag === s.id} />
+        <SphereRow key={s.id} area={s.id} title={s.title} xp={game.xpBySphere[s.id]} lagging={lag === s.id} stats={stats[s.id]} />
       ))}
     </div>
   )
 }
 
-function SphereRow({ area, title, xp, lagging }: { area: Area; title: string; xp: number; lagging: boolean }) {
+/** One sphere in plain numbers: this week's quests, the arc total, what its level gives */
+function SphereRow({ area, title, xp, lagging, stats }: { area: Area; title: string; xp: number; lagging: boolean; stats: SphereQuestStats }) {
   const l = sphereLevelOf(xp)
   const gold = l.level >= 15
   const next = SPHERE_PERKS[area].find((p) => p.level > l.level)
+  const { done, total } = stats.week
+  const pct = total ? Math.round((done / total) * 100) : 0
   return (
     <div className={`panel tight sphere-row${gold ? ' gold' : ''}${lagging ? ' lag' : ''}`} style={{ '--sc': AREA_COLOR[area] } as React.CSSProperties}>
       <div className="sphere-icon">
@@ -60,23 +66,21 @@ function SphereRow({ area, title, xp, lagging }: { area: Area; title: string; xp
             {title}
             {lagging && <span className="lag-chip">отстаёт</span>}
           </span>
-          <span className="tiny muted num">
-            {l.into}/{l.span}
-          </span>
+          <span className="tiny muted num">ур. {l.level}</span>
         </div>
-        <div className="bar sphere-bar" role="progressbar" aria-label={`${title}: опыт уровня`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(l.progress * 100)}>
-          <i style={{ width: `${Math.round(l.progress * 100)}%` }} />
+        <span className="small">
+          Эта неделя: <b className="num">{done}</b> из <b className="num">{total}</b> {plural(total, 'квеста', 'квестов', 'квестов')}
+          {total > 0 && <span className="muted"> ({pct}%)</span>}
+        </span>
+        <div className="bar sphere-bar" role="progressbar" aria-label={`${title}: квестов этой недели сделано ${pct}%`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
+          <i style={{ width: `${pct}%` }} />
         </div>
-        <div className="perk-dots" aria-label="Бонусы сферы">
-          {SPHERE_PERKS[area].map((p) => (
-            <span key={p.level} className={`perk-dot${l.level >= p.level ? ' on' : ''}`} title={`Ур. ${p.level}: ${p.title}`}>
-              {p.level}
-            </span>
-          ))}
-          <span className="tiny muted perk-next">{next ? `ур ${next.level}: ${next.title}` : 'все бонусы взяты'}</span>
-        </div>
+        <span className="tiny muted">
+          За арку: <b className="num">{stats.arcDone}</b> выполнено · до ур. {l.level + 1}: {Math.max(0, l.span - l.into)} очков
+          {next ? ` · на ур. ${next.level}: ${next.title}` : ' · все бонусы взяты'}
+        </span>
       </div>
-      <span className="sphere-lvl num" aria-label={`${title}: уровень ${l.level}`}>
+      <span className="sphere-lvl num" aria-hidden>
         {l.level}
       </span>
     </div>
@@ -123,7 +127,7 @@ export function ConquerorCard({ game }: { game: GameState }) {
       </p>
       {!c.won && (
         <p className="tiny muted">
-          Награда в конце арки: {item ? `легендарный «${item.title}», ` : ''}титул, +{CONQUEROR.xp} XP и +{CONQUEROR.shards} ❄.
+          Награда в конце арки: {item ? `легендарный «${item.title}», ` : ''}титул и +{CONQUEROR.shards} WF.
         </p>
       )}
     </section>
@@ -181,7 +185,6 @@ function pendingMoment(game: GameState, levelSeen: number | undefined, moments: 
       title: CONQUEROR.title,
       text: `${game.conqueror.closed} закрытых дней из 98. Зима твоя — титул навсегда.`,
       chips: [
-        { cls: 'gold', icon: 'star', text: `+${CONQUEROR.xp} XP` },
         { cls: 'ice', icon: 'shard', text: `+${CONQUEROR.shards}` },
         { cls: 'gold', icon: 'trophy', text: CONQUEROR.title },
       ],
@@ -196,7 +199,6 @@ function pendingMoment(game: GameState, levelSeen: number | undefined, moments: 
     const tb = moneyBossById(top.id)!
     const firstMain = top.id === MAIN_MONEY_BOSS.id && game.moneyKills.find((k) => k.id === MAIN_MONEY_BOSS.id) === top
     const others = fresh.filter((k) => k !== top).map((k) => moneyBossById(k.id)?.name).filter(Boolean)
-    const xp = fresh.reduce((s, k) => s + (moneyBossById(k.id)?.xp ?? 0), 0)
     const shards = fresh.reduce((s, k) => s + (moneyBossById(k.id)?.shards ?? 0), 0)
     return {
       key: `mb:${fresh.map(moneyMomentKey).join(',')}`,
@@ -211,7 +213,6 @@ function pendingMoment(game: GameState, levelSeen: number | undefined, moments: 
         .filter(Boolean)
         .join(' '),
       chips: [
-        { cls: 'gold', icon: 'star', text: `+${xp} XP` },
         { cls: 'ice', icon: 'shard', text: `+${shards}` },
         ...(firstMain ? [{ cls: 'gold', icon: 'trophy' as const, text: MAIN_BOSS_PRIZE.title }] : []),
       ],

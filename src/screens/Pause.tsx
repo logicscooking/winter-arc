@@ -30,7 +30,7 @@ export function Pause({ app }: { app: string }) {
   const ready = elapsed >= 10_000
   const item = SHOP_ITEMS.find((i) => i.kind === 'reels')!
   const price = priceFor(item.basePrice, chapterOf(today))
-  const buyable = canBuy(game.shards, price, game.fallen)
+  const buyable = canBuy(game.shards, price)
   const name = NAMES[app] ?? app
 
   const enter = (min: number) => {
@@ -66,7 +66,7 @@ export function Pause({ app }: { app: string }) {
                     setState('resisted')
                   }}
                 >
-                  Закрыть, +5 XP Воли
+                  Закрыть
                 </button>
                 <button className="btn ghost block" disabled={!ready} onClick={() => setState('choose')}>
                   Захожу
@@ -97,7 +97,7 @@ export function Pause({ app }: { app: string }) {
                         reward(e.currentTarget, { shards: -price })
                       }}
                     >
-                      Купить +15 мин за {price} ❄
+                      Купить +15 мин за {price} WF
                     </button>
                     {!buyable.ok && <p className="tiny muted">{buyable.reason}</p>}
                     <button className="btn ghost block" onClick={() => enter(15)}>

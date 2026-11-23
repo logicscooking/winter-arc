@@ -100,7 +100,7 @@ function DuelPlate({ d, game, theirs, name, now, meId }: { d: Duel; game: GameSt
       head = 'Окно закрыто · ждём итог друга'
       break
     case 'done':
-      head = d.result!.outcome === 'win' ? `Победа! +${DUEL.xp} XP и +${DUEL.shards} ❄` : d.result!.outcome === 'draw' ? 'Ничья' : 'Поражение. Реванш?'
+      head = d.result!.outcome === 'win' ? `Победа! +${DUEL.shards} WF` : d.result!.outcome === 'draw' ? 'Ничья' : 'Поражение. Реванш?'
       break
     default:
       head = ''
@@ -168,7 +168,7 @@ export function DuelArea({ friend, meId, members }: { friend: Member; meId: stri
     if (!check.ok) return say(check.reason)
     const ok = await confirm({
       title: `Дуэль с ${name}?`,
-      body: `3 дня с завтрашнего, кто закроет больше квестов дня. У ${name} 24 часа, чтобы принять. Победа: +${DUEL.xp} XP и +${DUEL.shards} ❄.`,
+      body: `3 дня с завтрашнего, кто закроет больше квестов дня. У ${name} 24 часа, чтобы принять. Победа: +${DUEL.shards} WF.`,
       ok: 'Вызвать',
     })
     if (!ok) return

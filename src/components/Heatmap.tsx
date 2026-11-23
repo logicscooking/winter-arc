@@ -11,7 +11,7 @@ export function Heatmap() {
   const h = useMemo(() => heatmap(game.xpByDay, game.today, onboard), [game, onboard])
   const [sel, setSel] = useState<HeatCell | null>(null)
   const pick = (c: HeatCell) => setSel(sel?.day === c.day ? null : c)
-  const label = (c: HeatCell) => `${RU_WEEKDAYS[weekday(c.day)]}, ${formatDayRu(c.day)}${c.warmup ? ' · разминка' : ''}: ${c.future ? 'ещё впереди' : `${c.xp} XP`}`
+  const label = (c: HeatCell) => `${RU_WEEKDAYS[weekday(c.day)]}, ${formatDayRu(c.day)}${c.warmup ? ' · разминка' : ''}: ${c.future ? 'ещё впереди' : `${c.xp} очков`}`
   const cellBtn = (c: HeatCell) => (
     <button
       key={c.day}
@@ -22,13 +22,13 @@ export function Heatmap() {
     />
   )
   return (
-    <section className="panel stack heat" aria-label="Тепловая карта XP">
+    <section className="panel stack heat" aria-label="Тепловая карта активности">
       <div className="row between">
         <div>
           <h3>Тепловая карта арки</h3>
-          <span className="tiny muted">98 дней с {formatDayRu(ARC_START)}, цвет — XP дня</span>
+          <span className="tiny muted">98 дней с {formatDayRu(ARC_START)}, цвет — очки сфер за день</span>
         </div>
-        <span className="num small">{h.total} XP</span>
+        <span className="num small">{h.total} очков</span>
       </div>
       <div className="heat-wrap">
         <div className="heat-days" aria-hidden>
@@ -52,7 +52,7 @@ export function Heatmap() {
       )}
       <div className="row between">
         <p className="small heat-sel" aria-live="polite">
-          {sel ? label(sel) : 'Тапни клетку — покажу день и XP'}
+          {sel ? label(sel) : 'Тапни клетку — покажу день и очки'}
         </p>
         <span className="heat-legend" aria-hidden>
           меньше

@@ -99,7 +99,7 @@ export function CravingFlow() {
                 setTimeout(close, 700)
               }}
             >
-              Забрать +10 XP Воли и +2 ❄
+              Забрать +2 WF
             </button>
           </>
         )}

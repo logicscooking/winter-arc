@@ -6,7 +6,7 @@ import { Px } from '../pixel/Pixel'
 import { AREA_ICON } from '../screens/todayItems'
 import { Bar } from './ui'
 
-/** Skillion-style reward card: stat + level, bar filling to the new value, XP pill, ❄ and CRITICAL chips */
+/** Skillion-style reward card: stat + level, bar filling to the new value, sphere points pill, WF and CRITICAL chips */
 export function RewardPop() {
   const pop = useFx((s) => s.pop)
   const hide = useFx((s) => s.hidePop)
@@ -37,11 +37,11 @@ export function RewardPop() {
             <h3>{name}</h3>
             <div className="small muted">{levelUp ? `Новый уровень ${after.level}!` : `Уровень ${after.level}`}</div>
           </div>
-          <span className="pop-xp">+{pop.xp} XP</span>
+          <span className="pop-xp" title="Очки сферы: растят её уровень">+{pop.xp} в сферу</span>
         </div>
         <div className="pop-bar">
           <span className="num">{lo}</span>
-          <Bar value={levelUp && !filled ? 1 : shown.progress} label={`${name}: опыт уровня`} />
+          <Bar value={levelUp && !filled ? 1 : shown.progress} label={`${name}: очки до следующего уровня сферы`} />
           <span className="num">{lo + after.span}</span>
         </div>
         {pop.impact && <p className="pop-impact">{pop.impact}</p>}

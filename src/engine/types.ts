@@ -644,7 +644,10 @@ export interface WeekFigures {
   /** days counted in the average */
   days: number
   perfect: number
+  /** legacy: sphere points of the week (not shown when `elo` is there) */
   xp: number
+  /** v0.23: Эло change over the week (may be negative) */
+  elo?: number
   /** honesty streak (days with a confession in a row) */
   streak: number
   /** top quests: title, days done, sum for numeric quests */

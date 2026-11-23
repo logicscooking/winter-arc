@@ -178,7 +178,7 @@ describe('План дня v0.9: «Переход»', () => {
     expect(st.xpByStat.body - base.xpByStat.body).toBe(2 * TRANSITION.xp)
     expect(st.xp - base.xp).toBe(2 * TRANSITION.xp)
     expect(st.shards).toBe(base.shards)
-    expect(st.hp).toBe(base.hp)
+    expect(st.elo).toBe(base.elo)
     for (const s of ['energy', 'mind', 'will', 'deal'] as const) expect(st.xpByStat[s]).toBe(base.xpByStat[s])
     // a transition of a removed block pays nothing
     delete log(d, D).dayBlocks!.b

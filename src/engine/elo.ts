@@ -1,11 +1,13 @@
 import type { Area, MarkStatus, PlannedQuest } from './types'
 
 /**
- * v0.22 «Эло как на FACEIT»: the hero's headline progress. Everyone starts at 1000 on the arc start
+ * v0.22 «Эло как на FACEIT»: the one life rank (body, discipline, mind). Everyone starts at 1000 on the arc start
  * (warm-up gives nothing). Every closed arc day adds 0…15 Эло by the share of the day's quests
- * outside «Деньги» that were completed (done = 1, mini = ½). No losses. Money has its own bosses.
+ * outside «Деньги» that were completed (done = 1, mini = ½). Money has its own bosses.
+ * v0.23 (Эло replaces HP): a day closed by the deadline without a confession costs 10, every «Слился» 5
+ * (a comeback inside the window cancels it). A frozen day neither gains nor loses. Эло never drops below 100.
  */
-export const ELO = { start: 1000, maxGain: 15 } as const
+export const ELO = { start: 1000, maxGain: 15, noConfession: -10, slip: -5, floor: 100 } as const
 
 /** Lowest Эло of each FACEIT level 1…10 (level 1 has no floor, 10 no ceiling) */
 export const ELO_FLOORS = [0, 501, 751, 901, 1051, 1201, 1351, 1531, 1751, 2001] as const
@@ -78,12 +80,9 @@ export function nextEloTitle(level: number): { level: number; title: string } | 
   return n ? { level: n[0], title: n[1] } : null
 }
 
-/** FACEIT-style badge color per level: 1 grey, 2–3 green, 4–7 yellow/orange, 8–9 orange, 10 red */
+/** FACEIT-style badge color per level: 1 white/grey, 2–3 green, 4–7 yellow → orange, 8–9 orange-red, 10 red */
+export const ELO_COLORS = ['#e6e8ea', '#2fd15b', '#1fbf4a', '#ffd21f', '#ffbf1a', '#ffa514', '#ff8c0f', '#ff6a12', '#ff4a14', '#ff1f1f'] as const
+
 export function eloColor(level: number): string {
-  if (level <= 1) return '#9aa0a6'
-  if (level <= 3) return '#3fbf5a'
-  if (level <= 5) return '#f2c230'
-  if (level <= 7) return '#f5a623'
-  if (level <= 9) return '#ff7a1a'
-  return '#ff2d2d'
+  return ELO_COLORS[Math.max(1, Math.min(ELO_MAX_LEVEL, Math.round(level))) - 1]
 }

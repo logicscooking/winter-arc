@@ -1,13 +1,13 @@
-import { formatDayRu, plural } from '../engine'
+import { ELO, formatDayRu, plural } from '../engine'
 import type { DayKey } from '../engine'
 import { useStore } from '../store/store'
 import { useGame } from '../store/hooks'
-import { HpBar } from '../components/ui'
+import { EloBlock } from '../components/Elo'
 
 export function MissedDays({ days }: { days: DayKey[] }) {
   const game = useGame()
   const setAck = useStore((s) => s.setAck)
-  const total = days.reduce((s, d) => s + (game.days[d]?.closeHpDelta ?? 0), 0)
+  const total = days.reduce((s, d) => s + (game.days[d]?.eloLoss ?? 0), 0)
   const n = days.length
   return (
     <div className="fullscreen">
@@ -17,34 +17,32 @@ export function MissedDays({ days }: { days: DayKey[] }) {
           <div className="big-title">
             Пропущено {n} {plural(n, 'день', 'дня', 'дней')}
           </div>
-          <p className="muted">Без исповеди день закрывается сам: всё неотмеченное — пропуск, плюс −10 HP за молчание. Это просто счёт, не приговор.</p>
+          <p className="muted">Без исповеди день закрывается сам: всё неотмеченное — пропуск, плюс {ELO.noConfession} Эло за молчание. Это просто счёт, не приговор.</p>
         </div>
         <div className="panel stack">
-          {days.slice(-7).map((d) => (
-            <div key={d} className="row between">
-              <span>{formatDayRu(d)}</span>
-              <span className="num small" style={{ color: 'var(--hp)' }}>
-                {game.days[d]?.closeHpDelta ? `${game.days[d].closeHpDelta} HP` : game.days[d]?.hpEnd === 0 ? 'в падении' : '0 HP'}
-              </span>
-            </div>
-          ))}
+          {days.slice(-7).map((d) => {
+            const r = game.days[d]
+            const net = (r?.eloGain ?? 0) + (r?.eloLoss ?? 0)
+            return (
+              <div key={d} className="row between">
+                <span>{formatDayRu(d)}</span>
+                <span className="num small" style={{ color: net < 0 ? 'var(--hp)' : 'var(--pine)' }}>
+                  {net > 0 ? '+' : net < 0 ? '−' : ''}
+                  {Math.abs(net)} Эло
+                </span>
+              </div>
+            )
+          })}
           {n > 7 && <p className="tiny muted">и ещё {n - 7} раньше</p>}
           <div className="divider" />
           <div className="row between">
-            <span className="muted">Всего</span>
+            <span className="muted">Штрафы всего</span>
             <span className="num" style={{ color: 'var(--hp)' }}>
-              {total} HP
+              −{Math.abs(total)} Эло
             </span>
           </div>
         </div>
-        <div className="stack" style={{ gap: 8 }}>
-          <div className="row between">
-            <span className="muted small">HP сейчас</span>
-            <span className="num hp-v">{game.hp}</span>
-          </div>
-          <HpBar hp={game.hp} />
-          {game.fallen && <p className="small" style={{ color: 'var(--hp)' }}>Это падение. Три идеальных дня подряд — и ты снова в игре с 50 HP.</p>}
-        </div>
+        <EloBlock elo={game.elo} size={52} />
         <div className="grow" />
         <button className="btn primary block" onClick={() => setAck({ missedThrough: days[days.length - 1] })}>
           Погнали дальше

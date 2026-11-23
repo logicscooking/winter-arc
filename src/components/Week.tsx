@@ -28,6 +28,7 @@ import {
   recapContent,
   recapOf,
   recapPrompt,
+  weekDayNotes,
   recapText,
   recapWeekFor,
   recapWindow,
@@ -84,6 +85,7 @@ export function weekFigures(data: AppData, game: GameState, monday: DayKey, toda
     days: days.length,
     perfect: days.filter((d) => game.days[d]?.perfect).length,
     xp: days.reduce((s, d) => s + (game.xpByDay[d] ?? 0), 0),
+    elo: days.length ? (game.eloByDay[days[days.length - 1]] ?? game.elo) - (game.eloByDay[addDays(days[0], -1)] ?? 1000) : 0,
     streak: game.honestyStreak,
     quests: top,
     ...(money !== undefined ? { money } : {}),
@@ -175,7 +177,7 @@ export function WeekGoalsCard() {
       <Px name="trophy" size={24} />
       <span className="grow">
         <b>{rWeek === week ? 'Итог недели' : 'Итог прошлой недели'}</b>
-        <small>Цели, цифры, инсайты, провал, план · +{WEEK_XP.recap} XP</small>
+        <small>Цели, цифры, инсайты, провал, план · +{WEEK_XP.recapShards} WF</small>
       </span>
       <ChevronRight size={18} aria-hidden />
     </a>
@@ -191,7 +193,7 @@ export function WeekGoalsCard() {
           <Px name="quests" size={34} />
           <div className="grow">
             <h3>Цели на неделю</h3>
-            <p className="small muted">Что сделаешь до воскресенья? Сколько целей — решать тебе. +{WEEK_XP.goals} XP</p>
+            <p className="small muted">Что сделаешь до воскресенья? Сколько целей — решать тебе.</p>
           </div>
         </div>
         <div className="row wrap" style={{ gap: 8 }}>
@@ -449,7 +451,10 @@ export function AiSheet({ week, view, onClose }: { week: DayKey; view: RecapView
   const nick = useStore((s) => s.data.profile?.nick)
   const add = useStore((s) => s.addWeekGoals)
   const setRecap = useStore((s) => s.setRecap)
-  const prompt = useMemo(() => recapPrompt([view]), [view])
+  const days = useStore((s) => s.data.days)
+  const today = gameDayOf(useNow())
+  // the OWN prompt adds the private day notes (score, why, diary); the party one never does
+  const prompt = useMemo(() => recapPrompt([view], { notes: weekDayNotes({ days }, week, today) }), [view, days, week, today])
   const [answer, setAnswer] = useState('')
   const parsed = useMemo(() => parseAiAnswer(answer), [answer])
   const goals = useMemo(() => goalsFor(parsed, nick), [parsed, nick])
@@ -570,7 +575,7 @@ export function RecapSummary({ v }: { v: RecapView }) {
         <section>
           <h3>Цифры</h3>
           <p className="small">
-            Дни выполнены на <b className="num">{v.num.pct}%</b> · XP <b className="num">{v.num.xp}</b> · честность <b className="num">{v.num.streak}</b>
+            Дни выполнены на <b className="num">{v.num.pct}%</b> · {v.num.elo !== undefined ? 'Эло' : 'XP'} <b className="num">{v.num.elo !== undefined ? `${v.num.elo > 0 ? '+' : ''}${v.num.elo}` : v.num.xp}</b> · честность <b className="num">{v.num.streak}</b>
             {v.num.money !== undefined ? <> · {formatRub(v.num.money)}</> : null}
           </p>
           {v.num.quests.length > 0 && <p className="tiny muted">{v.num.quests.map((q) => `${q.t}: ${q.s ? `${q.s}${q.u ? ` ${q.u}` : ''}` : `${q.n} дн`}`).join(' · ')}</p>}

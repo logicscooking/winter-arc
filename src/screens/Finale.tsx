@@ -1,5 +1,5 @@
 
-import { ARC_DAYS, ARC_START, CONQUEROR, FINAL_MEASURE_FROM, MAIN_MONEY_BOSS, SPHERES, booksFinishedInArc, gameDayOf, eloLevel, heroTitles, parseHM, questStreak, sphereLevelOf } from '../engine'
+import { ARC_DAYS, ARC_START, dayStreak, CONQUEROR, FINAL_MEASURE_FROM, MAIN_MONEY_BOSS, SPHERES, booksFinishedInArc, gameDayOf, eloLevel, heroTitles, parseHM, questStreak, sphereLevelOf } from '../engine'
 import type { Measurements } from '../engine'
 import { useStore } from '../store/store'
 import { useGame, useNow } from '../store/hooks'
@@ -48,7 +48,6 @@ export function Finale() {
           [
             ['Эло', `${game.elo} · Ур. ${lvl.level}`],
             ['Титул', heroTitles(game)[0]],
-            ['XP за арку', game.xp],
             ['Книг дочитано', booksFinishedInArc(data, ARC_START)],
             ['Закрыто дней', `${game.conqueror.closed}/${ARC_DAYS}`],
             [CONQUEROR.title, game.conqueror.won ? 'взят' : `${game.conqueror.closed} из ${game.conqueror.need}`],
@@ -57,8 +56,8 @@ export function Finale() {
               const main = game.moneyKills.filter((k) => k.id === MAIN_MONEY_BOSS.id).length
               return `${kills}${main ? ` · главный ×${main}` : ''}`
             })()],
+            ['Лучший стрик дней', dayStreak(game, game.today).best],
             ['Лучшая серия честности', game.bestHonesty],
-            ['Падений', game.falls.length],
           ] as const
         ).map(([k, v]) => (
           <div key={k} className="panel tight stack" style={{ gap: 2 }}>
@@ -127,7 +126,7 @@ export function Finale() {
           ))}
           <div className="panel glow stack" style={{ marginTop: 8 }}>
             <h3>Режим поддержки</h3>
-            <p className="small muted">После арки держишь базу без HP: подъём, чтение, Дело. Весна — не повод сдаваться.</p>
+            <p className="small muted">После арки держишь базу без штрафов: подъём, чтение, Дело. Весна — не повод сдаваться.</p>
             {data.ack.supportMode ? (
               <span className="tag auto" style={{ alignSelf: 'flex-start' }}>
                 включён

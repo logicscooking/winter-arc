@@ -286,7 +286,7 @@ describe('Сферы: миграция', () => {
     const after = computeState(migrateAreas(normalizeData(structuredClone(old)), '2026-11-26'), now)
     expect(after.days[day].plan).toEqual(before.days[day].plan)
     expect(after.xpByDay[day]).toEqual(before.xpByDay[day])
-    expect(after.hpByDay[day]).toEqual(before.hpByDay[day])
+    expect(after.eloByDay[day]).toEqual(before.eloByDay[day])
     expect(activeQuestsFor(migrateAreas(old, '2026-11-26').quests, '2026-11-26').map((p) => p.id)).toEqual(expect.arrayContaining(['meditation', 'journal']))
   })
 

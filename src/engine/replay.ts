@@ -7,7 +7,6 @@ import { sphereLevelOf } from './levels'
 import {
   COMEBACK_WINDOW_MS,
   FREEZE,
-  HP,
   SHARDS,
   XP,
   activeQuestsFor,
@@ -32,12 +31,11 @@ import {
   ARC_END,
   ARC_START,
   addDays,
-  chapterOf,
   dayStart,
   gameDayOf,
   isPastDeadline,
 } from './time'
-import type { AppData, Area, ChapterId, DayKey, MarkStatus, PlannedQuest, StatId } from './types'
+import type { AppData, Area, DayKey, MarkStatus, PlannedQuest, StatId } from './types'
 
 export interface DayResult {
   day: DayKey
@@ -46,16 +44,14 @@ export interface DayResult {
   confession: boolean
   /** closed by deadline without a confession (retroactive evaluation) */
   retro: boolean
-  /** «Разминка»: a day before the arc start. XP and ❄ count, HP never changes. */
+  /** «Разминка»: a day before the arc start. Points and WF count, Эло never changes. */
   warmup: boolean
   frozen: boolean
   perfect: boolean
   plan: PlannedQuest[]
   marks: Record<string, MarkStatus | undefined>
   missedMain: string[]
-  /** HP change applied at day close (misses, confession, perfect day) */
-  closeHpDelta: number
-  hpEnd: number
+  /** internal sphere points of the day (no longer shown as XP) */
   xp: number
   shards: number
   /** quests that rolled CRITICAL ×1.5 */
@@ -66,6 +62,8 @@ export interface DayResult {
   morning: boolean
   /** v0.22: Эло of the day (0…15), counted into `elo` only when the arc day is closed and not frozen */
   eloGain: number
+  /** v0.23: Эло lost on the day (≤ 0): «Слился» −5 each (live), no confession −10 at close; 0 on a frozen day */
+  eloLoss: number
 }
 
 /** Anti-farm caps per game day (v0.16) */
@@ -78,31 +76,16 @@ export interface LevelUp {
   shards: number
 }
 
-export interface FallEvent {
-  day: DayKey
-  at: number
-  rankLost: number
-  shardsLost: number
-}
-
 export interface GameState {
   today: DayKey
-  hp: number
-  fallen: boolean
-  /** perfect days in a row during the fall */
-  recovery: number
   freezes: number
   /** perfect days in a row towards the next freeze */
   perfectRun: number
   shards: number
   xp: number
   xpByStat: Record<StatId, number>
-  chapterXp: Record<ChapterId, number>
-  chapterPenalty: Record<ChapterId, number>
   days: Record<DayKey, DayResult>
-  hpByDay: Record<DayKey, number>
   xpByDay: Record<DayKey, number>
-  falls: FallEvent[]
   honestyStreak: number
   bestHonesty: number
   freezesEarned: number
@@ -115,8 +98,9 @@ export interface GameState {
   xpBySphere: Record<Area, number>
   /** v0.22: every Эло level reached in the replay (5…10), with its ❄ */
   levelUps: LevelUp[]
-  /** v0.22 «Эло как на FACEIT»: 1000 at the arc start + closed arc days (elo.ts) */
+  /** v0.22 «Эло как на FACEIT»: 1000 at the arc start + closed arc days − penalties, never below 100 (elo.ts) */
   elo: number
+  /** the highest Эло level ever reached (rewards, titles and gear follow it; the badge shows eloLevel(elo)) */
   eloLevel: number
   /** Эло at the end of each replayed day */
   eloByDay: Record<DayKey, number>
@@ -138,7 +122,8 @@ interface Ev {
   /** life area of the XP; missing = the area of the stat */
   sphere?: Area
   shards?: number
-  hp?: number
+  /** Эло change (a slip), arc days only */
+  elo?: number
   skill?: string
   flow?: string
   /** a money boss kill */
@@ -186,20 +171,13 @@ export function computeState(data: AppData, now: Date): GameState {
   const today = gameDayOf(now)
   const st: GameState = {
     today,
-    hp: HP.start,
-    fallen: false,
-    recovery: 0,
     freezes: 0,
     perfectRun: 0,
     shards: 0,
     xp: 0,
     xpByStat: emptyStats(),
-    chapterXp: { 0: 0, 1: 0, 2: 0, 3: 0 },
-    chapterPenalty: { 0: 0, 1: 0, 2: 0, 3: 0 },
     days: {},
-    hpByDay: {},
     xpByDay: {},
-    falls: [],
     honestyStreak: 0,
     bestHonesty: 0,
     freezesEarned: 0,
@@ -223,8 +201,8 @@ export function computeState(data: AppData, now: Date): GameState {
   const events = new Map<DayKey, Ev[]>()
   const push = (e: Ev) => {
     if (e.day < start || e.day > today) return
-    // warm-up: HP is never lost (or gained) before the arc
-    if (e.day < ARC_START && e.hp) e = { ...e, hp: undefined }
+    // warm-up and days before the onboarding: Эло never changes
+    if ((e.day < ARC_START || e.day < evalStart || e.day > ARC_END) && e.elo) e = { ...e, elo: undefined }
     const list = events.get(e.day)
     if (list) list.push(e)
     else events.set(e.day, [e])
@@ -309,11 +287,11 @@ export function computeState(data: AppData, now: Date): GameState {
   for (const e of dumpEvents(data)) push({ day: e.day, at: e.at, xp: e.xp, stat: e.stat })
   // «Неделя»: goals set for the week, a finished «Итог недели» (once per week each, in time)
   for (const e of weekEvents(data)) push({ day: e.day, at: e.at, xp: e.xp, stat: e.stat, shards: e.shards })
+  // v0.23: «Слился» costs 5 Эло at once; a comeback inside the window cancels the loss (and pays WF + points)
   for (const s of data.slips) {
-    push({ day: s.day, at: s.at, hp: HP.slip })
-    if (s.comebackAt && s.comebackAt >= s.at && s.comebackAt - s.at <= COMEBACK_WINDOW_MS) {
-      push({ day: s.day, at: s.comebackAt, hp: HP.comeback, xp: XP.comeback, stat: 'will', shards: SHARDS.comeback })
-    }
+    const comeback = !!s.comebackAt && s.comebackAt >= s.at && s.comebackAt - s.at <= COMEBACK_WINDOW_MS
+    push({ day: s.day, at: s.at, elo: comeback ? undefined : ELO.slip })
+    if (comeback) push({ day: s.day, at: s.comebackAt!, xp: XP.comeback, stat: 'will', shards: SHARDS.comeback })
   }
   // v0.16 caps: self-reported wins pay at most CAPS.craving / CAPS.pause times a day
   const perDay = new Map<string, number>()
@@ -331,23 +309,6 @@ export function computeState(data: AppData, now: Date): GameState {
   }
   for (const p of data.purchases) push({ day: p.day, at: p.at, shards: -p.price })
 
-  const applyHp = (delta: number, day: DayKey, at: number) => {
-    if (st.fallen || !delta) return
-    st.hp = Math.max(0, Math.min(HP.max, st.hp + delta))
-    if (st.hp === 0) {
-      const ch = chapterOf(day)
-      const rank = st.chapterXp[ch] - st.chapterPenalty[ch]
-      const rankLost = Math.round(rank * 0.2)
-      const shardsLost = st.shards - Math.floor(st.shards / 2)
-      st.chapterPenalty[ch] += rankLost
-      st.shards -= shardsLost
-      st.fallen = true
-      st.recovery = 0
-      st.falls.push({ day, at, rankLost, shardsLost })
-    }
-  }
-
-  let prevMissed = new Set<string>()
   const lastDay = today
   let perfectArcDays = 0
   const perkSeen = new Set<string>()
@@ -361,7 +322,6 @@ export function computeState(data: AppData, now: Date): GameState {
   const gainXp = (d: DayKey, _at: number, xp: number, info: { xp: number; shards: number }, stat?: StatId, sphere?: Area) => {
     st.xp += xp
     if (stat) st.xpByStat[stat] += xp
-    st.chapterXp[chapterOf(d)] += xp
     st.xpByDay[d] = (st.xpByDay[d] ?? 0) + xp
     info.xp += xp
     const area = sphere ?? sphereOfStat(stat)
@@ -381,6 +341,7 @@ export function computeState(data: AppData, now: Date): GameState {
   for (let d = start; d <= lastDay; d = addDays(d, 1)) {
     const info = dayInfo.get(d)!
     const evs = (events.get(d) ?? []).sort((a, b) => a.at - b.at)
+    let slipLoss = 0
     for (const e of evs) {
       if (e.xp) {
         gainXp(d, e.at, e.xp, info, e.stat, e.sphere)
@@ -393,7 +354,7 @@ export function computeState(data: AppData, now: Date): GameState {
       }
       if (e.mk) st.moneyKills.push({ ...e.mk, day: d, at: e.at })
       if (e.shards) addShards(e.shards, info)
-      if (e.hp) applyHp(e.hp, d, e.at)
+      if (e.elo) slipLoss += e.elo
     }
 
     const log = data.days[d]
@@ -414,50 +375,28 @@ export function computeState(data: AppData, now: Date): GameState {
       plan: info.plan,
       marks: info.marks,
       missedMain: missed,
-      closeHpDelta: 0,
-      hpEnd: st.hp,
       xp: info.xp,
       shards: info.shards,
       crits: info.crits,
       destinyWon: info.destinyWon,
       morning: morningDone(log),
       eloGain: 0,
+      eloLoss: 0,
     }
     // v0.22: the projected Эло of an arc day (the player sees it live); banked below when the day closes
     const arcDay = d >= ARC_START && d <= ARC_END && d >= evalStart
     const areaOf = (id: string) => questArea({ id, area: data.quests.find((q) => q.id === id)?.area })
     if (arcDay) res.eloGain = eloGain(info.plan, info.marks, areaOf)
 
-    if (closed && warmup) {
-      // «Разминка»: the day closes for streaks and charts, nothing else changes
-      prevMissed = new Set()
-    } else if (closed) {
+    if (closed && !warmup) {
+      // «Разминка» days close for streaks and charts only
       const frozen = !!log?.freeze && missed.length > 0 && st.freezes > 0
       res.frozen = frozen
-      let delta = 0
       if (frozen) {
         st.freezes--
         st.freezesUsed++
-      } else {
-        for (const id of missed) delta += prevMissed.has(id) ? HP.missTwice : HP.miss
-        if (!log?.confession) delta += HP.noConfession
-        if (perfect) delta += HP.perfect
       }
-      res.closeHpDelta = delta
       const endAt = dayStart(addDays(d, 1)).getTime() - 1
-      if (st.fallen) {
-        if (!frozen) {
-          st.recovery = perfect ? st.recovery + 1 : 0
-          if (st.recovery >= HP.recoveryDays) {
-            st.fallen = false
-            st.hp = HP.recovered
-            st.recovery = 0
-          }
-        }
-        res.closeHpDelta = 0
-      } else {
-        applyHp(delta, d, endAt)
-      }
       if (!frozen) {
         st.perfectRun = perfect ? st.perfectRun + 1 : 0
         if (st.perfectRun >= FREEZE.per) {
@@ -468,8 +407,6 @@ export function computeState(data: AppData, now: Date): GameState {
           }
         }
       }
-      prevMissed = frozen ? new Set() : new Set(missed)
-
       if (d === ARC_END) {
         // «Покоритель зимы»: the arc closed with ≥ CONQUEROR.need perfect days
         st.conqueror.won = perfectArcDays + (perfect ? 1 : 0) >= CONQUEROR.need
@@ -481,6 +418,9 @@ export function computeState(data: AppData, now: Date): GameState {
         res.shards = info.shards
       }
     }
+    // v0.23: the day's losses — slips at once (the open day too), the silent close at the deadline; a freeze cancels both
+    if (arcDay && !res.frozen) res.eloLoss = slipLoss + (closed && !log?.confession ? ELO.noConfession : 0)
+    if (res.eloLoss) st.elo = Math.max(ELO.floor, st.elo + res.eloLoss)
     if (closed && arcDay && !res.frozen && res.eloGain) {
       st.elo += res.eloGain
       const newLevel = eloLevel(st.elo).level
@@ -494,10 +434,8 @@ export function computeState(data: AppData, now: Date): GameState {
     }
     if (arcDay && res.frozen) res.eloGain = 0
     st.eloByDay[d] = st.elo
-    res.hpEnd = st.hp
     if (perfect && d >= ARC_START && d <= ARC_END) perfectArcDays++
     st.days[d] = res
-    st.hpByDay[d] = st.hp
   }
 
   st.conqueror.closed = perfectArcDays
@@ -516,10 +454,6 @@ export function computeState(data: AppData, now: Date): GameState {
   st.honestyStreak = run
   st.bestHonesty = best
   return st
-}
-
-export function chapterRank(st: GameState, ch: ChapterId): number {
-  return Math.max(0, st.chapterXp[ch] - st.chapterPenalty[ch])
 }
 
 /** v0.22: the hero level is the FACEIT Эло level (XP levels stay internal) */

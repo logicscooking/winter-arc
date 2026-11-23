@@ -36,7 +36,7 @@ export function AvatarScreen() {
     if (item.conqueror) return say(`Награда «${CONQUEROR.title}»: закрой ${CONQUEROR.need} из 98 дней арки.`)
     if (item.moneyBoss !== undefined) return say('Откроется, когда убьёшь главного босса месяца: $10 000 за месяц.')
     const price = gearPrice(item, ch)
-    const c = canBuy(game.shards, price, game.fallen)
+    const c = canBuy(game.shards, price)
     if (!c.ok) return say(c.reason!)
     const id = buy({ itemId: gearPurchaseId(item.id), title: item.title, price, kind: 'avatar' }, nowWithOffset())
     reward(el, { shards: -price })
@@ -55,7 +55,7 @@ export function AvatarScreen() {
         <section className="panel dress-stage" aria-label="Предпросмотр">
           <PixelAvatar outfit={worn} size={220} title="Твой герой" />
           <p className="small muted center" style={{ marginTop: 8 }}>
-            Уровень {level}. Вещи открывают уровни, «Путь к $10k», финал арки и ❄ в магазине.
+            Уровень {level}. Вещи открывают уровни, «Путь к $10k», финал арки и WF в магазине.
           </p>
         </section>
 

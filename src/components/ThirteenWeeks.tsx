@@ -17,7 +17,6 @@ import {
   arcPos,
   arcScores,
   arcTotals,
-  dayStreak,
   formatRub,
   gameDayOf,
   goalAmount,
@@ -36,6 +35,7 @@ import { nowWithOffset, useGame, useNow } from '../store/hooks'
 import { useUi } from '../store/ui'
 import { Px } from '../pixel/Pixel'
 import { Field, Help, NumInput, Sheet } from './ui'
+import { StreakCard } from './Streak'
 import './thirteen.css'
 
 export const fmtNum = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1).replace('.', ','))
@@ -50,15 +50,15 @@ export function ThirteenWeeks() {
   const scores = useMemo(() => arcScores(data, game, today), [data, game, today])
   const totals = arcTotals(data, game, today, scores)
   const ws = wonStreak(scores)
-  const ds = dayStreak(game, today)
   const cur = pos.phase === 'battle' ? scores[pos.week - 1] : undefined
 
   return (
     <section id="weeks13" className="w13 stack-lg" aria-label="13 недель">
+      <StreakCard />
       <Countdown pos={pos} today={today} totals={totals} />
       <ArcGridCard scores={scores} today={today} />
       <div className="w13-cols">
-        <ScoreCard cur={cur} scores={scores} ws={ws} ds={ds} />
+        <ScoreCard cur={cur} scores={scores} ws={ws} />
         <TotalsCard t={totals} />
       </div>
       <ArcGoalsCard />
@@ -180,7 +180,7 @@ function ArcGridCard({ scores, today }: { scores: WeekScore[]; today: string }) 
 
 // ---------- score ----------
 
-function ScoreCard({ cur, scores, ws, ds }: { cur?: WeekScore; scores: WeekScore[]; ws: ReturnType<typeof wonStreak>; ds: ReturnType<typeof dayStreak> }) {
+function ScoreCard({ cur, scores, ws }: { cur?: WeekScore; scores: WeekScore[]; ws: ReturnType<typeof wonStreak> }) {
   const battle = scores.slice(0, BATTLE_WEEKS)
   return (
     <div className="panel w13-score stack">
@@ -197,51 +197,49 @@ function ScoreCard({ cur, scores, ws, ds }: { cur?: WeekScore; scores: WeekScore
           />
         </h2>
       </div>
-      {cur && (
-        <div className="stack" style={{ gap: 6 }}>
-          <p className="w13-now">
-            Эта неделя: <b className={`num ${cur.onTrack ? 'ok' : ''}`}>{pctOf(cur.score)}</b> · {cur.onTrack ? 'в зоне победы ✓' : `до победы нужно ${WIN}%`}
-          </p>
-          <div className="w13-meter" role="progressbar" aria-label="Счёт недели" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round((cur.score ?? 0) * 100)}>
-            <i className={cur.onTrack ? 'ok' : ''} style={{ width: `${Math.min(1, cur.score ?? 0) * 100}%` }} />
-            <span className="w13-win" style={{ left: `${WIN}%` }} />
+      {cur && (() => {
+        const pct = Math.round((cur.score ?? 0) * 100)
+        const need = Math.max(0, Math.ceil(WEEK_WIN * cur.planned - cur.done - 1e-9))
+        return (
+          <div className="stack" style={{ gap: 6 }}>
+            <p className="w13-plain">
+              На этой неделе сделано <b className="num">{fmtNum(cur.done)}</b> из <b className="num">{cur.planned}</b> {plural(cur.planned, 'целевого действия', 'целевых действий', 'целевых действий')} — <b className={`num ${cur.onTrack ? 'ok' : ''}`}>{pct}%</b>.{' '}
+              {cur.onTrack ? `Это уже победа недели (нужно ${WIN}%) ✓` : `Для победы недели нужно ${WIN}%: ещё ${fmtNum(need)}.`}
+            </p>
+            <div className="w13-meter" role="progressbar" aria-label="Счёт недели" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
+              <i className={cur.onTrack ? 'ok' : ''} style={{ width: `${Math.min(1, cur.score ?? 0) * 100}%` }} />
+              <span className="w13-win" style={{ left: `${WIN}%` }} />
+            </div>
+            <p className="tiny muted">
+              Из них главные квесты: {fmtNum(cur.mains.done)} из {cur.mains.planned} · цели недели: {fmtNum(cur.goals.done)} из {cur.goals.planned}
+            </p>
           </div>
-          <p className="tiny muted num">
-            Квесты {fmtNum(cur.mains.done)}/{cur.mains.planned} · цели {fmtNum(cur.goals.done)}/{cur.goals.planned}
-          </p>
-        </div>
-      )}
-      <div className="w13-bars" role="img" aria-label={`Выиграно недель: ${ws.won} из ${ws.passed}`}>
-        <span className="w13-bars-line" style={{ bottom: `calc(${WIN}% * 0.8 + 18px)` }}>
-          <em>{WIN}%</em>
+        )
+      })()}
+      <div className="w13-bars-head small">
+        <b>Все 13 недель</b>
+        <span className="muted">
+          выиграно {ws.won} из {ws.passed} {plural(ws.passed, 'прошедшей', 'прошедших', 'прошедших')}
+        </span>
+      </div>
+      <div className="w13-bars" role="img" aria-label={`Счёт по неделям. Выиграно недель: ${ws.won} из ${ws.passed}`}>
+        <span className="w13-bars-line" style={{ bottom: `calc(${WIN}% * 0.72 + 32px)` }}>
+          <em>победа {WIN}%</em>
         </span>
         {battle.map((s) => (
-          <span key={s.week} className={`w13-bar${s.won ? ' won' : ''}${s.current ? ' cur' : ''}${s.ended && !s.won ? ' lost' : ''}`}>
+          <span key={s.week} className={`w13-bar${s.won ? ' won' : ''}${s.current ? ' cur' : ''}${s.ended && !s.won ? ' lost' : ''}`} title={`Неделя ${s.week}: ${pctOf(s.score)}`}>
+            <span className="w13-bar-pct num">{(s.ended || s.current) && s.score !== null ? Math.round(s.score * 100) : ''}</span>
             <span className="w13-bar-track">
               <i style={{ height: `${Math.min(1, s.score ?? 0) * 100}%` }} />
             </span>
-            <small className="num">{s.week}</small>
+            <small className="num">Н{s.week}</small>
           </span>
         ))}
       </div>
-      <div className="w13-streaks">
-        <div>
-          <Px name="flame" size={26} />
-          <span>
-            <small>Дней подряд</small>
-            <b className="num">{ds.run}</b>
-            <small>рекорд {ds.best}</small>
-          </span>
-        </div>
-        <div>
-          <Px name="trophy" size={26} />
-          <span>
-            <small>Недель ✓ подряд</small>
-            <b className="num">{ws.run}</b>
-            <small>рекорд {ws.best}</small>
-          </span>
-        </div>
-      </div>
+      <p className="tiny muted">Столбик и число над ним — сколько % сделано за неделю. Зелёный — неделя выиграна, красный — нет, жёлтый — идёт сейчас.</p>
+      <p className="w13-plain small">
+        Выиграно недель подряд: <b className="num">{ws.run}</b> · рекорд {ws.best}
+      </p>
     </div>
   )
 }
@@ -250,48 +248,56 @@ function ScoreCard({ cur, scores, ws, ds }: { cur?: WeekScore; scores: WeekScore
 
 function TotalsCard({ t }: { t: ReturnType<typeof arcTotals> }) {
   const conq = Math.min(1, t.conqueror.closed / t.conqueror.need)
+  const pct = t.planned ? Math.round((t.done / t.planned) * 100) : 0
   return (
     <div className="panel w13-totals stack">
       <div className="section-title" style={{ margin: 0 }}>
         <h2>Итог арки</h2>
         <span className="small muted">на сегодня</span>
       </div>
-      <div className="w13-tiles">
-        <div className="w13-tile">
-          <small>Сделано действий</small>
+      <ul className="w13-facts">
+        <li>
           <b className="num">{fmtNum(t.done)}</b>
-          <span className="tiny muted num">из {t.planned}</span>
-        </div>
-        <div className="w13-tile bad">
-          <small>Проёбано</small>
+          <span>
+            из {t.planned} целевых действий сделано{t.planned ? ` — ${pct}%` : ''}
+            <small>главные квесты дней и цели недель</small>
+          </span>
+        </li>
+        <li className="bad">
           <b className="num">{t.wasted}</b>
-          <span className="tiny muted">квесты и цели</span>
-        </div>
-        <div className="w13-tile">
-          <small>Дней закрыто</small>
+          <span>
+            проёбано
+            <small>главные квесты, которые не сделал, и невыполненные цели прошедших недель</small>
+          </span>
+        </li>
+        <li>
           <b className="num">{t.closedDays}</b>
-          <span className="tiny muted num">лучшая серия {t.bestDayStreak}</span>
-        </div>
-        <div className="w13-tile">
-          <small>Недель выиграно</small>
+          <span>
+            {plural(t.closedDays, 'день выполнен', 'дня выполнено', 'дней выполнено')} полностью
+            <small>все главные квесты сделаны · лучшая серия {t.bestDayStreak}</small>
+          </span>
+        </li>
+        <li>
           <b className="num">{t.weeksWon}</b>
-          <span className="tiny muted num">из {t.weeksPassed} прошедших</span>
-        </div>
+          <span>
+            {plural(t.weeksWon, 'неделя выиграна', 'недели выиграно', 'недель выиграно')} из {t.weeksPassed} прошедших
+            <small>победа — {WIN}% целевых действий за неделю</small>
+          </span>
+        </li>
         {t.money && (
-          <div className="w13-tile wide gold">
-            <small>Заработано в арке</small>
+          <li className="gold">
             <b className="num">{formatRub(t.money.rub)}</b>
-            <span className="tiny muted num">боссов убито: {t.money.kills}</span>
-          </div>
+            <span>
+              заработано в арке
+              <small>боссов месяца убито: {t.money.kills}</small>
+            </span>
+          </li>
         )}
-      </div>
+      </ul>
       <div className="w13-conq">
         <span className="row" style={{ justifyContent: 'space-between' }}>
           <span className="small">
-            <b>{CONQUEROR.title}</b>
-          </span>
-          <span className="num small">
-            {t.conqueror.closed}/{t.conqueror.need}
+            <b>{CONQUEROR.title}</b>: {t.conqueror.closed} из {t.conqueror.need} выполненных дней
           </span>
         </span>
         <span className="w13-meter thin">

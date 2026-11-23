@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactNode } from 'react'
-import { BookOpen, Bug, ChartLine, Download, Hand, ListChecks, Ruler, ScrollText, Activity, ChevronRight } from 'lucide-react'
+import { BookOpen, Bug, ChartLine, Download, Hand, ListChecks, Ruler, ScrollText, Activity, ChevronRight, NotebookPen } from 'lucide-react'
 import { Px } from '../pixel/Pixel'
 import type { SpriteName } from '../pixel/sprites'
 import { AccountEntry, AccountPage } from './Account'
@@ -34,7 +34,7 @@ import { Why } from './Why'
 
 /** game screens first, with their pixel icons */
 const GAME: { title: string; hint: string; icon: SpriteName; href: string }[] = [
-  { title: 'Магазин', hint: 'Награды за ❄', icon: 'shard', href: '#/shop' },
+  { title: 'Магазин', hint: 'Награды за WF', icon: 'shard', href: '#/shop' },
   { title: 'Утренняя инвестиция', hint: 'Зарядка, раз в день', icon: 'sun', href: '#/morning' },
   { title: 'Судьба дня', hint: 'Плинко выберет дело', icon: 'plinko', href: '#/destiny' },
   { title: 'План дня', hint: 'Квесты по часам', icon: 'dial', href: '#/plan' },
@@ -42,7 +42,8 @@ const GAME: { title: string; hint: string; icon: SpriteName; href: string }[] = 
 ]
 
 const PAGES: { id: string; title: string; hint: string; icon: typeof ListChecks; href?: string }[] = [
-  { id: 'charts', title: 'Графики', hint: 'Подъём, сон, страницы, HP', icon: ChartLine, href: '#/charts' },
+  { id: 'charts', title: 'Графики', hint: 'Эло, деньги, подъём, сон, страницы', icon: ChartLine, href: '#/charts' },
+  { id: 'entries', title: 'Все записи', hint: 'Дневник, исповеди, утро по дням', icon: NotebookPen, href: '#/entries' },
   { id: 'quests', title: 'Квесты', hint: 'Редактор квестов', icon: ListChecks },
   { id: 'measurements', title: 'Замеры', hint: 'Старт и финал', icon: Ruler },
   { id: 'triggers', title: 'Триггеры', hint: 'Когда срываешься', icon: Activity },
@@ -370,7 +371,7 @@ function QuestsEditor() {
     <Sub title="Квесты">
       <p className="small muted">
         До 5 главных в день{' '}
-        <Help title="Главные и побочные" text={['Не больше 5 главных в день: лишние автоматически станут побочными.', 'Квест, который был главным в прошлой главе, а теперь побочный, получает метку «база» и XP ×0.5.', 'Новый квест работает с сегодняшнего дня — прошлые дни не пересчитываются.']} />
+        <Help title="Главные и побочные" text={['Не больше 5 главных в день: лишние автоматически станут побочными.', 'Квест, который был главным в прошлой главе, а теперь побочный, получает метку «база» и половину очков сферы.', 'Новый квест работает с сегодняшнего дня — прошлые дни не пересчитываются.']} />
       </p>
       <div className="row wrap" style={{ gap: 8 }}>
         {CHAPTERS.map((c, i) => (
