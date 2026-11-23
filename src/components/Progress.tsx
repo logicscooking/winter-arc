@@ -61,7 +61,7 @@ export function SphereList({ game }: { game: GameState }) {
   return (
     <div className="panel stack sphere-card">
       <div className="radar" role="img" aria-label={`Сферы за неделю: ${areas.map((a) => `${title(a)} ${pct(a)}%`).join(', ')}`}>
-        <svg viewBox="0 0 300 236" aria-hidden>
+        <svg viewBox="0 -30 300 296" aria-hidden>
           {[0.25, 0.5, 0.75, 1].map((k) => (
             <polygon key={k} className={`radar-ring${k === 1 ? ' outer' : ''}`} points={areas.map((_, i) => pt(i, RAD * k)).join(' ')} />
           ))}
