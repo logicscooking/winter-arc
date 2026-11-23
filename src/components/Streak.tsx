@@ -2,6 +2,7 @@ import { dayStreak, gameDayOf, monthClosed } from '../engine'
 import { Px } from '../pixel/Pixel'
 import { useGame, useNow } from '../store/hooks'
 import { Help } from './ui'
+import { ArcLine } from './ThirteenWeeks'
 
 /** «Серия» on Today: closed days in a row, the month's closed days and a small calendar to keep it going */
 export function StreakCard() {
@@ -32,6 +33,7 @@ export function StreakCard() {
       <p className={`streak-today ${s.todayDone ? 'done' : ''}`}>
         {s.todayDone ? `Сегодня закрыт ✓ Серия ${s.run}` : `Закрой главные квесты сегодня — серия станет ${s.run + 1}`}
       </p>
+      <ArcLine />
       <div className="streak-month" role="img" aria-label={`Закрыто ${m.title} ${m.closed} дней`}>
         {['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'].map((d) => (
           <span key={d} className="wd">

@@ -598,6 +598,33 @@ export interface WeekGoal {
   done?: boolean
   /** «только мне»: never in public stats, the shared deck or the party prompt */
   private?: boolean
+  /** «13 недель»: this week's copy of an arc tactic (twelveWeeks.ts). Editing or deleting the copy never brings it back */
+  tacticId?: string
+  order: number
+  createdAt: number
+  updatedAt: number
+}
+
+// ---------- «13 недель» ----------
+
+/** A weekly action behind an arc goal: «Сообщения лидам — 100». Becomes a week goal every Monday */
+export interface ArcTactic {
+  id: string
+  title: string
+  target?: number
+  unit?: string
+  /** Mondays this tactic was already turned into a week goal (idempotency: never recreated) */
+  made?: DayKey[]
+  createdAt: number
+}
+
+/** «Цели на 13 недель»: 1–3 big goals of the arc. PRIVATE: synced, never in public stats */
+export interface ArcGoal {
+  id: string
+  title: string
+  tactics: ArcTactic[]
+  /** the weekly copies are «только мне» */
+  private?: boolean
   order: number
   createdAt: number
   updatedAt: number
@@ -682,4 +709,6 @@ export interface AppData {
   weekGoals?: WeekGoal[]
   /** «Неделя»: «Итог недели» per week, id = Monday (synced per week) */
   weekRecaps?: WeekRecap[]
+  /** «13 недель»: big arc goals with weekly tactics (synced per goal, private) */
+  arcGoals?: ArcGoal[]
 }

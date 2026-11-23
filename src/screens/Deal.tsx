@@ -28,8 +28,9 @@ import { RankChanceCard } from '../components/skillPlus'
 import { MoneySheet } from '../components/Money'
 import { Help } from '../components/ui'
 import { SkillTreeMini } from '../components/SkillTreeView'
+import { ThirteenWeeks } from '../components/ThirteenWeeks'
 
-/** «Путь»: skills (progression) on top, the Deal of the day and projects below */
+/** «Путь»: «13 недель» first, then skills (progression), the Deal of the day and projects below */
 export function Deal() {
   const data = useStore((s) => s.data)
   const game = useGame()
@@ -42,6 +43,7 @@ export function Deal() {
 
   return (
     <div className="stack-lg">
+      <ThirteenWeeks />
       <div className="filter-row" role="group" aria-label="Что показать">
         {(
           [

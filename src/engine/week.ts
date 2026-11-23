@@ -85,6 +85,7 @@ export function sanitizeWeekGoal(raw: unknown): WeekGoal | null {
   if (progress) out.progress = progress
   if (x.done === true) out.done = true
   if (x.private === true) out.private = true
+  if (typeof x.tacticId === 'string' && x.tacticId) out.tacticId = x.tacticId.slice(0, 64)
   return out
 }
 

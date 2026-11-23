@@ -126,6 +126,13 @@ export default function App() {
     if (!offset) finalize(now)
   }, [finalize, now, offset])
 
+  // «13 недель»: this week's tactics become week goals (once per tactic and week; after a sync pull too)
+  const syncTactics = useStore((s) => s.syncTactics)
+  useEffect(() => {
+    if (data.profile) syncTactics(now)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncTactics, today, data.arcGoals, data.profile])
+
   // morning check-in: first open of the day before 12:00
   useEffect(() => {
     if (!data.profile || today < replayStartOf(data) || (route.parts[0] ?? 'today') !== 'today') return

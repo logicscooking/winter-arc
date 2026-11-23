@@ -1,0 +1,122 @@
+/* «13 недель»: the first screen of «Путь» and the line on the «Серия» card. Tokens come from styles.css. */
+
+.w13 { gap: 16px; }
+.w13-cols { display: grid; gap: 16px; }
+@media (min-width: 900px) { .w13-cols { grid-template-columns: 1fr 1fr; align-items: start; } }
+
+/* countdown */
+.w13-hero {
+  display: flex; flex-direction: column; gap: 8px; padding: 18px 18px 16px;
+  border-radius: var(--r-lg); border: var(--bw) solid var(--pine-line);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--pine) 16%, var(--surface)) 0%, var(--surface) 70%);
+  box-shadow: var(--shadow-1);
+}
+.w13-hero.final { border-color: color-mix(in srgb, var(--gold-mark) 70%, var(--line)); background: linear-gradient(160deg, color-mix(in srgb, var(--gold-mark) 18%, var(--surface)) 0%, var(--surface) 70%); }
+.w13-ear { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; color: var(--pine); }
+.w13-hero.final .w13-ear { color: var(--gold); }
+.w13-big { font-family: var(--display); font-weight: 800; font-size: 1.7rem; line-height: 1.1; color: var(--ink); }
+.w13-big b { font-size: 2.6rem; color: var(--pine); }
+.w13-hero.final .w13-big b { color: var(--gold); }
+.w13-sub { margin: 0; font-weight: 800; color: var(--ink-2); }
+.w13-share { margin: 0; font-size: 0.86rem; font-weight: 700; color: var(--ink-2); }
+.w13-share b { color: var(--pine); }
+
+.w13-track {
+  position: relative; display: block; height: 22px; margin: 4px 0 2px; border-radius: 99px; overflow: hidden;
+  background: color-mix(in srgb, var(--bg) 78%, var(--surface-3)); box-shadow: inset 0 2px 0 rgba(0, 0, 0, 0.2);
+}
+.w13-track > i { display: block; height: 100%; border-radius: inherit; background: var(--pine); box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.16), inset 0 3px 0 rgba(255, 255, 255, 0.3); transition: width 0.6s var(--ease-out); min-width: 22px; }
+.w13-tick { position: absolute; top: 5px; bottom: 5px; width: 2px; margin-left: -1px; border-radius: 1px; background: color-mix(in srgb, var(--ink) 22%, transparent); }
+
+/* grid */
+.w13-grid-card { padding: 14px 12px; display: flex; flex-direction: column; gap: 4px; }
+.w13-grid { display: flex; flex-direction: column; gap: 4px; }
+.w13-grid.final { margin-top: 8px; padding-top: 8px; border-top: 2px dashed var(--line-soft); }
+.w13-row { display: grid; grid-template-columns: 34px repeat(7, minmax(0, 1fr)) 50px; gap: 4px; align-items: center; border-radius: 9px; }
+.w13-row.cur { background: color-mix(in srgb, var(--pine) 10%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pine) 10%, transparent); }
+.w13-lab { font-size: 0.72rem; font-weight: 900; color: var(--mist); text-align: center; }
+.w13-row.cur .w13-lab { color: var(--pine); }
+.w13-row.cur .w13-pct { color: var(--gold); }
+.w13-wd { text-align: center; font-size: 0.68rem; font-weight: 800; color: var(--mist); }
+.w13-cell { display: block; height: 20px; border-radius: 6px; background: var(--surface-2); }
+.w13-cell.done { background: var(--pine); }
+.w13-cell.frozen { background: var(--frost); opacity: 0.85; }
+.w13-cell.miss { background: repeating-linear-gradient(135deg, var(--hp) 0 4px, color-mix(in srgb, var(--hp) 55%, var(--surface)) 4px 7px); }
+.w13-cell.open { background: var(--surface-3); }
+.w13-cell.future, .w13-cell.none { background: var(--surface-2); opacity: 0.55; }
+.w13-cell.today { outline: 2.5px solid var(--ink); outline-offset: -1px; opacity: 1; }
+.w13-pct { font-size: 0.74rem; font-weight: 900; color: var(--mist); text-align: right; white-space: nowrap; }
+.w13-pct.won { color: var(--pine); }
+.w13-pct.lost { color: var(--hp); }
+.w13-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; color: var(--mist); font-weight: 800; }
+.w13-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.w13-legend .w13-cell { width: 14px; height: 14px; border-radius: 4px; }
+
+/* score */
+.w13-now { margin: 0; font-weight: 800; color: var(--ink-2); }
+.w13-now b { font-size: 1.5rem; color: var(--gold); }
+.w13-now b.ok { color: var(--pine); }
+.w13-meter { position: relative; display: block; height: 14px; border-radius: 99px; background: var(--surface-3); overflow: visible; }
+.w13-meter.thin { height: 8px; margin-top: 6px; }
+.w13-meter > i { display: block; height: 100%; border-radius: 99px; background: var(--gold-mark); transition: width 0.5s var(--ease-out); }
+.w13-meter > i.ok { background: var(--pine); }
+.w13-meter > i.gold { background: linear-gradient(90deg, var(--gold-bright), var(--gold-mark)); }
+.w13-win { position: absolute; top: -4px; bottom: -4px; width: 3px; margin-left: -1.5px; border-radius: 2px; background: var(--ink); }
+
+.w13-bars { position: relative; display: grid; grid-template-columns: repeat(13, minmax(0, 1fr)); gap: 4px; height: 120px; align-items: end; margin-top: 4px; }
+.w13-bars-line { position: absolute; left: 0; right: 0; height: 0; border-top: 2px dashed color-mix(in srgb, var(--ink) 45%, transparent); z-index: 1; pointer-events: none; }
+.w13-bars-line em { position: absolute; right: 0; top: -18px; font-style: normal; font-size: 0.66rem; font-weight: 900; color: var(--ink-2); background: var(--surface); padding: 0 3px; border-radius: 4px; }
+.w13-bar { display: flex; flex-direction: column; align-items: stretch; gap: 4px; height: 100%; justify-content: flex-end; }
+.w13-bar-track { position: relative; height: 80%; border-radius: 6px; background: var(--surface-2); overflow: hidden; display: flex; align-items: flex-end; }
+.w13-bar-track i { display: block; width: 100%; border-radius: 6px 6px 0 0; background: var(--surface-3); transition: height 0.5s var(--ease-out); }
+.w13-bar.lost .w13-bar-track i { background: color-mix(in srgb, var(--hp) 70%, var(--surface-3)); }
+.w13-bar.won .w13-bar-track i { background: var(--pine); }
+.w13-bar.cur .w13-bar-track { outline: 2px solid var(--gold-mark); outline-offset: -2px; }
+.w13-bar.cur .w13-bar-track i { background: var(--gold-mark); }
+.w13-bar small { height: 14px; text-align: center; font-size: 0.66rem; font-weight: 900; color: var(--mist); }
+.w13-bar.won small { color: var(--pine); }
+.w13-bar.cur small { color: var(--gold); }
+
+.w13-streaks { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.w13-streaks > div { display: flex; align-items: center; gap: 8px; padding: 10px; border-radius: 14px; background: var(--surface-2); }
+.w13-streaks > div > span { display: grid; min-width: 0; font-weight: 800; font-size: 0.9rem; color: var(--ink-2); line-height: 1.2; }
+.w13-streaks b { font-size: 1.5rem; color: var(--ink); line-height: 1.1; }
+.w13-streaks small { font-size: 0.72rem; color: var(--mist); }
+
+/* totals */
+.w13-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.w13-tile { display: grid; gap: 1px; padding: 10px 12px; border-radius: 14px; background: var(--surface-2); }
+.w13-tile.wide { grid-column: 1 / -1; }
+.w13-tile small { font-size: 0.74rem; font-weight: 800; color: var(--mist); }
+.w13-tile b { font-family: var(--display); font-size: 1.5rem; font-weight: 800; color: var(--ink); line-height: 1.15; }
+.w13-tile.bad b { color: var(--hp); }
+.w13-tile.gold b { color: var(--gold); }
+.w13-conq { padding: 10px 12px; border-radius: 14px; background: var(--surface-2); }
+
+/* arc goals */
+.w13-goals { display: grid; gap: 10px; }
+@media (min-width: 900px) { .w13-goals { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); } }
+.w13-goal { display: flex; flex-direction: column; gap: 8px; padding: 12px 12px 12px 16px; border-left: 6px solid var(--gold-mark); }
+.w13-goal-title { display: block; font-family: var(--display); font-size: 1.15rem; font-weight: 800; color: var(--ink); line-height: 1.25; }
+.w13-tactics { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.w13-tactics li { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 0.92rem; color: var(--ink); }
+.w13-tactics li.done .grow { color: var(--ink-2); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--pine) 70%, transparent); text-decoration-thickness: 2px; }
+.w13-tac-dot { flex: none; width: 20px; height: 20px; border-radius: 6px; display: grid; place-items: center; border: 2px solid var(--line); color: var(--pine-ink); }
+.w13-tactics li.done .w13-tac-dot { background: var(--pine); border-color: var(--pine); }
+.w13-tac-prog { display: grid; gap: 3px; width: 64px; text-align: right; color: var(--ink-2); font-weight: 900; }
+.w13-link { display: inline-flex; align-items: center; gap: 4px; text-align: left; font-weight: 800; text-decoration: none; }
+.w13-empty { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+.w13-tac-edit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px; gap: 6px; align-items: center; padding: 8px; border-radius: 18px; background: color-mix(in srgb, var(--surface-2) 45%, transparent); }
+.w13-tac-edit.new { background: none; border: 2px dashed var(--line-soft); }
+.w13-tac-edit > .input:first-child { grid-column: 1 / -1; }
+.w13-tac-edit .input { min-width: 0; }
+.w13-tac-edit .icon-btn.add { color: var(--pine); }
+.w13-tac-edit .icon-btn:disabled { opacity: 0.4; }
+
+/* the «Серия» card line on «Сегодня» */
+.streak-arc {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px 8px 12px; border-radius: 12px;
+  background: var(--surface-2); color: var(--ink); text-decoration: none; font-weight: 800; font-size: 0.88rem;
+}
+.streak-arc svg { color: var(--mist); }
+.streak-arc.ok { background: color-mix(in srgb, var(--pine) 16%, var(--surface-2)); }

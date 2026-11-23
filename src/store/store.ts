@@ -22,6 +22,9 @@ import {
   sanitizeRecap,
   sanitizeWeekGoal,
   weekOfDay,
+  sanitizeArcGoal,
+  materializeTactics,
+  ARC_LIMITS,
 } from '../engine'
 import type {
   AppData,
@@ -64,6 +67,7 @@ import type {
   PlanDraft,
   WeekGoal,
   WeekRecap,
+  ArcGoal,
 } from '../engine'
 import { MAX_ACTIVE_SKILLS, MONEY_MAX, MONEY_NOTE_MAX, MONEY_SOURCE_MAX, PRACTICE_LIMIT, barMin, canStartFlow, chestsFor, extraUsed, pityCount, practicesToday, rollChest, shopChestId } from '../engine'
 
@@ -189,6 +193,12 @@ interface Store {
   /** null when the amount or the day is not valid */
   addIncome: (x: { amount: number; day: DayKey; projectId?: string; source?: string; note?: string }, now: Date) => string | null
   deleteIncome: (id: string) => void
+  // ---- «13 недель» ----
+  /** add or replace an arc goal (tactics nested); false when invalid or over the limit */
+  putArcGoal: (g: ArcGoal, now: Date) => boolean
+  deleteArcGoal: (id: string) => void
+  /** this week's tactics become week goals (once per tactic and week) */
+  syncTactics: (now: Date) => void
   importData: (raw: unknown) => void
   resetAll: () => void
   finalize: (now: Date) => void
@@ -802,6 +812,25 @@ export const useStore = create<Store>()(
           return id
         },
         deleteIncome: (id) => update((d) => void (d.incomes = (d.incomes ?? []).filter((x) => x.id !== id))),
+        putArcGoal: (raw, now) => {
+          const g = sanitizeArcGoal({ ...raw, updatedAt: now.getTime() })
+          const list = get().data.arcGoals ?? []
+          const i = list.findIndex((x) => x.id === raw.id)
+          if (!g || (i < 0 && list.length >= ARC_LIMITS.goals)) return false
+          update((d) => {
+            const l = (d.arcGoals ??= [])
+            const j = l.findIndex((x) => x.id === g.id)
+            if (j >= 0) l[j] = g
+            else l.push({ ...g, order: l.reduce((m, x) => Math.max(m, x.order + 1), 0) })
+            Object.assign(d, materializeTactics(d, gameDayOf(now), now.getTime()))
+          })
+          return true
+        },
+        deleteArcGoal: (id) => update((d) => void (d.arcGoals = (d.arcGoals ?? []).filter((g) => g.id !== id))),
+        syncTactics: (now) => {
+          const next = materializeTactics(get().data, gameDayOf(now), now.getTime())
+          if (next) set({ data: next })
+        },
         importData: (raw) => set({ data: withAreas(normalizeData(raw)) }),
         resetAll: () => set({ data: createInitialData() }),
         finalize: (now) => {

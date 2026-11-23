@@ -5,7 +5,8 @@ import { validMorningAt } from './morning'
 import { sanitizeDump, sanitizeJournal } from './journal'
 import { retitlePhone, sanitizeEvent } from './areas'
 import { sanitizeRecap, sanitizeWeekGoal } from './week'
-import type { AppData, CalEvent, DayLog, PlinkoDrop, WeekGoal, WeekRecap } from './types'
+import { sanitizeArcGoal } from './twelveWeeks'
+import type { AppData, ArcGoal, CalEvent, DayLog, PlinkoDrop, WeekGoal, WeekRecap } from './types'
 
 export const SCHEMA_VERSION = 1
 export const STORAGE_KEY = 'winter-arc-v1'
@@ -42,10 +43,11 @@ export function createInitialData(): AppData {
     events: [],
     weekGoals: [],
     weekRecaps: [],
+    arcGoals: [],
   }
 }
 
-export const V04_COLLECTIONS = ['skills', 'traits', 'nodes', 'practices', 'goals', 'flows', 'bars', 'themes', 'extras', 'chests', 'duels', 'incomes', 'events', 'weekGoals', 'weekRecaps'] as const
+export const V04_COLLECTIONS = ['skills', 'traits', 'nodes', 'practices', 'goals', 'flows', 'bars', 'themes', 'extras', 'chests', 'duels', 'incomes', 'events', 'weekGoals', 'weekRecaps', 'arcGoals'] as const
 
 /** Accepts an exported backup (or persisted state) and fills any missing fields. */
 export function normalizeData(raw: unknown): AppData {
@@ -69,6 +71,8 @@ export function normalizeData(raw: unknown): AppData {
   if (Array.isArray(r.events)) r.events = r.events.map(sanitizeEvent).filter((e): e is CalEvent => !!e)
   // «Неделя»: broken goals and итоги are dropped, one итог per week
   if (Array.isArray(r.weekGoals)) r.weekGoals = r.weekGoals.map(sanitizeWeekGoal).filter((g): g is WeekGoal => !!g)
+  // «13 недель»: broken arc goals and tactics are dropped
+  if (Array.isArray(r.arcGoals)) r.arcGoals = r.arcGoals.map(sanitizeArcGoal).filter((g): g is ArcGoal => !!g)
   if (Array.isArray(r.weekRecaps)) {
     const byWeek = new Map<string, WeekRecap>()
     for (const x of r.weekRecaps.map(sanitizeRecap)) if (x && (byWeek.get(x.id)?.updatedAt ?? -1) <= x.updatedAt) byWeek.set(x.id, x)

@@ -12,7 +12,8 @@
 import { V04_COLLECTIONS, normalizeData } from './data'
 import { compareEvents } from './areas'
 import { compareWeekGoals } from './week'
-import type { AppData, CalEvent, DayLog, Task, WeekGoal } from './types'
+import { compareArcGoals } from './twelveWeeks'
+import type { AppData, ArcGoal, CalEvent, DayLog, Task, WeekGoal } from './types'
 
 export type Atoms = Record<string, unknown>
 
@@ -203,6 +204,8 @@ export function fromAtoms(atoms: Atoms, local: AppData): AppData {
   // «Неделя»: goals by week and their own order, итоги by week (id = Monday)
   o.weekGoals = (lists.weekGoals as WeekGoal[]).sort(compareWeekGoals)
   o.weekRecaps = (lists.weekRecaps as { id: string }[]).sort(byIdOnly)
+  // «13 недель»: arc goals (tactics nested) by their own order
+  o.arcGoals = (lists.arcGoals as ArcGoal[]).sort(compareArcGoals)
   const tasks = (lists.tasks as Task[]).sort((a, b) => a.createdAt - b.createdAt || (a.id < b.id ? -1 : 1))
   // a subtask whose parent was deleted on the other device is kept as a top-level task
   const ids = new Set(tasks.map((t) => t.id))
