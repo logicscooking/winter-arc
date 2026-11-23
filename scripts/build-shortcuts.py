@@ -67,16 +67,12 @@ pause = [
     act('is.workflow.actions.conditional', GroupingIdentifier=g, WFControlFlowMode=2),
 ]
 
-# ---- WA Захожу: input = minutes; save now+minutes, then open Instagram
-mn, d, ad, fd, sv, iu = U(), U(), U(), U(), U(), U()
+# ---- WA Захожу: input = window end as yyyyMMddHHmmss (the page computes it); save it, then open Instagram
+tx, sv, iu = U(), U(), U()
 enter = [
-    act('is.workflow.actions.comment', WFCommentActionText='Winter Arc. Вход: число минут. Запоминает, до какого времени пауза не мешает, и открывает Instagram.'),
-    act('is.workflow.actions.detect.number', mn, WFInput={'Value': {'Type': 'ExtensionInput'}, 'WFSerializationType': 'WFTextTokenAttachment'}),
-    act('is.workflow.actions.date', d, WFDateActionMode='Current Date'),
-    act('is.workflow.actions.adjustdate', ad, WFDate=tok(d, 'Date'), WFAdjustOperation='Add',
-        WFDuration={'Value': {'Unit': 'min', 'Magnitude': att(mn, 'Numbers')}, 'WFSerializationType': 'WFQuantityFieldValue'}),
-    act('is.workflow.actions.format.date', fd, WFDateFormatStyle='Custom', WFDateFormat=FMT, WFDate=tok(ad, 'Adjusted Date')),
-    act('is.workflow.actions.documentpicker.save', sv, WFInput=att(fd, 'Formatted Date'), WFAskWhereToSave=False,
+    act('is.workflow.actions.comment', WFCommentActionText='Winter Arc. Вход: до какого времени пауза не мешает (число вида 20261123103500, его считает сайт). Запоминает и открывает Instagram.'),
+    act('is.workflow.actions.gettext', tx, WFTextActionText={'Value': {'string': '\ufffc', 'attachmentsByRange': {'{0, 1}': {'Type': 'ExtensionInput'}}}, 'WFSerializationType': 'WFTextTokenString'}),
+    act('is.workflow.actions.documentpicker.save', sv, WFInput=att(tx, 'Text'), WFAskWhereToSave=False,
         WFSaveFileOverwrite=True, WFFileDestinationPath=txt(FILE)),
     act('is.workflow.actions.url', iu, WFURLActionURL='instagram://'),
     act('is.workflow.actions.openurl', WFInput=att(iu, 'URL'), Show=True),

@@ -7,11 +7,16 @@ import { Ring } from '../components/ui'
 
 const NAMES: Record<string, string> = { instagram: 'Instagram', tiktok: 'TikTok', youtube: 'YouTube' }
 
-/** The importable «WA Захожу» shortcut (public/shortcuts): saves now+minutes, then opens Instagram,
- *  so «WA Пауза» run by the automation lets the user in for that window instead of looping back here. */
+/** The importable «WA Захожу» shortcut (public/shortcuts): saves the window end it gets as input, then opens
+ *  Instagram, so «WA Пауза» run by the automation lets the user in until then instead of looping back here.
+ *  The end is computed here, not in the shortcut: «Adjust Date» with a variable amount imported broken. */
 export const ENTER_SHORTCUT = 'WA Захожу'
+const p2 = (n: number) => String(n).padStart(2, '0')
+/** local time as yyyyMMddHHmmss, the number «WA Пауза» compares */
+export const stamp = (d: Date) =>
+  `${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}${p2(d.getHours())}${p2(d.getMinutes())}${p2(d.getSeconds())}`
 export const enterShortcutUrl = (min: number) =>
-  `shortcuts://run-shortcut?name=${encodeURIComponent(ENTER_SHORTCUT)}&input=text&text=${min}`
+  `shortcuts://run-shortcut?name=${encodeURIComponent(ENTER_SHORTCUT)}&input=text&text=${stamp(new Date(Date.now() + min * 60_000))}`
 
 export function Pause({ app }: { app: string }) {
   const data = useStore((s) => s.data)
